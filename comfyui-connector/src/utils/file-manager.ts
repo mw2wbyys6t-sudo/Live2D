@@ -111,7 +111,7 @@ export class FileManager {
       const stats = fs.statSync(filePath);
       const age = now - stats.mtime.getTime();
 
-      if (age > maxAge) {
+      if (age >= maxAge) {
         fs.unlinkSync(filePath);
         deletedCount++;
       }

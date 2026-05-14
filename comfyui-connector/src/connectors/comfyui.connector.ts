@@ -216,11 +216,13 @@ export class ComfyUIConnector {
 
   setOutputDirectory(directory: string): void {
     this.outputDirectory = directory;
+    this.config.outputDirectory = directory;
     this.ensureDirectories();
   }
 
   setTempDirectory(directory: string): void {
     this.tempDirectory = directory;
+    this.config.tempDirectory = directory;
     this.ensureDirectories();
   }
 }

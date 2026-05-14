@@ -363,10 +363,13 @@ export class ImageGenerationService {
       };
     }
 
+    const mappedStatus: 'queued' | 'running' | 'completed' | 'failed' =
+      currentItem.status === 'pending' ? 'queued' : currentItem.status;
+
     return {
       prompt_id: promptId,
       progress: currentItem.progress || 0,
-      status: currentItem.status
+      status: mappedStatus
     };
   }
 }
