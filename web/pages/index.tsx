@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import UploadArea from '../components/UploadArea';
 import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import RiskScore from '../components/RiskScore';
+import { parsePSD } from '../lib/psd-parser';
+import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 
 interface LayerStats {
   total: number;
@@ -16,19 +18,6 @@ interface LayerStats {
   nonNormalBlend: number;
   offscreen: number;
   duplicateNames: number;
-}
-
-interface QAIssue {
-  id: string;
-  severity: 'error' | 'warning' | 'info';
-  category: string;
-  title: string;
-  description: string;
-  layer?: string;
-  suggestion: string;
-  rule: string;
-  expected?: string;
-  actual?: string;
 }
 
 interface Summary {
@@ -59,43 +48,53 @@ const Home: NextPage = () => {
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; width: number; height: number } | undefined>();
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('psd', file);
+      const buffer = await file.arrayBuffer();
+      const psdInfo = parsePSD(buffer);
 
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const json = await response.json();
-
-      if (!json.success) {
-        setError(json.error || '分析失败');
+      if (!psdInfo.valid) {
+        setError(psdInfo.error || '无法解析 PSD 文件');
         setLoading(false);
         return;
       }
 
-      setFileInfo(json.fileInfo);
-      setResult(json.data);
+      const qaResult = analyzePSD(psdInfo);
+      const enhanced = getEnhancedResult(qaResult);
+
+      setFileInfo({
+        name: file.name,
+        size: file.size,
+        width: psdInfo.width,
+        height: psdInfo.height,
+      });
+
+      setResult({
+        score: enhanced.score,
+        issues: enhanced.issues,
+        warnings: enhanced.warnings,
+        suggestions: enhanced.suggestions,
+        layer_stats: enhanced.layer_stats,
+        summary: qaResult.summary,
+      });
+
       setView('result');
     } catch (err: any) {
-      setError(err.message || '上传失败');
+      setError(err.message || '分析失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setView('upload');
     setFileInfo(undefined);
     setResult(null);
     setError(null);
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0f0f13] text-white">
@@ -123,12 +122,7 @@ const Home: NextPage = () => {
                 ↺ 重新分析
               </button>
             )}
-            <a
-              href="/"
-              className="text-xs text-gray-500 hover:text-gray-300"
-            >
-              v2.0.0
-            </a>
+            <span className="text-xs text-gray-500">v2.0.0</span>
           </div>
         </div>
       </header>

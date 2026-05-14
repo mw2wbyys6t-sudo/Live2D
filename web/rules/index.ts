@@ -9,29 +9,37 @@ export * from './draw-order-rules';
 export * from './convention-rules';
 
 import { LayerRule } from './layer-types';
+import { neckBaseRule, faceBaseRule, faceShadowRule, hairBackRule } from './critical-layers';
+import { eyeHighlightRule, eyeSymmetryRule } from './eye-rules';
+import { mouthCompletenessRule, mouthLayeringRule } from './mouth-rules';
+import { emptyLayerRule, zeroSizeLayerRule, offscreenLayerRule } from './empty-layer-rules';
+import { semiTransparentRule, transparencyContaminationRule } from './transparency-rules';
+import { namingConventionRule, duplicateNameRule, layerNameFormatRule } from './naming-rules';
+import { drawOrderRiskRule, symmetryDrawOrderRule, layerGroupStructureRule } from './draw-order-rules';
+import { blendModeRule, colorModeRule, canvasSizeRule, hiddenLayerRule } from './convention-rules';
 
 export const allRules: LayerRule[] = [
-  require('./critical-layers').neckBaseRule,
-  require('./critical-layers').faceBaseRule,
-  require('./critical-layers').faceShadowRule,
-  require('./critical-layers').hairBackRule,
-  require('./eye-rules').eyeHighlightRule,
-  require('./eye-rules').eyeSymmetryRule,
-  require('./mouth-rules').mouthCompletenessRule,
-  require('./mouth-rules').mouthLayeringRule,
-  require('./empty-layer-rules').emptyLayerRule,
-  require('./empty-layer-rules').zeroSizeLayerRule,
-  require('./empty-layer-rules').offscreenLayerRule,
-  require('./transparency-rules').semiTransparentRule,
-  require('./transparency-rules').transparencyContaminationRule,
-  require('./naming-rules').namingConventionRule,
-  require('./naming-rules').duplicateNameRule,
-  require('./naming-rules').layerNameFormatRule,
-  require('./draw-order-rules').drawOrderRiskRule,
-  require('./draw-order-rules').symmetryDrawOrderRule,
-  require('./draw-order-rules').layerGroupStructureRule,
-  require('./convention-rules').blendModeRule,
-  require('./convention-rules').colorModeRule,
-  require('./convention-rules').canvasSizeRule,
-  require('./convention-rules').hiddenLayerRule,
+  neckBaseRule,
+  faceBaseRule,
+  faceShadowRule,
+  hairBackRule,
+  eyeHighlightRule,
+  eyeSymmetryRule,
+  mouthCompletenessRule,
+  mouthLayeringRule,
+  emptyLayerRule,
+  zeroSizeLayerRule,
+  offscreenLayerRule,
+  semiTransparentRule,
+  transparencyContaminationRule,
+  namingConventionRule,
+  duplicateNameRule,
+  layerNameFormatRule,
+  drawOrderRiskRule,
+  symmetryDrawOrderRule,
+  layerGroupStructureRule,
+  blendModeRule,
+  colorModeRule,
+  canvasSizeRule,
+  hiddenLayerRule,
 ];

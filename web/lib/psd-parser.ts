@@ -47,46 +47,89 @@ export interface PSDGroup {
   depth: number;
 }
 
-function readPascalString(buf: Buffer, offset: number): { value: string; length: number } {
-  const charCount = buf.readUInt8(offset);
-  const str = buf.toString('utf8', offset + 1, offset + 1 + charCount);
-  const padded = ((charCount + 1 + 3) & ~3);
-  return { value: str, length: padded };
+class PSDReader {
+  private buf: Uint8Array;
+  private view: DataView;
+
+  constructor(buf: Uint8Array) {
+    this.buf = buf;
+    this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
+
+  readAscii(offset: number, length: number): string {
+    let s = '';
+    for (let i = 0; i < length; i++) {
+      s += String.fromCharCode(this.buf[offset + i]);
+    }
+    return s;
+  }
+
+  readUInt8(offset: number): number {
+    return this.view.getUint8(offset);
+  }
+
+  readUInt16BE(offset: number): number {
+    return this.view.getUint16(offset);
+  }
+
+  readInt16BE(offset: number): number {
+    return this.view.getInt16(offset);
+  }
+
+  readUInt32BE(offset: number): number {
+    return this.view.getUint32(offset);
+  }
+
+  readInt32BE(offset: number): number {
+    return this.view.getInt32(offset);
+  }
+
+  slice(start: number, end: number): Uint8Array {
+    return this.buf.slice(start, end);
+  }
+
+  get length(): number {
+    return this.buf.length;
+  }
+
+  getByte(offset: number): number {
+    return this.buf[offset];
+  }
 }
 
-function readUnicodeString(buf: Buffer, offset: number): { value: string; length: number } {
-  const charCount = buf.readUInt32BE(offset);
-  const end = offset + 4 + charCount * 2;
-  const raw = buf.subarray(offset + 4, end);
-  const codeUnits: number[] = [];
-  for (let i = 0; i < raw.length; i += 2) {
-    codeUnits.push((raw[i] << 8) | raw[i + 1]);
+function readPascalString(r: PSDReader, offset: number): { value: string; length: number } {
+  const charCount = r.readUInt8(offset);
+  let s = '';
+  for (let i = 0; i < charCount; i++) {
+    s += String.fromCharCode(r.getByte(offset + 1 + i));
   }
-  const str = String.fromCharCode(...codeUnits);
-  return { value: str, length: 4 + charCount * 2 };
+  const padded = ((charCount + 1 + 3) & ~3);
+  return { value: s, length: padded };
+}
+
+function readUnicodeString(r: PSDReader, offset: number): { value: string; length: number } {
+  const charCount = r.readUInt32BE(offset);
+  const end = offset + 4 + charCount * 2;
+  let s = '';
+  for (let i = offset + 4; i < end; i += 2) {
+    const code = (r.readUInt8(i) << 8) | r.readUInt8(i + 1);
+    s += String.fromCharCode(code);
+  }
+  return { value: s, length: 4 + charCount * 2 };
 }
 
 function getColorModeName(mode: number): string {
   const modes: Record<number, string> = {
-    0: 'Bitmap',
-    1: 'Grayscale',
-    2: 'Indexed',
-    3: 'RGB',
-    4: 'CMYK',
-    5: 'Multi-channel',
-    6: 'Duotone',
-    7: 'Lab',
-    8: '16-bit Grayscale',
-    9: '32-bit Grayscale',
-    10: '16-bit RGB',
-    11: '32-bit RGB',
+    0: 'Bitmap', 1: 'Grayscale', 2: 'Indexed', 3: 'RGB',
+    4: 'CMYK', 5: 'Multi-channel', 6: 'Duotone', 7: 'Lab',
+    8: '16-bit Grayscale', 9: '32-bit Grayscale', 10: '16-bit RGB', 11: '32-bit RGB',
   };
   return modes[mode] || `Unknown (${mode})`;
 }
 
-function parsePSDHeader(buf: Buffer): { width: number; height: number; depth: number; colorMode: number; offset: number } {
-  const signature = buf.toString('ascii', 0, 4);
-  const version = buf.readUInt16BE(4);
+function parsePSDHeader(r: PSDReader): { width: number; height: number; depth: number; colorMode: number; offset: number } {
+  const signature = r.readAscii(0, 4);
+  const version = r.readUInt16BE(4);
 
   if (signature !== '8BPS') {
     throw new Error('Invalid PSD signature');
@@ -95,39 +138,38 @@ function parsePSDHeader(buf: Buffer): { width: number; height: number; depth: nu
     throw new Error(`Unsupported PSD version: ${version}`);
   }
 
-  const channels = buf.readUInt16BE(12);
-  const height = buf.readUInt32BE(14);
-  const width = buf.readUInt32BE(18);
-  const depth = buf.readUInt16BE(22);
-  const colorMode = buf.readUInt16BE(24);
+  const height = r.readUInt32BE(14);
+  const width = r.readUInt32BE(18);
+  const depth = r.readUInt16BE(22);
+  const colorMode = r.readUInt16BE(24);
 
   return { width, height, depth, colorMode, offset: 26 };
 }
 
-function parsePSDLayers(buf: Buffer, startOffset: number): { layers: PSDLayer[]; groups: PSDGroup[]; offset: number } {
+function parsePSDLayers(r: PSDReader, startOffset: number): { layers: PSDLayer[]; groups: PSDGroup[]; offset: number } {
   const layers: PSDLayer[] = [];
   const groups: PSDGroup[] = [];
   let offset = startOffset;
   const groupStack: { name: string; id: string; index: number; depth: number }[] = [];
   let groupCount = 0;
 
-  if (offset + 4 > buf.length) {
+  if (offset + 4 > r.length) {
     return { layers, groups, offset };
   }
 
-  const layerInfoLength = buf.readInt32BE(offset);
+  const layerInfoLength = r.readInt32BE(offset);
   offset += 4;
 
   const layerInfoEnd = offset + layerInfoLength;
-  if (layerInfoEnd > buf.length) {
-    return { layers, groups, offset: buf.length };
+  if (layerInfoEnd > r.length) {
+    return { layers, groups, offset: r.length };
   }
 
-  if (offset + 2 > buf.length) {
+  if (offset + 2 > r.length) {
     return { layers, groups, offset };
   }
 
-  let layerCount = buf.readInt16BE(offset);
+  let layerCount = r.readInt16BE(offset);
   offset += 2;
 
   if (layerCount < 0) {
@@ -138,64 +180,58 @@ function parsePSDLayers(buf: Buffer, startOffset: number): { layers: PSDLayer[];
     return { layers, groups, offset: layerInfoEnd };
   }
 
-  const layerRecords: { offset: number; size: number }[] = [];
-
   for (let i = 0; i < layerCount; i++) {
-    if (offset + 48 > buf.length) break;
+    if (offset + 48 > r.length) break;
 
-    const recordStart = offset;
+    const top = r.readInt32BE(offset); offset += 4;
+    const left = r.readInt32BE(offset); offset += 4;
+    const bottom = r.readInt32BE(offset); offset += 4;
+    const right = r.readInt32BE(offset); offset += 4;
 
-    const top = buf.readInt32BE(offset); offset += 4;
-    const left = buf.readInt32BE(offset); offset += 4;
-    const bottom = buf.readInt32BE(offset); offset += 4;
-    const right = buf.readInt32BE(offset); offset += 4;
-
-    const channelCount = buf.readUInt16BE(offset); offset += 2;
+    const channelCount = r.readUInt16BE(offset); offset += 2;
 
     for (let c = 0; c < channelCount; c++) {
       offset += 6;
     }
 
-    const blendSignature = buf.toString('ascii', offset, offset + 4);
+    const blendSignature = r.readAscii(offset, 4);
     offset += 4;
 
-    const blendMode = buf.toString('ascii', offset, offset + 4);
+    const blendMode = r.readAscii(offset, 4);
     offset += 4;
 
-    const opacity = buf.readUInt8(offset); offset += 1;
-    const clipping = buf.readUInt8(offset); offset += 1;
-    const flags = buf.readUInt8(offset); offset += 1;
-    const filler = buf.readUInt8(offset); offset += 1;
+    const opacity = r.readUInt8(offset); offset += 1;
+    const clipping = r.readUInt8(offset); offset += 1;
+    const flags = r.readUInt8(offset); offset += 1;
+    const filler = r.readUInt8(offset); offset += 1;
 
     const visible = !(flags & 0x02);
 
-    const extraDataLength = buf.readInt32BE(offset); offset += 4;
+    const extraDataLength = r.readInt32BE(offset); offset += 4;
     const extraStart = offset;
     const extraEnd = offset + extraDataLength;
 
     let layerName = `Layer ${i}`;
 
     while (offset + 4 <= extraEnd) {
-      const sig = buf.toString('ascii', offset, offset + 4);
+      const sig = r.readAscii(offset, 4);
       offset += 4;
 
       if (offset + 4 > extraEnd) break;
-      const key = buf.toString('ascii', offset, offset + 4);
+      const key = r.readAscii(offset, 4);
       offset += 4;
 
       if (offset + 4 > extraEnd) break;
-      const dataLen = buf.readInt32BE(offset);
+      const dataLen = r.readInt32BE(offset);
       offset += 4;
 
       if (offset + dataLen > extraEnd) break;
 
       if (sig === '8BIM' && key === 'luni') {
-        const result = readUnicodeString(buf, offset);
+        const result = readUnicodeString(r, offset);
         if (result.value) {
           layerName = result.value;
         }
-      } else if (sig === '8BIM' && key === 'lsct') {
-        // Section divider setting
       }
 
       offset += ((dataLen + 3) & ~3);
@@ -203,8 +239,7 @@ function parsePSDLayers(buf: Buffer, startOffset: number): { layers: PSDLayer[];
 
     offset = extraEnd;
 
-    const isGroupStart = layerName === '</Layer group>' || layerName.startsWith('</L');
-    const isGroupEnd = layerName === '</Layer group>' || layerName.startsWith('</L');
+    const isGroupEnd = layerName === '</Layer group>';
 
     let actualIsGroup = false;
     let actualGroupId: string | null = null;
@@ -251,7 +286,6 @@ function parsePSDLayers(buf: Buffer, startOffset: number): { layers: PSDLayer[];
     };
 
     layers.push(layer);
-    layerRecords.push({ offset: recordStart, size: offset - recordStart });
   }
 
   const activeGroups = groupStack.map(g => ({
@@ -267,9 +301,12 @@ function parsePSDLayers(buf: Buffer, startOffset: number): { layers: PSDLayer[];
   return { layers, groups: activeGroups, offset };
 }
 
-export function parsePSD(buffer: Buffer): PSDFileInfo {
+export function parsePSD(data: ArrayBuffer | Uint8Array): PSDFileInfo {
+  const buf = data instanceof Uint8Array ? data : new Uint8Array(data);
+  const r = new PSDReader(buf);
+
   try {
-    if (buffer.length < 26) {
+    if (r.length < 26) {
       return {
         width: 0, height: 0, depth: 0, colorMode: 0,
         colorModeName: 'Unknown', layerCount: 0,
@@ -278,16 +315,16 @@ export function parsePSD(buffer: Buffer): PSDFileInfo {
       };
     }
 
-    const header = parsePSDHeader(buffer);
+    const header = parsePSDHeader(r);
     let offset = header.offset;
 
-    const colorModeDataLength = buffer.readUInt32BE(offset);
+    const colorModeDataLength = r.readUInt32BE(offset);
     offset += 4 + colorModeDataLength;
 
-    const imageResourcesLength = buffer.readUInt32BE(offset);
+    const imageResourcesLength = r.readUInt32BE(offset);
     offset += 4 + imageResourcesLength;
 
-    const { layers, groups } = parsePSDLayers(buffer, offset);
+    const { layers, groups } = parsePSDLayers(r, offset);
 
     const displayLayers = layers.filter(l => !l.name.startsWith('<'));
 
