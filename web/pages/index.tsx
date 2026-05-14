@@ -3,9 +3,52 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import UploadArea from '../components/UploadArea';
 import LayerTree from '../components/LayerTree';
-import QAResultPanel from '../components/QAResultPanel';
+import QAResult from '../components/QAResult';
 import RiskScore from '../components/RiskScore';
-import { QAResult } from '../lib/qa-engine';
+
+interface LayerStats {
+  total: number;
+  visible: number;
+  hidden: number;
+  groups: number;
+  empty: number;
+  semiTransparent: number;
+  nonNormalBlend: number;
+  offscreen: number;
+  duplicateNames: number;
+}
+
+interface QAIssue {
+  id: string;
+  severity: 'error' | 'warning' | 'info';
+  category: string;
+  title: string;
+  description: string;
+  layer?: string;
+  suggestion: string;
+  rule: string;
+  expected?: string;
+  actual?: string;
+}
+
+interface Summary {
+  totalLayers: number;
+  visibleLayers: number;
+  hiddenLayers: number;
+  groups: number;
+  hasMissingCritical: boolean;
+  hasNamingIssues: boolean;
+  hasStructuralIssues: boolean;
+}
+
+interface AnalysisResult {
+  score: number;
+  issues: QAIssue[];
+  warnings: QAIssue[];
+  suggestions: string[];
+  layer_stats: LayerStats;
+  summary: Summary;
+}
 
 type AppView = 'upload' | 'result';
 
@@ -14,7 +57,7 @@ const Home: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; width: number; height: number } | undefined>();
-  const [result, setResult] = useState<QAResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const handleUpload = async (file: File) => {
     setLoading(true);
@@ -84,7 +127,7 @@ const Home: NextPage = () => {
               href="/"
               className="text-xs text-gray-500 hover:text-gray-300"
             >
-              v1.0.0
+              v2.0.0
             </a>
           </div>
         </div>
@@ -116,10 +159,10 @@ const Home: NextPage = () => {
               </p>
             </div>
             <UploadArea onUpload={handleUpload} loading={loading} />
-            <div className="mt-8 grid grid-cols-3 gap-4 text-center text-xs text-gray-500">
+            <div className="mt-8 grid grid-cols-4 gap-4 text-center text-xs text-gray-500">
               <div className="p-3 bg-gray-800/50 rounded-lg">
                 <p className="text-lg mb-1">🔍</p>
-                <p>图层命名检查</p>
+                <p>图层命名</p>
               </div>
               <div className="p-3 bg-gray-800/50 rounded-lg">
                 <p className="text-lg mb-1">📊</p>
@@ -127,7 +170,11 @@ const Home: NextPage = () => {
               </div>
               <div className="p-3 bg-gray-800/50 rounded-lg">
                 <p className="text-lg mb-1">⚡</p>
-                <p>Live2D 兼容性</p>
+                <p>对称性</p>
+              </div>
+              <div className="p-3 bg-gray-800/50 rounded-lg">
+                <p className="text-lg mb-1">🎯</p>
+                <p>风险评分</p>
               </div>
             </div>
           </div>
@@ -157,8 +204,8 @@ const Home: NextPage = () => {
               </div>
               <div className="flex-1 overflow-hidden">
                 <LayerTree
-                  layers={result.issues.map(i => ({
-                    index: result.issues.indexOf(i),
+                  layers={result.issues.map((i, idx) => ({
+                    index: idx,
                     name: i.layer || 'unknown',
                     visible: true,
                     opacity: 1,
@@ -172,9 +219,12 @@ const Home: NextPage = () => {
             </div>
 
             <div className="col-span-6 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-              <QAResultPanel
+              <QAResult
+                score={result.score}
                 issues={result.issues}
+                warnings={result.warnings}
                 suggestions={result.suggestions}
+                layer_stats={result.layer_stats}
                 summary={result.summary}
               />
             </div>
@@ -182,11 +232,11 @@ const Home: NextPage = () => {
             <div className="col-span-3 bg-gray-900/50 border border-gray-800 rounded-xl p-4">
               <h2 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-4">风险评分</h2>
               <RiskScore
-                total={result.score.total}
-                naming={result.score.naming}
-                structure={result.score.structure}
-                completeness={result.score.completeness}
-                convention={result.score.convention}
+                total={result.score}
+                naming={100}
+                structure={100}
+                completeness={100}
+                convention={100}
               />
 
               <div className="mt-6 pt-4 border-t border-gray-800">
@@ -207,6 +257,28 @@ const Home: NextPage = () => {
                   >
                     ↺ 分析新的 PSD
                   </button>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-800">
+                <h3 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">QA 规则</h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-gray-800/50 rounded p-2 text-center">
+                    <p className="text-pink-400 font-medium">{result.layer_stats.total}</p>
+                    <p className="text-gray-500">总图层</p>
+                  </div>
+                  <div className="bg-gray-800/50 rounded p-2 text-center">
+                    <p className="text-green-400 font-medium">{result.layer_stats.visible}</p>
+                    <p className="text-gray-500">可见</p>
+                  </div>
+                  <div className="bg-gray-800/50 rounded p-2 text-center">
+                    <p className="text-red-400 font-medium">{result.issues.length}</p>
+                    <p className="text-gray-500">严重</p>
+                  </div>
+                  <div className="bg-gray-800/50 rounded p-2 text-center">
+                    <p className="text-yellow-400 font-medium">{result.warnings.length}</p>
+                    <p className="text-gray-500">警告</p>
+                  </div>
                 </div>
               </div>
             </div>

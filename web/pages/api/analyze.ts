@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { parsePSD } from '../../lib/psd-parser';
-import { analyzePSD, QAResult } from '../../lib/qa-engine';
+import { analyzePSD, QAResult, getEnhancedResult } from '../../lib/qa-engine';
 
 export const config = {
   api: {
@@ -11,7 +11,14 @@ export const config = {
 
 interface AnalyzeResponse {
   success: boolean;
-  data?: QAResult;
+  data?: {
+    score: number;
+    issues: any[];
+    warnings: any[];
+    suggestions: string[];
+    layer_stats: any;
+    summary: any;
+  };
   fileInfo?: {
     name: string;
     size: number;
@@ -120,10 +127,18 @@ export default async function handler(
     }
 
     const qaResult = analyzePSD(psdInfo);
+    const enhancedResult = getEnhancedResult(qaResult);
 
     res.status(200).json({
       success: true,
-      data: qaResult,
+      data: {
+        score: enhancedResult.score,
+        issues: enhancedResult.issues,
+        warnings: enhancedResult.warnings,
+        suggestions: enhancedResult.suggestions,
+        layer_stats: enhancedResult.layer_stats,
+        summary: qaResult.summary,
+      },
       fileInfo: {
         name: psdFile.name,
         size: psdFile.data.length,
