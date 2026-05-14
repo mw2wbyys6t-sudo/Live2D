@@ -19,10 +19,51 @@
 
 ## 🚀 快速开始
 
-### 安装
+### 方式一：一键安装（推荐）
 
 ```bash
+# 1. 运行安装脚本（自动安装 ComfyUI + 配置连接器）
+bash scripts/setup-comfyui.sh
+
+# 2. 启动 ComfyUI
+cd ~/ComfyUI && python main.py
+
+# 3. 测试连接
+node tests/test-connection.js
+
+# 4. 运行演示
+node examples/demo.js
+
+# 5. 生成图片
+node -e "
+const {ComfyUIConnector,ImageGenerationService}=require('./dist');
+new ImageGenerationService(new ComfyUIConnector()).generate({
+  prompt:{positive:'cute anime girl, pink hair, blue eyes'}
+}).then(r=>console.log(JSON.stringify(r,null,2)));
+"
+```
+
+### 方式二：手动安装
+
+```bash
+# 1. 克隆 ComfyUI
+git clone https://github.com/comfyanonymous/ComfyUI.git ~/ComfyUI
+cd ~/ComfyUI
+pip install -r requirements.txt
+
+# 2. 启动 ComfyUI
+python main.py
+
+# 3. 安装连接器
+cd /workspace/comfyui-connector
 npm install
+npm run build
+
+# 4. 测试连接
+node tests/test-connection.js
+
+# 5. 运行演示
+node examples/demo.js
 ```
 
 ### 构建
