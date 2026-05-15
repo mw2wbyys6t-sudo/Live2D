@@ -5,6 +5,7 @@ import UploadArea from '../components/UploadArea';
 import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import RiskScore from '../components/RiskScore';
+import ChatAssistant from '../components/ChatAssistant';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 
@@ -142,34 +143,42 @@ const Home: NextPage = () => {
         )}
 
         {view === 'upload' && !loading && (
-          <div className="max-w-lg mx-auto mt-16">
-            <div className="text-center mb-8">
-              <p className="text-5xl mb-4">🎨</p>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Live2D PSD 质量检测
-              </h2>
-              <p className="text-sm text-gray-400">
-                上传 PSD 文件，自动检查 Live2D 风险并生成优化报告
-              </p>
+          <div className="grid grid-cols-12 gap-4" style={{ height: 'calc(100vh - 150px)' }}>
+            <div className="col-span-7 flex items-center justify-center">
+              <div className="w-full max-w-lg">
+                <div className="text-center mb-8">
+                  <p className="text-5xl mb-4">🎨</p>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    Live2D PSD 质量检测
+                  </h2>
+                  <p className="text-sm text-gray-400">
+                    上传 PSD 文件，自动检查 Live2D 风险并生成优化报告
+                  </p>
+                </div>
+                <UploadArea onUpload={handleUpload} loading={loading} />
+                <div className="mt-8 grid grid-cols-4 gap-4 text-center text-xs text-gray-500">
+                  <div className="p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-lg mb-1">🔍</p>
+                    <p>图层命名</p>
+                  </div>
+                  <div className="p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-lg mb-1">📊</p>
+                    <p>结构完整性</p>
+                  </div>
+                  <div className="p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-lg mb-1">⚡</p>
+                    <p>对称性</p>
+                  </div>
+                  <div className="p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-lg mb-1">🎯</p>
+                    <p>风险评分</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <UploadArea onUpload={handleUpload} loading={loading} />
-            <div className="mt-8 grid grid-cols-4 gap-4 text-center text-xs text-gray-500">
-              <div className="p-3 bg-gray-800/50 rounded-lg">
-                <p className="text-lg mb-1">🔍</p>
-                <p>图层命名</p>
-              </div>
-              <div className="p-3 bg-gray-800/50 rounded-lg">
-                <p className="text-lg mb-1">📊</p>
-                <p>结构完整性</p>
-              </div>
-              <div className="p-3 bg-gray-800/50 rounded-lg">
-                <p className="text-lg mb-1">⚡</p>
-                <p>对称性</p>
-              </div>
-              <div className="p-3 bg-gray-800/50 rounded-lg">
-                <p className="text-lg mb-1">🎯</p>
-                <p>风险评分</p>
-              </div>
+
+            <div className="col-span-5">
+              <ChatAssistant qaResult={undefined} />
             </div>
           </div>
         )}
@@ -212,7 +221,7 @@ const Home: NextPage = () => {
               </div>
             </div>
 
-            <div className="col-span-6 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+            <div className="col-span-5 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
               <QAResult
                 score={result.score}
                 issues={result.issues}
@@ -223,58 +232,8 @@ const Home: NextPage = () => {
               />
             </div>
 
-            <div className="col-span-3 bg-gray-900/50 border border-gray-800 rounded-xl p-4">
-              <h2 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-4">风险评分</h2>
-              <RiskScore
-                total={result.score}
-                naming={100}
-                structure={100}
-                completeness={100}
-                convention={100}
-              />
-
-              <div className="mt-6 pt-4 border-t border-gray-800">
-                <h3 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">快捷操作</h3>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      const text = JSON.stringify(result, null, 2);
-                      navigator.clipboard.writeText(text);
-                    }}
-                    className="w-full text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors text-left"
-                  >
-                    📋 复制报告 JSON
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    className="w-full text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors text-left"
-                  >
-                    ↺ 分析新的 PSD
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-gray-800">
-                <h3 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">QA 规则</h3>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-gray-800/50 rounded p-2 text-center">
-                    <p className="text-pink-400 font-medium">{result.layer_stats.total}</p>
-                    <p className="text-gray-500">总图层</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded p-2 text-center">
-                    <p className="text-green-400 font-medium">{result.layer_stats.visible}</p>
-                    <p className="text-gray-500">可见</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded p-2 text-center">
-                    <p className="text-red-400 font-medium">{result.issues.length}</p>
-                    <p className="text-gray-500">严重</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded p-2 text-center">
-                    <p className="text-yellow-400 font-medium">{result.warnings.length}</p>
-                    <p className="text-gray-500">警告</p>
-                  </div>
-                </div>
-              </div>
+            <div className="col-span-4">
+              <ChatAssistant qaResult={result} />
             </div>
           </div>
         )}
