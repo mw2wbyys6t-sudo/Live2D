@@ -26,12 +26,25 @@ interface ChatAssistantProps {
   };
 }
 
+const SendIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+  </svg>
+);
+
+const SparklesIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z" />
+    <path d="M19 15l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
+  </svg>
+);
+
 export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: '你好！我是 Live2D PSD 质量检测助手 👋\n\n上传 PSD 文件后，我可以帮你：\n• 分析检测结果\n• 提供修复建议\n• 解释问题的原因\n• 回答关于 Live2D 制作的问题',
+      content: '你好！我是 Live2D PSD 质量检测助手 ✨\n\n我可以帮你：\n• 分析检测结果和问题\n• 提供针对性的修复建议\n• 解答 Live2D 制作相关问题\n\n上传 PSD 文件后，我们开始吧！',
       timestamp: new Date(),
     },
   ]);
@@ -54,96 +67,109 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
       const { score, issues, warnings, layer_stats } = qaResult;
       
       if (userQuery.includes('分析') || userQuery.includes('怎么样') || userQuery.includes('如何') || userQuery.includes('报告')) {
-        response = `根据检测结果分析：\n\n**整体评分**: ${score}/100\n\n`;
+        response = `📊 **检测结果分析**\n\n`;
+        response += `**综合评分**: ${score}/100\n\n`;
         
         if (score >= 80) {
-          response += '✅ 做得很好！这是一个质量较高的 PSD 文件。\n\n';
+          response += '✅ **优秀** - 这是一个高质量的 PSD 文件！\n\n';
         } else if (score >= 60) {
-          response += '⚠️ 还有一些需要改进的地方，但整体结构不错。\n\n';
+          response += '⚠️ **良好** - 有一些小问题需要优化。\n\n';
         } else {
-          response += '❌ 需要重点修复几个关键问题才能用于 Live2D 制作。\n\n';
+          response += '❌ **需改进** - 需要重点修复几个关键问题。\n\n';
         }
 
         if (issues.length > 0) {
-          response += `**严重问题 (${issues.length}个):**\n`;
+          response += `**🔴 严重问题 (${issues.length}个)**\n`;
           issues.slice(0, 3).forEach((issue, i) => {
-            response += `${i + 1}. ${issue.title} - ${issue.description}\n`;
+            response += `${i + 1}. ${issue.title}\n`;
           });
-          if (issues.length > 3) response += `... 还有 ${issues.length - 3} 个问题\n\n`;
-          else response += '\n';
+          if (issues.length > 3) response += `... 还有 ${issues.length - 3} 个问题\n`;
+          response += '\n';
         }
 
         if (warnings.length > 0) {
-          response += `**警告 (${warnings.length}个):** 建议逐步优化\n\n`;
+          response += `**🟡 警告 (${warnings.length}个)** - 建议逐步优化\n\n`;
         }
 
-        response += '**修复建议优先级：**\n';
-        response += '1. 首先修复严重问题 (🔴)\n';
-        response += '2. 然后处理警告 (🟡)\n';
-        response += '3. 最后考虑优化建议 (💡)\n\n';
         response += '需要我详细解释某个问题吗？';
       } else if (userQuery.includes('修复') || userQuery.includes('改') || userQuery.includes('解决')) {
-        const issueToFix = issues.find(i => userQuery.includes(i.title) || userQuery.includes(i.layer || ''));
+        const issueToFix = issues.find(i => 
+          userQuery.includes(i.title.toLowerCase()) || 
+          userQuery.includes(i.layer?.toLowerCase() || '')
+        );
         if (issueToFix) {
-          response = `关于 **"${issueToFix.title}"** 的修复方法：\n\n`;
-          response += '问题描述：\n';
-          response += `• ${issueToFix.description}\n\n`;
-          response += '修复建议：\n';
-          response += `• ${issueToFix.suggestion}\n\n`;
+          response = `🔧 **修复指导: "${issueToFix.title}"**\n\n`;
+          response += '**问题描述:**\n';
+          response += `${issueToFix.description}\n\n`;
+          response += '**修复步骤:**\n';
+          response += `${issueToFix.suggestion}\n\n`;
           
           if (issueToFix.expected && issueToFix.actual) {
-            response += `预期: ${issueToFix.expected}\n`;
-            response += `实际: ${issueToFix.actual}\n\n`;
+            response += `**预期:** ${issueToFix.expected}\n`;
+            response += `**当前:** ${issueToFix.actual}\n\n`;
           }
-          response += '还有其他问题需要我解释吗？';
+          response += '还有其他问题需要帮助吗？';
         } else {
-          response = '请告诉我具体是哪个问题，我可以给你更详细的修复指导！';
+          response = '请告诉我具体是哪个问题，例如："如何修复 neck_base 问题？"';
         }
-      } else if (userQuery.includes('什么是') || userQuery.includes('为什么') || userQuery.includes('怎么') || userQuery.includes('如何')) {
-        response = `这是一个很好的问题！\n\n`;
+      } else if (userQuery.includes('什么是') || userQuery.includes('为什么') || userQuery.includes('怎么') || userQuery.includes('如何') || userQuery.includes('介绍')) {
+        response = '💡 **Live2D 知识解答**\n\n';
         
-        if (userQuery.includes('neck_base') || userQuery.includes('颈部')) {
-          response += '**neck_base** 是 Live2D 模型的核心层之一：\n';
-          response += '• 它是颈部运动的基础层\n';
-          response += '• 应该放在 face_base 下方、身体上方\n';
-          response += '• 影响头部旋转和倾斜效果\n';
-        } else if (userQuery.includes('mouth') || userQuery.includes('嘴') || userQuery.includes('口')) {
-          response += '**嘴型图层** 对 Live2D 口型同步至关重要：\n';
-          response += '• 标准口型：a/i/u/e/o (5个基本形)\n';
-          response += '• 建议加上：teeth(牙齿)、lip(嘴唇)等\n';
-          response += '• 每个口型独立分层，便于参数绑定\n';
+        if (userQuery.includes('neck') || userQuery.includes('颈部')) {
+          response += '**neck_base (颈部基础层)** 是 Live2D 模型的核心层：\n\n';
+          response += '• 定义颈部运动的基础\n';
+          response += '• 位置：face_base 下方、身体上方\n';
+          response += '• 影响头部旋转和倾斜\n';
+          response += '• 命名规范：使用下划线 `neck_base`\n';
+        } else if (userQuery.includes('mouth') || userQuery.includes('嘴') || userQuery.includes('口型')) {
+          response += '**嘴型图层** 对口型同步至关重要：\n\n';
+          response += '• **标准五型**: a, i, u, e, o\n';
+          response += '• 建议添加: teeth(牙齿), lip(嘴唇)\n';
+          response += '• 每个口型独立分层\n';
+          response += '• 便于后续参数绑定\n';
         } else if (userQuery.includes('命名') || userQuery.includes('name')) {
-          response += '**Live2D 命名规范** 建议：\n';
-          response += '• 使用英文，如：face_base, eye_l, hair_front\n';
-          response += '• 左右对称：eye_l / eye_r\n';
-          response += '• 层级清晰：hair_front_01, hair_front_02\n';
+          response += '**命名规范建议**:\n\n';
+          response += '• 使用英文：face_base, eye_l\n';
+          response += '• 左右对称：`_l` / `_r` 后缀\n';
+          response += '• 层级清晰：`hair_front_01`\n';
+          response += '• 避免特殊字符和中文\n';
         } else if (userQuery.includes('混合模式') || userQuery.includes('blend')) {
-          response += '**混合模式问题**：\n';
-          response += '• Live2D Cubism Editor 只支持 Normal 混合\n';
-          response += '• 其他模式 (Multiply/Screen 等) 在导入后会失效\n';
-          response += '• 建议将效果直接烘焙到像素中\n';
+          response += '**混合模式注意事项**:\n\n';
+          response += '• Cubism Editor **仅支持 Normal**\n';
+          response += '• 其他模式会失效\n';
+          response += '• 建议：效果直接烘焙到像素\n';
+          response += '• 或拆分图层处理\n';
+        } else if (userQuery.includes('透明度')) {
+          response += '**透明度处理建议**:\n\n';
+          response += '• 关键图层保持 100% 透明度\n';
+          response += '• 透明度效果可接受\n';
+          response += '• 注意：半透明会影响渲染\n';
         } else {
-          response += '关于 Live2D PSD 制作，最佳实践包括：\n';
-          response += '1. ✅ 使用 RGB 颜色模式\n';
-          response += '2. ✅ 画布尺寸建议 1024x1024 或 2048x2048\n';
-          response += '3. ✅ 每个部件独立分层\n';
-          response += '4. ✅ 关键图层命名规范\n';
-          response += '5. ✅ 避免使用混合模式和图层透明度\n';
+          response += '**Live2D PSD 最佳实践**:\n\n';
+          response += '✅ RGB 颜色模式\n';
+          response += '✅ 画布 1024×1024 或 2048×2048\n';
+          response += '✅ 部件独立分层\n';
+          response += '✅ 规范命名\n';
+          response += '✅ Normal 混合模式\n';
         }
       } else {
-        response = '我可以帮你分析这个 PSD 文件的问题！\n\n';
-        response += '你可以问我：\n';
-        response += '• "分析一下这个报告"\n';
-        response += '• "如何修复 xxx 问题？"\n';
-        response += '• "什么是 neck_base？"\n';
-        response += '• 或者任何关于 Live2D 制作的问题\n';
+        response = '🤔 我可以帮你分析这个 PSD！\n\n';
+        response += '试试这样问我：\n\n';
+        response += '• "📊 分析一下报告"\n';
+        response += '• "🔧 如何修复这个问题？"\n';
+        response += '• "💡 什么是 neck_base？"\n';
+        response += '• "📝 分层规范是什么？"\n';
       }
     } else {
-      response = '请先上传一个 PSD 文件，我就能帮你分析和解决问题了！\n\n';
-      response += '你也可以问我关于 Live2D 制作的一般问题，比如：\n';
+      response = '👋 请先上传 PSD 文件！\n\n';
+      response += '上传后我可以帮你：\n\n';
+      response += '• 📊 分析检测结果\n';
+      response += '• 🔧 提供修复建议\n';
+      response += '• 💡 解答制作问题\n\n';
+      response += '你也可以问我关于 Live2D 的一般问题：\n';
       response += '• 如何正确分层？\n';
       response += '• 命名规范是什么？\n';
-      response += '• 画布尺寸建议多少？\n';
+      response += '• 画布尺寸建议？';
     }
 
     return response;
@@ -188,43 +214,58 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-gray-900/30 border border-gray-800 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-gray-800 bg-gray-800/50">
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-800/30 border border-gray-800/50 rounded-2xl overflow-hidden backdrop-blur-xl">
+      <div className="shrink-0 p-5 border-b border-gray-800/50 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-blue-500/5">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🤖</span>
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
+              <SparklesIcon />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-gray-900 animate-pulse" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-200">AI 助手</h3>
-            <p className="text-xs text-gray-500">Live2D PSD 制作顾问</p>
+            <h3 className="text-base font-semibold text-white mb-0.5">AI 助手</h3>
+            <p className="text-xs text-gray-500 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live2D 质量顾问
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {messages.map((msg, idx) => (
           <div
             key={msg.id}
-            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
+            style={{ animationDelay: `${idx * 50}ms` }}
           >
             <div
-              className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+              className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
                 msg.role === 'user'
-                  ? 'bg-pink-500/20 text-pink-300'
-                  : 'bg-blue-500/20 text-blue-300'
+                  ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
+                  : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
               }`}
             >
-              {msg.role === 'user' ? '👤' : '🤖'}
+              {msg.role === 'user' ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              ) : (
+                <SparklesIcon />
+              )}
             </div>
             <div
-              className={`max-w-[85%] rounded-lg p-3 ${
+              className={`max-w-[85%] rounded-2xl p-4 ${
                 msg.role === 'user'
-                  ? 'bg-pink-500/10 border border-pink-500/20'
-                  : 'bg-gray-800/50 border border-gray-700/50'
+                  ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
+                  : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
               }`}
             >
-              <div className="text-sm whitespace-pre-line text-gray-200">
+              <div className="text-sm whitespace-pre-line text-gray-200 leading-relaxed">
                 {msg.content}
               </div>
-              <div className="text-xs text-gray-600 mt-1">
+              <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
                 {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
@@ -232,15 +273,15 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
         ))}
 
         {isTyping && (
-          <div className="flex gap-3">
-            <div className="shrink-0 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-sm text-blue-300">
-              🤖
+          <div className="flex gap-3 animate-fade-in">
+            <div className="shrink-0 w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+              <SparklesIcon />
             </div>
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm rounded-2xl p-4">
+              <div className="flex gap-1.5">
+                <span className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '100ms' }} />
+                <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
               </div>
             </div>
           </div>
@@ -250,23 +291,24 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
       </div>
 
       {!qaResult && messages.length === 1 && (
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2">
+        <div className="px-5 pb-3">
+          <p className="text-xs text-gray-500 mb-2 text-center">快捷提问</p>
+          <div className="flex flex-wrap gap-2 justify-center">
             <button
               onClick={() => handleQuickAsk('如何正确分层？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
             >
-              📝 如何正确分层？
+              📝 分层规范
             </button>
             <button
               onClick={() => handleQuickAsk('命名规范是什么？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
             >
-              🏷️ 命名规范
+              🏷️ 命名规则
             </button>
             <button
               onClick={() => handleQuickAsk('画布尺寸建议多少？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
             >
               📐 画布尺寸
             </button>
@@ -275,23 +317,24 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
       )}
 
       {qaResult && messages.length === 1 && (
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2">
+        <div className="px-5 pb-3">
+          <p className="text-xs text-gray-500 mb-2 text-center">快速分析</p>
+          <div className="flex flex-wrap gap-2 justify-center">
             <button
               onClick={() => handleQuickAsk('分析一下这个报告')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-300 hover:text-pink-200 rounded-lg border border-pink-500/20 hover:border-pink-500/30 transition-all"
             >
               📊 分析报告
             </button>
             <button
               onClick={() => handleQuickAsk('主要问题是什么？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 text-red-300 hover:text-red-200 rounded-lg border border-red-500/20 hover:border-red-500/30 transition-all"
             >
               🔴 主要问题
             </button>
             <button
               onClick={() => handleQuickAsk('如何优先修复？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 hover:text-emerald-200 rounded-lg border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
             >
               ⚡ 优先修复
             </button>
@@ -299,26 +342,26 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
         </div>
       )}
 
-      <div className="p-4 border-t border-gray-800 bg-gray-800/30">
-        <div className="flex gap-2">
+      <div className="shrink-0 p-5 border-t border-gray-800/50 bg-gradient-to-t from-gray-900/50 to-transparent backdrop-blur-sm">
+        <div className="flex gap-3">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="问我关于 PSD 或 Live2D 的问题..."
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 transition-colors"
+            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-all backdrop-blur-sm"
           />
           <button
             onClick={handleSend}
             disabled={!inputValue.trim() || isTyping}
-            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`shrink-0 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-lg ${
               inputValue.trim() && !isTyping
-                ? 'bg-pink-500 text-white hover:bg-pink-600'
+                ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }`}
           >
-            发送
+            <SendIcon />
           </button>
         </div>
       </div>

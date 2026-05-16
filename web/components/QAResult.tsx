@@ -1,264 +1,51 @@
-export interface QAIssueType {
-  id: string;
-  severity: 'error' | 'warning' | 'info';
-  category: string;
-  title: string;
-  description: string;
-  layer?: string;
-  suggestion: string;
-  rule: string;
-  expected?: string;
-  actual?: string;
-}
-
-interface LayerStats {
-  total: number;
-  visible: number;
-  hidden: number;
-  groups: number;
-  empty: number;
-  semiTransparent: number;
-  nonNormalBlend: number;
-  offscreen: number;
-  duplicateNames: number;
-}
-
-interface Summary {
-  totalLayers: number;
-  visibleLayers: number;
-  hiddenLayers: number;
-  groups: number;
-  hasMissingCritical: boolean;
-  hasNamingIssues: boolean;
-  hasStructuralIssues: boolean;
-}
+import { useState, useEffect } from 'react';
+import { QAIssue } from '../lib/qa-engine';
 
 interface QAResultProps {
   score: number;
-  issues: QAIssueType[];
-  warnings: QAIssueType[];
+  issues: QAIssue[];
+  warnings: QAIssue[];
   suggestions: string[];
-  layer_stats: LayerStats;
-  summary: Summary;
+  layer_stats?: any;
+  summary?: any;
 }
 
-const severityConfig = {
-  error: {
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/30',
-    text: 'text-red-400',
-    bgBadge: 'bg-red-500/20',
-    icon: '🔴',
-    label: '严重',
-    colorClass: 'border-red-500/50',
-  },
-  warning: {
-    bg: 'bg-yellow-500/10',
-    border: 'border-yellow-500/30',
-    text: 'text-yellow-400',
-    bgBadge: 'bg-yellow-500/20',
-    icon: '🟡',
-    label: '警告',
-    colorClass: 'border-yellow-500/50',
-  },
-  info: {
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/30',
-    text: 'text-blue-400',
-    bgBadge: 'bg-blue-500/20',
-    icon: '💡',
-    label: '建议',
-    colorClass: 'border-blue-500/50',
-  },
-};
+const ErrorIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+  </svg>
+);
 
-const categoryLabels: Record<string, string> = {
-  naming: '命名规范',
-  structure: '图层结构',
-  completeness: '完整性',
-  symmetry: '对称性',
-  visibility: '可见性',
-  bounds: '边界',
-  convention: '规范',
-  performance: '性能',
-};
+const WarningIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+  </svg>
+);
 
-function IssueCard({ issue }: { issue: QAIssueType }) {
-  const config = severityConfig[issue.severity];
+const InfoIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+  </svg>
+);
 
-  return (
-    <div className={`${config.bg} border ${config.border} rounded-lg p-4 transition-all hover:scale-[1.01]`}>
-      <div className="flex items-start gap-3">
-        <span className="shrink-0 text-lg">{config.icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${config.bgBadge} ${config.text}`}>
-              {config.label}
-            </span>
-            <span className="text-xs font-mono text-gray-500">{issue.rule}</span>
-            <span className="text-xs text-gray-600 capitalize">
-              {categoryLabels[issue.category] || issue.category}
-            </span>
-          </div>
-          
-          <p className="text-sm font-medium text-gray-100 mb-1">{issue.title}</p>
-          <p className="text-xs text-gray-400 mb-2">{issue.description}</p>
+const ChevronDownIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+  </svg>
+);
 
-          {issue.expected && issue.actual && (
-            <div className="flex gap-4 text-xs mb-2">
-              <span className="text-green-400">
-                期望: <span className="text-gray-300">{issue.expected}</span>
-              </span>
-              <span className="text-red-400">
-                实际: <span className="text-gray-300">{issue.actual}</span>
-              </span>
-            </div>
-          )}
+const ChevronUpIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+  </svg>
+);
 
-          {issue.layer && (
-            <p className="text-xs text-pink-400 mb-2">
-              📎 图层: {issue.layer}
-            </p>
-          )}
-
-          <div className={`border-l-2 ${config.border} pl-3 mt-2`}>
-            <p className="text-xs text-green-400">
-              💡 {issue.suggestion}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WarningCard({ warning }: { warning: QAIssueType }) {
-  const config = severityConfig[warning.severity];
-
-  return (
-    <div className={`${config.bg} border ${config.border} rounded-md p-3`}>
-      <div className="flex items-start gap-2">
-        <span className="shrink-0">{config.icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`text-xs font-medium ${config.text}`}>
-              {config.label}
-            </span>
-            <span className="text-xs text-gray-500">{warning.rule}</span>
-          </div>
-          <p className="text-xs text-gray-300">{warning.title}</p>
-          <p className="text-xs text-gray-500 mt-1">{warning.description}</p>
-          <p className="text-xs text-green-500/80 mt-1">
-            💡 {warning.suggestion}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ScoreRing({ score }: { score: number }) {
-  const radius = 45;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-
-  const getScoreColor = () => {
-    if (score >= 90) return { stroke: '#22c55e', text: 'text-green-400', label: '优秀' };
-    if (score >= 70) return { stroke: '#eab308', text: 'text-yellow-400', label: '良好' };
-    if (score >= 50) return { stroke: '#f97316', text: 'text-orange-400', label: '一般' };
-    return { stroke: '#ef4444', text: 'text-red-400', label: '需改进' };
-  };
-
-  const colors = getScoreColor();
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-28 h-28">
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-gray-700"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke={colors.stroke}
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-3xl font-bold ${colors.text}`}>{score}</span>
-          <span className={`text-xs ${colors.text}`}>{colors.label}</span>
-        </div>
-      </div>
-      <p className="text-sm text-gray-400 mt-2">风险评分</p>
-    </div>
-  );
-}
-
-function LayerStatsPanel({ stats }: { stats: LayerStats }) {
-  const statItems = [
-    { label: '总图层', value: stats.total, icon: '📦', color: 'text-gray-300' },
-    { label: '可见', value: stats.visible, icon: '👁️', color: 'text-green-400' },
-    { label: '隐藏', value: stats.hidden, icon: '👻', color: 'text-gray-500' },
-    { label: '分组', value: stats.groups, icon: '📁', color: 'text-blue-400' },
-  ];
-
-  const issueItems = [
-    { label: '空图层', value: stats.empty, icon: '⬜', severity: stats.empty > 0 ? 'warning' : 'ok' },
-    { label: '半透明', value: stats.semiTransparent, icon: '🌫️', severity: stats.semiTransparent > 0 ? 'warning' : 'ok' },
-    { label: '异常混合', value: stats.nonNormalBlend, icon: '🎨', severity: stats.nonNormalBlend > 0 ? 'error' : 'ok' },
-    { label: '画布外', value: stats.offscreen, icon: '📍', severity: stats.offscreen > 0 ? 'warning' : 'ok' },
-    { label: '重名', value: stats.duplicateNames, icon: '📋', severity: stats.duplicateNames > 0 ? 'error' : 'ok' },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        {statItems.map((item) => (
-          <div key={item.label} className="bg-gray-800/50 rounded-lg p-2 flex items-center gap-2">
-            <span className="text-sm">{item.icon}</span>
-            <div>
-              <p className={`text-sm font-medium ${item.color}`}>{item.value}</p>
-              <p className="text-xs text-gray-500">{item.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-t border-gray-700/50 pt-3">
-        <p className="text-xs text-gray-500 font-medium mb-2">图层问题统计</p>
-        <div className="space-y-1">
-          {issueItems.map((item) => (
-            <div key={item.label} className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">
-                {item.icon} {item.label}
-              </span>
-              <span className={
-                item.severity === 'error' ? 'text-red-400' :
-                item.severity === 'warning' ? 'text-yellow-400' :
-                'text-green-400'
-              }>
-                {item.value > 0 ? `${item.value} 个` : '✓ 无'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+const CopyIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+  </svg>
+);
 
 export default function QAResult({
   score,
@@ -266,153 +53,341 @@ export default function QAResult({
   warnings,
   suggestions,
   layer_stats,
-  summary
+  summary,
 }: QAResultProps) {
-  const errorCount = issues.length;
-  const warningCount = warnings.length;
-  const infoCount = suggestions.length;
+  const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
+  const [expandedWarnings, setExpandedWarnings] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
 
-  const errorCategories = [...new Set(issues.map(i => i.category))];
-  const warningCategories = [...new Set(warnings.map(w => w.category))];
+  useEffect(() => {
+    const allIds = [...issues.map(i => i.id), ...warnings.map(w => w.id)];
+    setExpandedIssues(new Set(issues.slice(0, 3).map(i => i.id)));
+    setExpandedWarnings(new Set(warnings.slice(0, 2).map(w => w.id)));
+  }, [issues, warnings]);
 
-  const hasCritical = summary.hasMissingCritical;
-  const hasNaming = summary.hasNamingIssues;
-  const hasStructure = summary.hasStructuralIssues;
+  const toggleIssue = (id: string) => {
+    const newSet = new Set(expandedIssues);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedIssues(newSet);
+  };
+
+  const toggleWarning = (id: string) => {
+    const newSet = new Set(expandedWarnings);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedWarnings(newSet);
+  };
+
+  const handleCopy = () => {
+    const text = JSON.stringify({ score, issues, warnings, suggestions, layer_stats }, null, 2);
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getScoreColor = (s: number) => {
+    if (s >= 80) return 'text-emerald-400';
+    if (s >= 60) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getScoreBg = (s: number) => {
+    if (s >= 80) return 'from-emerald-500/20 to-emerald-600/10';
+    if (s >= 60) return 'from-yellow-500/20 to-yellow-600/10';
+    return 'from-red-500/20 to-red-600/10';
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'error': return 'text-red-400 bg-red-500/10 border-red-500/20';
+      case 'warning': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+      default: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+    }
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case 'error': return <ErrorIcon />;
+      case 'warning': return <WarningIcon />;
+      default: return <InfoIcon />;
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-gray-700/50 shrink-0">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="shrink-0 p-6 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-transparent">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-gray-200">QA 检查结果</h3>
-            <div className="flex gap-2">
-              {errorCount > 0 && (
-                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30">
-                  🔴 {errorCount} 严重
-                </span>
-              )}
-              {warningCount > 0 && (
-                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                  🟡 {warningCount} 警告
-                </span>
-              )}
-              {infoCount > 0 && (
-                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">
-                  💡 {infoCount} 建议
-                </span>
-              )}
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-1">质量检测报告</h2>
+            <p className="text-sm text-gray-500">基于 23 项 QA 规则的分析结果</p>
+          </div>
+          <button
+            onClick={handleCopy}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+              transition-all duration-300
+              ${copied
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800'
+              }
+            `}
+          >
+            {copied ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                已复制
+              </>
+            ) : (
+              <>
+                <CopyIcon />
+                复制报告
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="mt-6 flex items-end gap-4">
+          <div className={`
+            relative px-6 py-4 rounded-2xl
+            bg-gradient-to-br ${getScoreBg(score)}
+            border border-white/5
+            backdrop-blur-xl
+          `}>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl pointer-events-none" />
+            <div className="relative">
+              <p className={`text-5xl font-bold ${getScoreColor(score)} mb-1`}>
+                {score}
+              </p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">综合评分</p>
             </div>
           </div>
-          <ScoreRing score={score} />
-        </div>
 
-        <div className="flex gap-4 mt-3 text-xs">
-          <span>📦 {summary.totalLayers} 图层</span>
-          <span>👁️ {summary.visibleLayers} 可见</span>
-          <span>📁 {summary.groups} 分组</span>
-        </div>
-
-        {(hasCritical || hasNaming || hasStructure) && (
-          <div className="flex gap-2 mt-2">
-            {hasCritical && (
-              <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded border border-red-500/20">
-                ⚠️ 缺少关键图层
-              </span>
-            )}
-            {hasNaming && (
-              <span className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/20">
-                📝 命名问题
-              </span>
-            )}
-            {hasStructure && (
-              <span className="text-xs bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded border border-orange-500/20">
-                🔧 结构问题
-              </span>
-            )}
+          <div className="flex-1 grid grid-cols-3 gap-3">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+              <p className="text-2xl font-bold text-red-400">{issues.length}</p>
+              <p className="text-xs text-gray-500">严重问题</p>
+            </div>
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
+              <p className="text-2xl font-bold text-yellow-400">{warnings.length}</p>
+              <p className="text-xs text-gray-500">警告</p>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+              <p className="text-2xl font-bold text-blue-400">{suggestions.length}</p>
+              <p className="text-xs text-gray-500">优化建议</p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {errorCategories.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-red-500"></span>
-              <p className="text-xs text-red-400 font-semibold uppercase tracking-wider">
-                严重问题
-              </p>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {issues.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+                严重问题 ({issues.length})
+              </h3>
             </div>
             <div className="space-y-2">
-              {errorCategories.map(cat => (
-                <div key={cat}>
-                  <p className="text-xs text-gray-500 font-medium mb-1 ml-4">
-                    {categoryLabels[cat] || cat}
-                  </p>
-                  {issues.filter(i => i.category === cat).map(issue => (
-                    <IssueCard key={issue.id} issue={issue} />
-                  ))}
+              {issues.map((issue, idx) => (
+                <div
+                  key={issue.id}
+                  className={`
+                    rounded-xl border overflow-hidden
+                    transition-all duration-300
+                    ${getSeverityColor(issue.severity)}
+                    hover:shadow-lg hover:shadow-red-500/5
+                  `}
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <button
+                    onClick={() => toggleIssue(issue.id)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`${issue.severity === 'error' ? 'text-red-400' : 'text-yellow-400'}`}>
+                        {getSeverityIcon(issue.severity)}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-white text-sm">{issue.title}</p>
+                        {issue.layer && (
+                          <p className="text-xs text-gray-500 mt-0.5">{issue.layer}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`transition-transform duration-200 ${expandedIssues.has(issue.id) ? 'rotate-180' : ''}`}>
+                      <ChevronDownIcon />
+                    </div>
+                  </button>
+                  
+                  <div className={`
+                    overflow-hidden transition-all duration-300
+                    ${expandedIssues.has(issue.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                  `}>
+                    <div className="px-4 pb-4 pt-2 border-t border-white/5">
+                      <p className="text-sm text-gray-400 mb-3">{issue.description}</p>
+                      
+                      {issue.expected && issue.actual && (
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                            <p className="text-xs text-emerald-400 mb-1">预期</p>
+                            <p className="text-sm text-white">{issue.expected}</p>
+                          </div>
+                          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                            <p className="text-xs text-red-400 mb-1">实际</p>
+                            <p className="text-sm text-white">{issue.actual}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {issue.suggestion && (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                          <p className="text-xs text-blue-400 mb-1">修复建议</p>
+                          <p className="text-sm text-gray-300">{issue.suggestion}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {warningCategories.length > 0 && (
-          <div className="border-t border-gray-700/30 pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-              <p className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">
-                警告
-              </p>
+        {warnings.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+                警告 ({warnings.length})
+              </h3>
             </div>
             <div className="space-y-2">
-              {warningCategories.map(cat => (
-                <div key={cat}>
-                  <p className="text-xs text-gray-500 font-medium mb-1 ml-4">
-                    {categoryLabels[cat] || cat}
-                  </p>
-                  {warnings.filter(w => w.category === cat).map(warning => (
-                    <WarningCard key={warning.id} warning={warning} />
-                  ))}
+              {warnings.map((warning, idx) => (
+                <div
+                  key={warning.id}
+                  className={`
+                    rounded-xl border overflow-hidden
+                    transition-all duration-300
+                    ${getSeverityColor(warning.severity)}
+                    hover:shadow-lg hover:shadow-yellow-500/5
+                  `}
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <button
+                    onClick={() => toggleWarning(warning.id)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-yellow-400">
+                        {getSeverityIcon(warning.severity)}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-white text-sm">{warning.title}</p>
+                        {warning.layer && (
+                          <p className="text-xs text-gray-500 mt-0.5">{warning.layer}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`transition-transform duration-200 ${expandedWarnings.has(warning.id) ? 'rotate-180' : ''}`}>
+                      <ChevronDownIcon />
+                    </div>
+                  </button>
+                  
+                  <div className={`
+                    overflow-hidden transition-all duration-300
+                    ${expandedWarnings.has(warning.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                  `}>
+                    <div className="px-4 pb-4 pt-2 border-t border-white/5">
+                      <p className="text-sm text-gray-400 mb-3">{warning.description}</p>
+                      
+                      {warning.suggestion && (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                          <p className="text-xs text-blue-400 mb-1">建议</p>
+                          <p className="text-sm text-gray-300">{warning.suggestion}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        {issues.length === 0 && warnings.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-5xl mb-3">✨</p>
-            <p className="text-lg font-medium text-green-400">完美！</p>
-            <p className="text-sm text-gray-400 mt-1">PSD 文件完全符合 Live2D 规范</p>
-          </div>
-        )}
-
-        <div className="border-t border-gray-700/30 pt-4">
-          <LayerStatsPanel stats={layer_stats} />
-        </div>
 
         {suggestions.length > 0 && (
-          <div className="border-t border-gray-700/30 pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
-                优化建议
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+                优化建议 ({suggestions.length})
+              </h3>
             </div>
             <div className="space-y-2">
-              {suggestions.map((s, i) => (
-                <div key={i} className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-                  <p className="text-xs text-blue-300 flex items-start gap-2">
-                    <span className="shrink-0 mt-0.5">💡</span>
-                    <span>{s}</span>
-                  </p>
+              {suggestions.map((suggestion, idx) => (
+                <div
+                  key={idx}
+                  className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 hover:bg-blue-500/10 transition-colors"
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="text-blue-400 mt-0.5">
+                      <InfoIcon />
+                    </div>
+                    <p className="text-sm text-gray-300">{suggestion}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {issues.length === 0 && warnings.length === 0 && suggestions.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
+              <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">完美！</h3>
+            <p className="text-gray-500 max-w-md">
+              您的 PSD 文件通过了所有 QA 检查，没有发现问题。这是一个高质量的 Live2D 模型源文件。
+            </p>
+          </div>
+        )}
       </div>
+
+      {layer_stats && (
+        <div className="shrink-0 p-4 border-t border-gray-800/50 bg-gray-900/30">
+          <div className="grid grid-cols-4 gap-3 text-center">
+            <div>
+              <p className="text-lg font-semibold text-white">{layer_stats.total || 0}</p>
+              <p className="text-xs text-gray-500">总图层</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-emerald-400">{layer_stats.visible || 0}</p>
+              <p className="text-xs text-gray-500">可见</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-purple-400">{layer_stats.groups || 0}</p>
+              <p className="text-xs text-gray-500">分组</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-pink-400">{issues.length}</p>
+              <p className="text-xs text-gray-500">问题</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
