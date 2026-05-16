@@ -6,6 +6,7 @@ import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import RiskScore from '../components/RiskScore';
 import ChatAssistant from '../components/ChatAssistant';
+import ImageToPsd from '../components/ImageToPsd';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 
@@ -41,9 +42,11 @@ interface AnalysisResult {
 }
 
 type AppView = 'upload' | 'result';
+type AppMode = 'qa' | 'convert';
 
 const Home: NextPage = () => {
   const [view, setView] = useState<AppView>('upload');
+  const [mode, setMode] = useState<AppMode>('qa');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; width: number; height: number } | undefined>();
@@ -178,6 +181,20 @@ const Home: NextPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex bg-gray-800 rounded-lg p-0.5 mr-2">
+              <button
+                onClick={() => { setMode('qa'); setError(null); }}
+                className={`text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-all ${mode === 'qa' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                PSD 检测
+              </button>
+              <button
+                onClick={() => { setMode('convert'); setError(null); }}
+                className={`text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-all ${mode === 'convert' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                图片转PSD
+              </button>
+            </div>
             {result && (
               <button
                 onClick={handleReset}
@@ -205,7 +222,7 @@ const Home: NextPage = () => {
           </div>
         )}
 
-        {view === 'upload' && !loading && (
+        {view === 'upload' && !loading && mode === 'qa' && (
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6" style={{ height: 'calc(100vh - 120px)' }}>
             <div className="lg:w-[60%] flex items-center justify-center lg:justify-start">
               <div className="w-full max-w-lg px-2">
@@ -243,6 +260,12 @@ const Home: NextPage = () => {
             <div className="lg:w-[40%] lg:min-w-[360px]">
               <ChatAssistant qaResult={undefined} />
             </div>
+          </div>
+        )}
+
+        {view === 'upload' && !loading && mode === 'convert' && (
+          <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
+            <ImageToPsd />
           </div>
         )}
 
