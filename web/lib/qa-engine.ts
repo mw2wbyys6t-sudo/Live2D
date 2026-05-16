@@ -191,7 +191,16 @@ export class QAEngine {
           this.suggestions.add(suggestion);
         }
       } catch (error) {
-        console.error(`Rule ${rule.id} failed:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.addIssue({
+          id: `${rule.id}_error`,
+          severity: 'error',
+          category: 'structure',
+          title: `${rule.name} 检测异常`,
+          description: `规则 "${rule.name}" 执行时发生错误: ${errorMessage}`,
+          suggestion: '请检查 PSD 文件是否正常，或联系开发者',
+          rule: rule.id.toUpperCase(),
+        });
       }
     }
   }

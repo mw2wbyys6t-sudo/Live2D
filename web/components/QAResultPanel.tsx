@@ -21,7 +21,9 @@ function IssueCard({ issue }: { issue: QAIssue }) {
     info: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', icon: '🔵', badge: '提示' },
   };
 
-  const style = severityColors[issue.severity];
+  const style = severityColors[issue.severity] || {
+    bg: 'bg-gray-500/10', border: 'border-gray-500/30', text: 'text-gray-400', icon: '⚪', badge: '未知'
+  };
 
   return (
     <div className={`${style.bg} border ${style.border} rounded-lg p-3`}>

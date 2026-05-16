@@ -54,10 +54,10 @@ const Home: NextPage = () => {
       return { title: '未知错误', message: '发生了未知错误', suggestion: '请尝试重新上传文件' };
     }
     
-    if (error.includes('magic')) {
+    if (error.includes('magic') || error.includes('signature') || error.includes('8BPS')) {
       return { 
         title: '无效的 PSD 文件', 
-        message: '文件头部无效，可能不是有效的 Photoshop PSD 文件', 
+        message: '文件头部签名无效，可能不是有效的 Photoshop PSD 文件', 
         suggestion: '请确保上传的是标准的 PSD 文件格式' 
       };
     }
