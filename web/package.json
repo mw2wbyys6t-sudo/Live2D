@@ -10,20 +10,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "multer": "^1.4.5-lts.1",
-    "next": "^14.2.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "next": "^16.2.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/multer": "^1.4.11",
     "@types/node": "^20.12.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
-    "form-data": "^4.0.5",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.14",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.14"
   }
 }
