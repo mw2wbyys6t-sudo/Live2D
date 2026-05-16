@@ -16,6 +16,12 @@
   --text-secondary: #a0a0b0;
 }
 
+@media (max-width: 768px) {
+  :root {
+    --spacing: 8px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

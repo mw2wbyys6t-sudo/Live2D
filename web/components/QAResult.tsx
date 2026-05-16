@@ -122,17 +122,17 @@ export default function QAResult({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0 p-6 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-transparent">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white mb-1">质量检测报告</h2>
-            <p className="text-sm text-gray-500">基于 23 项 QA 规则的分析结果</p>
+      <div className="shrink-0 p-3 sm:p-4 md:p-6 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-transparent">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-white mb-1">质量检测报告</h2>
+            <p className="text-xs sm:text-sm text-gray-500">基于 23 项 QA 规则的分析结果</p>
           </div>
           <button
             onClick={handleCopy}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-              transition-all duration-300
+              flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium
+              transition-all duration-300 shrink-0
               ${copied
                 ? 'bg-emerald-500/20 text-emerald-400'
                 : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800'
@@ -141,59 +141,59 @@ export default function QAResult({
           >
             {copied ? (
               <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                已复制
+                <span className="hidden sm:inline">已复制</span>
               </>
             ) : (
               <>
                 <CopyIcon />
-                复制报告
+                <span className="hidden sm:inline">复制报告</span>
               </>
             )}
           </button>
         </div>
 
-        <div className="mt-6 flex items-end gap-4">
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
           <div className={`
-            relative px-6 py-4 rounded-2xl
+            relative px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl
             bg-gradient-to-br ${getScoreBg(score)}
             border border-white/5
             backdrop-blur-xl
           `}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
             <div className="relative">
-              <p className={`text-5xl font-bold ${getScoreColor(score)} mb-1`}>
+              <p className={`text-4xl sm:text-5xl font-bold ${getScoreColor(score)} mb-1`}>
                 {score}
               </p>
               <p className="text-xs text-gray-500 uppercase tracking-wider">综合评分</p>
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-3 gap-3">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-              <p className="text-2xl font-bold text-red-400">{issues.length}</p>
+          <div className="flex-1 grid grid-cols-3 gap-2 sm:gap-3 w-full">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+              <p className="text-xl sm:text-2xl font-bold text-red-400">{issues.length}</p>
               <p className="text-xs text-gray-500">严重问题</p>
             </div>
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-              <p className="text-2xl font-bold text-yellow-400">{warnings.length}</p>
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+              <p className="text-xl sm:text-2xl font-bold text-yellow-400">{warnings.length}</p>
               <p className="text-xs text-gray-500">警告</p>
             </div>
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-              <p className="text-2xl font-bold text-blue-400">{suggestions.length}</p>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+              <p className="text-xl sm:text-2xl font-bold text-blue-400">{suggestions.length}</p>
               <p className="text-xs text-gray-500">优化建议</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         {issues.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+              <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-red-500 to-red-600 rounded-full" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
                 严重问题 ({issues.length})
               </h3>
             </div>
@@ -202,7 +202,7 @@ export default function QAResult({
                 <div
                   key={issue.id}
                   className={`
-                    rounded-xl border overflow-hidden
+                    rounded-lg sm:rounded-xl border overflow-hidden
                     transition-all duration-300
                     ${getSeverityColor(issue.severity)}
                     hover:shadow-lg hover:shadow-red-500/5
@@ -211,16 +211,16 @@ export default function QAResult({
                 >
                   <button
                     onClick={() => toggleIssue(issue.id)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className={`${issue.severity === 'error' ? 'text-red-400' : 'text-yellow-400'}`}>
                         {getSeverityIcon(issue.severity)}
                       </div>
-                      <div className="text-left">
-                        <p className="font-medium text-white text-sm">{issue.title}</p>
+                      <div className="text-left min-w-0 flex-1">
+                        <p className="font-medium text-white text-xs sm:text-sm truncate">{issue.title}</p>
                         {issue.layer && (
-                          <p className="text-xs text-gray-500 mt-0.5">{issue.layer}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{issue.layer}</p>
                         )}
                       </div>
                     </div>
@@ -231,28 +231,28 @@ export default function QAResult({
                   
                   <div className={`
                     overflow-hidden transition-all duration-300
-                    ${expandedIssues.has(issue.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                    ${expandedIssues.has(issue.id) ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
                   `}>
-                    <div className="px-4 pb-4 pt-2 border-t border-white/5">
-                      <p className="text-sm text-gray-400 mb-3">{issue.description}</p>
+                    <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5">
+                      <p className="text-xs sm:text-sm text-gray-400 mb-2 sm:mb-3">{issue.description}</p>
                       
                       {issue.expected && issue.actual && (
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 sm:p-3">
                             <p className="text-xs text-emerald-400 mb-1">预期</p>
-                            <p className="text-sm text-white">{issue.expected}</p>
+                            <p className="text-xs sm:text-sm text-white truncate">{issue.expected}</p>
                           </div>
-                          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 sm:p-3">
                             <p className="text-xs text-red-400 mb-1">实际</p>
-                            <p className="text-sm text-white">{issue.actual}</p>
+                            <p className="text-xs sm:text-sm text-white truncate">{issue.actual}</p>
                           </div>
                         </div>
                       )}
                       
                       {issue.suggestion && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 sm:p-3">
                           <p className="text-xs text-blue-400 mb-1">修复建议</p>
-                          <p className="text-sm text-gray-300">{issue.suggestion}</p>
+                          <p className="text-xs sm:text-sm text-gray-300">{issue.suggestion}</p>
                         </div>
                       )}
                     </div>
@@ -264,10 +264,10 @@ export default function QAResult({
         )}
 
         {warnings.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-1 h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+              <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
                 警告 ({warnings.length})
               </h3>
             </div>
@@ -276,7 +276,7 @@ export default function QAResult({
                 <div
                   key={warning.id}
                   className={`
-                    rounded-xl border overflow-hidden
+                    rounded-lg sm:rounded-xl border overflow-hidden
                     transition-all duration-300
                     ${getSeverityColor(warning.severity)}
                     hover:shadow-lg hover:shadow-yellow-500/5
@@ -285,16 +285,16 @@ export default function QAResult({
                 >
                   <button
                     onClick={() => toggleWarning(warning.id)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className="text-yellow-400">
                         {getSeverityIcon(warning.severity)}
                       </div>
-                      <div className="text-left">
-                        <p className="font-medium text-white text-sm">{warning.title}</p>
+                      <div className="text-left min-w-0 flex-1">
+                        <p className="font-medium text-white text-xs sm:text-sm truncate">{warning.title}</p>
                         {warning.layer && (
-                          <p className="text-xs text-gray-500 mt-0.5">{warning.layer}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{warning.layer}</p>
                         )}
                       </div>
                     </div>
@@ -305,15 +305,15 @@ export default function QAResult({
                   
                   <div className={`
                     overflow-hidden transition-all duration-300
-                    ${expandedWarnings.has(warning.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                    ${expandedWarnings.has(warning.id) ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
                   `}>
-                    <div className="px-4 pb-4 pt-2 border-t border-white/5">
-                      <p className="text-sm text-gray-400 mb-3">{warning.description}</p>
+                    <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-white/5">
+                      <p className="text-xs sm:text-sm text-gray-400 mb-2 sm:mb-3">{warning.description}</p>
                       
                       {warning.suggestion && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 sm:p-3">
                           <p className="text-xs text-blue-400 mb-1">建议</p>
-                          <p className="text-sm text-gray-300">{warning.suggestion}</p>
+                          <p className="text-xs sm:text-sm text-gray-300">{warning.suggestion}</p>
                         </div>
                       )}
                     </div>
@@ -325,10 +325,10 @@ export default function QAResult({
         )}
 
         {suggestions.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+              <div className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider">
                 优化建议 ({suggestions.length})
               </h3>
             </div>
@@ -336,14 +336,14 @@ export default function QAResult({
               {suggestions.map((suggestion, idx) => (
                 <div
                   key={idx}
-                  className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 hover:bg-blue-500/10 transition-colors"
+                  className="bg-blue-500/5 border border-blue-500/20 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:bg-blue-500/10 transition-colors"
                   style={{ animationDelay: `${idx * 50}ms` }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="text-blue-400 mt-0.5">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="text-blue-400 mt-0.5 shrink-0">
                       <InfoIcon />
                     </div>
-                    <p className="text-sm text-gray-300">{suggestion}</p>
+                    <p className="text-xs sm:text-sm text-gray-300">{suggestion}</p>
                   </div>
                 </div>
               ))}
@@ -352,14 +352,14 @@ export default function QAResult({
         )}
 
         {issues.length === 0 && warnings.length === 0 && suggestions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
-              <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex flex-col items-center justify-center py-10 sm:py-16 text-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">完美！</h3>
-            <p className="text-gray-500 max-w-md">
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">完美！</h3>
+            <p className="text-gray-500 text-xs sm:text-sm max-w-md px-2">
               您的 PSD 文件通过了所有 QA 检查，没有发现问题。这是一个高质量的 Live2D 模型源文件。
             </p>
           </div>

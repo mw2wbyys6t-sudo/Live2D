@@ -49,16 +49,75 @@ const Home: NextPage = () => {
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; width: number; height: number } | undefined>();
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
+  const getErrorMessage = (error: string | undefined): { title: string; message: string; suggestion: string } => {
+    if (!error) {
+      return { title: '未知错误', message: '发生了未知错误', suggestion: '请尝试重新上传文件' };
+    }
+    
+    if (error.includes('magic')) {
+      return { 
+        title: '无效的 PSD 文件', 
+        message: '文件头部无效，可能不是有效的 Photoshop PSD 文件', 
+        suggestion: '请确保上传的是标准的 PSD 文件格式' 
+      };
+    }
+    
+    if (error.includes('length') || error.includes('size')) {
+      return { 
+        title: '文件损坏', 
+        message: '文件大小与声明的大小不一致', 
+        suggestion: '请检查文件是否完整，或尝试重新保存 PSD 文件' 
+      };
+    }
+    
+    if (error.includes('EOF') || error.includes('end of file')) {
+      return { 
+        title: '文件不完整', 
+        message: '文件在传输过程中可能被截断', 
+        suggestion: '请重新上传完整的 PSD 文件' 
+      };
+    }
+    
+    if (error.includes('version')) {
+      return { 
+        title: '版本不兼容', 
+        message: 'PSD 文件版本不受支持', 
+        suggestion: '请使用 Photoshop CC 2015 或更高版本保存文件' 
+      };
+    }
+    
+    if (error.includes('parse') || error.includes('decode')) {
+      return { 
+        title: '解析失败', 
+        message: '无法解析 PSD 文件结构', 
+        suggestion: '请确保文件是有效的 PSD 格式，没有损坏' 
+      };
+    }
+    
+    return { 
+      title: '分析失败', 
+      message: error, 
+      suggestion: '请尝试使用其他 PSD 文件，或检查文件是否损坏' 
+    };
+  };
+
   const handleUpload = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
+
+    if (file.size > 50 * 1024 * 1024) {
+      setError('文件大小超过限制 (最大 50MB)');
+      setLoading(false);
+      return;
+    }
 
     try {
       const buffer = await file.arrayBuffer();
       const psdInfo = parsePSD(buffer);
 
       if (!psdInfo.valid) {
-        setError(psdInfo.error || '无法解析 PSD 文件');
+        const errorInfo = getErrorMessage(psdInfo.error);
+        setError(`${errorInfo.title}: ${errorInfo.message}\n\n建议: ${errorInfo.suggestion}`);
         setLoading(false);
         return;
       }
@@ -84,7 +143,8 @@ const Home: NextPage = () => {
 
       setView('result');
     } catch (err: any) {
-      setError(err.message || '分析失败');
+      const errorInfo = getErrorMessage(err.message);
+      setError(`${errorInfo.title}: ${errorInfo.message}\n\n建议: ${errorInfo.suggestion}`);
     } finally {
       setLoading(false);
     }
@@ -98,43 +158,46 @@ const Home: NextPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f0f13] text-white">
+    <div className="min-h-screen bg-[#0f0f13] text-white sm:min-h-[100vh]">
       <Head>
         <title>Live2D PSD QA Assistant</title>
         <meta name="description" content="Web版 Live2D PSD 质量检测工具" />
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>" />
       </Head>
 
-      <header className="border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🎨</span>
-            <div>
-              <h1 className="text-lg font-bold text-pink-400">Live2D PSD QA</h1>
+      <header className="border-b border-gray-800 sticky top-0 z-50 bg-[#0f0f13]/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-xl sm:text-2xl">🎨</span>
+            <div className="hidden sm:block">
+              <h1 className="text-base sm:text-lg font-bold text-pink-400">Live2D PSD QA</h1>
               <p className="text-xs text-gray-500">Web版 PSD 质量检测工具</p>
+            </div>
+            <div className="sm:hidden">
+              <h1 className="text-base font-bold text-pink-400">Live2D QA</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {result && (
               <button
                 onClick={handleReset}
-                className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                className="text-xs sm:text-sm text-gray-400 hover:text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
               >
                 ↺ 重新分析
               </button>
             )}
-            <span className="text-xs text-gray-500">v2.0.0</span>
+            <span className="hidden sm:block text-xs text-gray-500">v2.0.0</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
+          <div className="mb-3 sm:mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
             <span className="shrink-0">❌</span>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm text-red-400 font-medium">分析失败</p>
-              <p className="text-xs text-red-300/70 mt-0.5">{error}</p>
+              <p className="text-xs text-red-300/70 mt-0.5 break-all">{error}</p>
             </div>
             <button onClick={() => setError(null)} className="ml-auto shrink-0 text-gray-500 hover:text-white text-xs">
               ✕
@@ -143,56 +206,56 @@ const Home: NextPage = () => {
         )}
 
         {view === 'upload' && !loading && (
-          <div className="grid grid-cols-12 gap-4" style={{ height: 'calc(100vh - 150px)' }}>
-            <div className="col-span-7 flex items-center justify-center">
-              <div className="w-full max-w-lg">
-                <div className="text-center mb-8">
-                  <p className="text-5xl mb-4">🎨</p>
-                  <h2 className="text-2xl font-bold text-white mb-2">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6" style={{ height: 'calc(100vh - 120px)' }}>
+            <div className="lg:w-[60%] flex items-center justify-center lg:justify-start">
+              <div className="w-full max-w-lg px-2">
+                <div className="text-center mb-4 sm:mb-8">
+                  <p className="text-4xl sm:text-5xl mb-3 sm:mb-4">🎨</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
                     Live2D PSD 质量检测
                   </h2>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-400">
                     上传 PSD 文件，自动检查 Live2D 风险并生成优化报告
                   </p>
                 </div>
                 <UploadArea onUpload={handleUpload} loading={loading} />
-                <div className="mt-8 grid grid-cols-4 gap-4 text-center text-xs text-gray-500">
-                  <div className="p-3 bg-gray-800/50 rounded-lg">
-                    <p className="text-lg mb-1">🔍</p>
+                <div className="mt-4 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-center text-xs text-gray-500">
+                  <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-base sm:text-lg mb-1">🔍</p>
                     <p>图层命名</p>
                   </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg">
-                    <p className="text-lg mb-1">📊</p>
+                  <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-base sm:text-lg mb-1">📊</p>
                     <p>结构完整性</p>
                   </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg">
-                    <p className="text-lg mb-1">⚡</p>
+                  <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-base sm:text-lg mb-1">⚡</p>
                     <p>对称性</p>
                   </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg">
-                    <p className="text-lg mb-1">🎯</p>
+                  <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-base sm:text-lg mb-1">🎯</p>
                     <p>风险评分</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="col-span-5">
+            <div className="lg:w-[40%] lg:min-w-[360px]">
               <ChatAssistant qaResult={undefined} />
             </div>
           </div>
         )}
 
         {loading && (
-          <div className="max-w-lg mx-auto mt-16">
+          <div className="max-w-lg mx-auto mt-8 sm:mt-16 px-2">
             <UploadArea onUpload={handleUpload} loading={loading} fileInfo={fileInfo} />
           </div>
         )}
 
         {view === 'result' && result && (
-          <div className="grid grid-cols-12 gap-4" style={{ height: 'calc(100vh - 120px)' }}>
-            <div className="col-span-3 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-gray-800 shrink-0">
+          <div className="flex flex-col xl:flex-row gap-3 sm:gap-4" style={{ height: 'calc(100vh - 100px)' }}>
+            <div className="hidden lg:block w-64 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+              <div className="p-3 sm:p-4 border-b border-gray-800 shrink-0">
                 <h2 className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">文件信息</h2>
                 {fileInfo && (
                   <div className="space-y-1 text-sm">
@@ -221,7 +284,7 @@ const Home: NextPage = () => {
               </div>
             </div>
 
-            <div className="col-span-5 bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+            <div className="flex-1 lg:flex-[1.5] bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px]">
               <QAResult
                 score={result.score}
                 issues={result.issues}
@@ -232,7 +295,7 @@ const Home: NextPage = () => {
               />
             </div>
 
-            <div className="col-span-4">
+            <div className="xl:w-[360px]">
               <ChatAssistant qaResult={result} />
             </div>
           </div>

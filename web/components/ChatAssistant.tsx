@@ -1,5 +1,87 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+const parseMarkdown = (text: string): React.ReactNode => {
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    const codeMatch = remaining.match(/`([^`]+)`/);
+    const codeBlockMatch = remaining.match(/```(\w+)?\n([\s\S]*?)```/);
+    const listMatch = remaining.match(/^(\s*•\s.+?)(?=\n|$)/);
+    const bulletMatch = remaining.match(/^(\s*\d+\.\s.+?)(?=\n|$)/);
+    const headerMatch = remaining.match(/^###\s(.+)$/m);
+    const lineBreakMatch = remaining.match(/^\n/);
+
+    const codeBlockIndex = codeBlockMatch?.index ?? Infinity;
+    const boldIndex = boldMatch?.index ?? Infinity;
+    const codeIndex = codeMatch?.index ?? Infinity;
+
+    if (codeBlockMatch && codeBlockIndex < boldIndex && codeBlockIndex < codeIndex) {
+      const [full, lang, content] = codeBlockMatch;
+      parts.push(
+        <pre key={`code-${key++}`} className="bg-gray-900 rounded-lg p-3 overflow-x-auto text-sm text-gray-300 font-mono border border-gray-700">
+          <code>{content.trim()}</code>
+        </pre>
+      );
+      remaining = remaining.slice(full.length);
+    } else if (boldMatch && boldIndex < codeIndex) {
+      const [full, content] = boldMatch;
+      const before = remaining.slice(0, boldIndex);
+      if (before) {
+        parts.push(<span key={`text-${key++}`}>{before}</span>);
+      }
+      parts.push(<strong key={`bold-${key++}`} className="text-white font-semibold">{content}</strong>);
+      remaining = remaining.slice(boldIndex + full.length);
+    } else if (codeMatch) {
+      const [full, content] = codeMatch;
+      const before = remaining.slice(0, codeIndex);
+      if (before) {
+        parts.push(<span key={`text-${key++}`}>{before}</span>);
+      }
+      parts.push(
+        <code key={`inline-code-${key++}`} className="bg-gray-700 rounded px-1.5 py-0.5 text-xs text-pink-400 font-mono">
+          {content}
+        </code>
+      );
+      remaining = remaining.slice(codeIndex + full.length);
+    } else if (headerMatch) {
+      const [full, content] = headerMatch;
+      parts.push(<h4 key={`header-${key++}`} className="text-white font-semibold text-base mt-2 mb-1">{content}</h4>);
+      remaining = remaining.slice(full.length);
+    } else if (listMatch) {
+      const [full, content] = listMatch;
+      parts.push(
+        <div key={`list-${key++}`} className="flex items-start gap-2 text-gray-300">
+          <span className="text-pink-400 mt-0.5">•</span>
+          <span>{content.slice(2)}</span>
+        </div>
+      );
+      remaining = remaining.slice(full.length);
+    } else if (bulletMatch) {
+      const [full, content] = bulletMatch;
+      const numMatch = content.match(/^(\d+)\./);
+      const num = numMatch ? numMatch[1] : '';
+      parts.push(
+        <div key={`bullet-${key++}`} className="flex items-start gap-2 text-gray-300">
+          <span className="text-purple-400 mt-0.5 font-medium">{num}.</span>
+          <span>{content.slice(num.length + 2)}</span>
+        </div>
+      );
+      remaining = remaining.slice(full.length);
+    } else if (lineBreakMatch) {
+      parts.push(<br key={`br-${key++}`} />);
+      remaining = remaining.slice(1);
+    } else {
+      parts.push(<span key={`text-${key++}`}>{remaining}</span>);
+      break;
+    }
+  }
+
+  return parts;
+};
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -214,17 +296,17 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-800/30 border border-gray-800/50 rounded-2xl overflow-hidden backdrop-blur-xl">
-      <div className="shrink-0 p-5 border-b border-gray-800/50 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-blue-500/5">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-800/30 border border-gray-800/50 rounded-xl sm:rounded-2xl overflow-hidden backdrop-blur-xl min-h-[400px]">
+      <div className="shrink-0 p-3 sm:p-5 border-b border-gray-800/50 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-blue-500/5">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
               <SparklesIcon />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-gray-900 animate-pulse" />
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 rounded-full border-2 border-gray-900 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-white mb-0.5">AI 助手</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-white mb-0.5">AI 助手</h3>
             <p className="text-xs text-gray-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               Live2D 质量顾问
@@ -256,14 +338,14 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
               )}
             </div>
             <div
-              className={`max-w-[85%] rounded-2xl p-4 ${
+              className={`max-w-[85%] sm:max-w-[80%] rounded-xl sm:rounded-2xl p-3 sm:p-4 ${
                 msg.role === 'user'
                   ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
                   : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
               }`}
             >
-              <div className="text-sm whitespace-pre-line text-gray-200 leading-relaxed">
-                {msg.content}
+              <div className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
               </div>
               <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
                 {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
@@ -342,22 +424,22 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
         </div>
       )}
 
-      <div className="shrink-0 p-5 border-t border-gray-800/50 bg-gradient-to-t from-gray-900/50 to-transparent backdrop-blur-sm">
-        <div className="flex gap-3">
+      <div className="shrink-0 p-3 sm:p-5 border-t border-gray-800/50 bg-gradient-to-t from-gray-900/50 to-transparent backdrop-blur-sm">
+        <div className="flex gap-2 sm:gap-3">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="问我关于 PSD 或 Live2D 的问题..."
-            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-all backdrop-blur-sm"
+            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-all backdrop-blur-sm"
           />
           <button
             onClick={handleSend}
             disabled={!inputValue.trim() || isTyping}
-            className={`shrink-0 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-lg ${
+            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all shadow-lg ${
               inputValue.trim() && !isTyping
-                ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50'
+                ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50 active:scale-95'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }`}
           >
