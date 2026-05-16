@@ -102,9 +102,36 @@ interface ChatAssistantProps {
       expected?: string;
       actual?: string;
     }>;
-    warnings: Array<any>;
-    layer_stats?: any;
-    summary?: any;
+    warnings: Array<{
+      id: string;
+      severity: 'error' | 'warning' | 'info';
+      title: string;
+      description: string;
+      layer?: string;
+      suggestion: string;
+      expected?: string;
+      actual?: string;
+    }>;
+    layer_stats?: {
+      total: number;
+      visible: number;
+      hidden: number;
+      groups: number;
+      empty: number;
+      semiTransparent: number;
+      nonNormalBlend: number;
+      offscreen: number;
+      duplicateNames: number;
+    };
+    summary?: {
+      totalLayers: number;
+      visibleLayers: number;
+      hiddenLayers: number;
+      groups: number;
+      hasMissingCritical: boolean;
+      hasNamingIssues: boolean;
+      hasStructuralIssues: boolean;
+    };
   };
 }
 

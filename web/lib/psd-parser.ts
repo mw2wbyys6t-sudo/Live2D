@@ -340,11 +340,12 @@ export function parsePSD(data: ArrayBuffer | Uint8Array): PSDFileInfo {
       valid: true,
     };
   } catch (error: any) {
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       width: 0, height: 0, depth: 0, colorMode: 0,
       colorModeName: 'Unknown', layerCount: 0,
       layers: [], groups: [], valid: false,
-      error: error.message,
+      error: msg || 'PSD解析失败',
     };
   }
 }

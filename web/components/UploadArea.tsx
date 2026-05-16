@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { formatSize } from '../lib/utils';
 
 interface UploadAreaProps {
   onUpload: (file: File) => void;
@@ -60,12 +61,6 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
       onUpload(file);
     }
   }, [onUpload]);
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  };
 
   return (
     <div

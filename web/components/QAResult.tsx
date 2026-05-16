@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
-import { QAIssue } from '../lib/qa-engine';
+import { QAIssue, LayerStats } from '../lib/qa-engine';
 
 interface QAResultProps {
   score: number;
   issues: QAIssue[];
   warnings: QAIssue[];
   suggestions: string[];
-  layer_stats?: any;
-  summary?: any;
+  layer_stats?: LayerStats;
+  summary?: {
+    totalLayers: number;
+    visibleLayers: number;
+    hiddenLayers: number;
+    groups: number;
+    hasMissingCritical: boolean;
+    hasNamingIssues: boolean;
+    hasStructuralIssues: boolean;
+  };
 }
 
 const ErrorIcon = () => (
@@ -31,12 +39,6 @@ const InfoIcon = () => (
 const ChevronDownIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-  </svg>
-);
-
-const ChevronUpIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
   </svg>
 );
 
@@ -85,11 +87,24 @@ export default function QAResult({
     setExpandedWarnings(newSet);
   };
 
-  const handleCopy = () => {
-    const text = JSON.stringify({ score, issues, warnings, suggestions, layer_stats }, null, 2);
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const text = JSON.stringify({ score, issues, warnings, suggestions }, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const getScoreColor = (s: number) => {

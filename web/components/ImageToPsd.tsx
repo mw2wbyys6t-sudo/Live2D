@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { createPSDFromImage } from '../lib/image-to-psd';
+import { formatSize } from '../lib/utils';
 
 const ImageIcon = () => (
   <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -13,13 +14,6 @@ const CheckCircleIcon = () => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" />
     <path d="M10 16L14 20L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const DownloadIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M4 17V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
@@ -40,13 +34,6 @@ export default function ImageToPsd() {
   const [psdName, setPsdName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  };
 
   const handleFile = useCallback((file: File) => {
     setError(null);
@@ -118,9 +105,10 @@ export default function ImageToPsd() {
 
       setPsdName(`${baseName}.psd`);
       setDone(true);
-    } catch (err: any) {
-      setError(err.message || '转换失败，请重试');
-    }
+    } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    setError(msg || '转换失败，请重试');
+  }
     setConverting(false);
   }, [image]);
 
@@ -196,7 +184,6 @@ export default function ImageToPsd() {
           <div className="py-4 px-4 sm:py-6 sm:px-8 flex flex-col items-center">
             <div className="relative w-full max-w-[280px] aspect-video mb-4 rounded-lg overflow-hidden bg-gray-900/50 border border-gray-700/50">
               <img
-                ref={imgRef}
                 src={image.dataUrl}
                 alt={image.file.name}
                 className="w-full h-full object-contain"
