@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { formatSize } from '../lib/utils';
+import { validatePSDFile, MAX_FILE_SIZE } from '../lib/security';
 
 interface UploadAreaProps {
   onUpload: (file: File) => void;
@@ -42,24 +43,48 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
   const [isSuccess, setIsSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file && file.name.toLowerCase().endsWith('.psd')) {
-      setIsSuccess(true);
-      setTimeout(() => setIsSuccess(false), 2000);
-      onUpload(file);
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      alert('文件大小超过限制 (最大 50MB)');
+      return;
     }
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+      alert('请上传 PSD 文件');
+      return;
+    }
+    const valid = await validatePSDFile(file);
+    if (!valid) {
+      alert('文件不是有效的 PSD 格式');
+      return;
+    }
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 2000);
+    onUpload(file);
   }, [onUpload]);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setIsSuccess(true);
-      setTimeout(() => setIsSuccess(false), 2000);
-      onUpload(file);
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      alert('文件大小超过限制 (最大 50MB)');
+      return;
     }
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+      alert('请上传 PSD 文件');
+      return;
+    }
+    const valid = await validatePSDFile(file);
+    if (!valid) {
+      alert('文件不是有效的 PSD 格式');
+      return;
+    }
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 2000);
+    onUpload(file);
   }, [onUpload]);
 
   return (

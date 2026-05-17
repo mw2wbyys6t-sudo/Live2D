@@ -95,13 +95,16 @@ export default function QAResult({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
+      textarea.textContent = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textarea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

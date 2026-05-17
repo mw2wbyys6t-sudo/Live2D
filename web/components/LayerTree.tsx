@@ -120,9 +120,14 @@ export default function LayerTree({ layers, onLayerClick }: LayerTreeProps) {
           </div>
         ) : (
           filteredLayers.map(layer => (
-            <div key={layer.index} onClick={() => onLayerClick?.(layer)}>
+            <button
+              key={layer.index}
+              onClick={() => onLayerClick?.(layer)}
+              className="w-full text-left focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-inset"
+              aria-label={`图层: ${layer.name}`}
+            >
               <LayerItem layer={layer} depth={layer.depth} />
-            </div>
+            </button>
           ))
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { createPSDFromImage } from '../lib/image-to-psd';
 import { formatSize } from '../lib/utils';
+import { validateImageFile, sanitizeFileName, MAX_FILE_SIZE, MAX_IMAGE_DIMENSION, withTimeout } from '../lib/security';
 
 const ImageIcon = () => (
   <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -35,18 +36,24 @@ export default function ImageToPsd() {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     setError(null);
     setDone(false);
     setPsdName('');
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError('文件大小超过限制 (最大 50MB)');
+      return;
+    }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('不支持的文件格式，请上传 PNG、JPG、WEBP、GIF 或 BMP 图片');
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError('文件大小超过限制 (最大 50MB)');
+    const valid = await validateImageFile(file);
+    if (!valid) {
+      setError('文件内容不是有效的图片格式');
       return;
     }
 
@@ -72,12 +79,20 @@ export default function ImageToPsd() {
     setError(null);
 
     try {
-      const img = new Image();
-      img.src = image.dataUrl;
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('图片加载失败'));
-      });
+      const img = await withTimeout(
+        new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.src = image.dataUrl;
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('图片加载失败'));
+        }),
+        10000,
+        '图片加载超时'
+      );
+
+      if (img.width > MAX_IMAGE_DIMENSION || img.height > MAX_IMAGE_DIMENSION) {
+        throw new Error(`图片尺寸过大，最大支持 ${MAX_IMAGE_DIMENSION}x${MAX_IMAGE_DIMENSION}`);
+      }
 
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
@@ -90,7 +105,7 @@ export default function ImageToPsd() {
       ctx.drawImage(img, 0, 0);
 
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
-      const baseName = image.file.name.replace(/\.[^.]+$/, '');
+      const baseName = sanitizeFileName(image.file.name.replace(/\.[^.]+$/, ''));
       const psdBuffer = createPSDFromImage(imageData, img.width, img.height, baseName);
 
       const blob = new Blob([psdBuffer], { type: 'image/vnd.adobe.photoshop' });
@@ -98,6 +113,7 @@ export default function ImageToPsd() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `${baseName}.psd`;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -106,9 +122,9 @@ export default function ImageToPsd() {
       setPsdName(`${baseName}.psd`);
       setDone(true);
     } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    setError(msg || '转换失败，请重试');
-  }
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || '转换失败，请重试');
+    }
     setConverting(false);
   }, [image]);
 

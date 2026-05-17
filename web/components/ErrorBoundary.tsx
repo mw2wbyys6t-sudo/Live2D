@@ -21,7 +21,9 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught:', error, errorInfo);
+    }
   }
 
   render() {
@@ -36,11 +38,16 @@ export default class ErrorBoundary extends Component<Props, State> {
                 应用遇到了意外错误，请刷新页面重试
               </p>
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-lg text-sm transition-colors"
-              >
-                刷新页面
-              </button>
+                  onClick={() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('token');
+                    url.searchParams.delete('code');
+                    window.location.href = url.toString();
+                  }}
+                  className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-lg text-sm transition-colors focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f13]"
+                >
+                  刷新页面
+                </button>
             </div>
           </div>
         )
