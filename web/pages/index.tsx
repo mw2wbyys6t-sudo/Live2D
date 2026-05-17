@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import type { NextPage } from 'next';
-import Head from 'next/head';
 import UploadArea from '../components/UploadArea';
 import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import ChatAssistant from '../components/ChatAssistant';
 import ImageToPsd from '../components/ImageToPsd';
+import SEO from '../components/SEO';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 import { getErrorMessage } from '../lib/utils';
@@ -104,12 +105,10 @@ const Home: NextPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f0f13] text-white sm:min-h-[100vh]">
-      <Head>
-        <title>Live2D PSD QA Assistant</title>
-        <meta name="description" content="Web版 Live2D PSD 质量检测工具" />
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>" />
-      </Head>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-[#0f0f13] text-white sm:min-h-[100vh]">
+      <SEO />
+      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>" />
 
       <header className="border-b border-gray-800 sticky top-0 z-50 bg-[#0f0f13]/95 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
@@ -267,7 +266,8 @@ const Home: NextPage = () => {
           </div>
         )}
       </main>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 
