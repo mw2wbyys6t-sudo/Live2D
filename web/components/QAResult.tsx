@@ -148,9 +148,10 @@ export default function QAResult({
           </div>
           <button
             onClick={handleCopy}
+            aria-label={copied ? '已复制报告' : '复制报告'}
             className={`
               flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium
-              transition-all duration-300 shrink-0
+              transition-colors duration-300 shrink-0
               ${copied
                 ? 'bg-emerald-500/20 text-emerald-400'
                 : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800'

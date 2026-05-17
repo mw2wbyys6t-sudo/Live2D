@@ -35,7 +35,7 @@ function LayerItem({ layer, depth }: { layer: LayerInfo; depth: number }) {
       >
         <span className="text-xs text-gray-600 w-6 shrink-0">{layer.index + 1}</span>
 
-        <span className="shrink-0 text-xs">
+        <span className="shrink-0 text-xs" aria-hidden="true">
           {layer.isGroup ? '📁' : layer.visible ? '👁️' : '👁️‍🗨️'}
         </span>
 

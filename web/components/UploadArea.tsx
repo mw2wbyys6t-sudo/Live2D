@@ -104,6 +104,15 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
       onClick={() => !loading && fileRef.current?.click()}
+      role="button"
+      tabIndex={0}
+      aria-label="上传 PSD 文件，点击或拖拽文件到此处"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (!loading) fileRef.current?.click();
+        }
+      }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-purple-500/5 pointer-events-none" />
       
@@ -114,6 +123,7 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
         ref={fileRef}
         type="file"
         accept=".psd"
+        aria-label="选择 PSD 文件"
         onChange={handleFileSelect}
         className="hidden"
       />

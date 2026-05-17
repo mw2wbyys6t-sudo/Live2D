@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPSDFromImage } from '../lib/image-to-psd';
 import { formatSize } from '../lib/utils';
 import { validateImageFile, sanitizeFileName, MAX_FILE_SIZE, MAX_IMAGE_DIMENSION, withTimeout } from '../lib/security';
@@ -136,6 +136,12 @@ export default function ImageToPsd() {
     setError(null);
   }, [image]);
 
+  useEffect(() => {
+    return () => {
+      if (image?.dataUrl) URL.revokeObjectURL(image.dataUrl);
+    };
+  }, []);
+
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="text-center mb-4 sm:mb-6">
@@ -171,6 +177,15 @@ export default function ImageToPsd() {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !converting && !image && fileRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        aria-label="上传图片文件，点击或拖拽文件到此处"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!converting && !image) fileRef.current?.click();
+          }
+        }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
 
@@ -181,6 +196,7 @@ export default function ImageToPsd() {
           ref={fileRef}
           type="file"
           accept=".png,.jpg,.jpeg,.webp,.gif,.bmp"
+          aria-label="选择图片文件"
           onChange={handleFileSelect}
           className="hidden"
         />

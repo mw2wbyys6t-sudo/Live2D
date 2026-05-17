@@ -4,9 +4,11 @@ export const PARSE_TIMEOUT = 30000;
 
 export function sanitizeFileName(name: string): string {
   return name
-    .replace(/[<>"'\/\\|?*]/g, '')
+    .replace(/[<>"'\/\\|?*\x00-\x1f\u202E\u200E\u200F]/g, '')
     .replace(/\.+$/g, '')
-    .trim() || 'download';
+    .replace(/\s+/g, '_')
+    .trim()
+    .slice(0, 200) || 'download';
 }
 
 export async function validatePSDFile(file: File): Promise<boolean> {

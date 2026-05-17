@@ -342,12 +342,13 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4" role="log" aria-live="polite" aria-label="对话消息">
         {messages.map((msg, idx) => (
           <div
             key={msg.id}
             className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
             style={{ animationDelay: `${idx * 50}ms` }}
+            aria-label={msg.role === 'user' ? '用户消息' : 'AI 助手消息'}
           >
             <div
               className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
@@ -355,6 +356,7 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
                   ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
                   : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
               }`}
+              aria-hidden="true"
             >
               {msg.role === 'user' ? (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -459,12 +461,15 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="问我关于 PSD 或 Live2D 的问题..."
-            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-all backdrop-blur-sm"
+            aria-label="输入消息"
+            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-colors backdrop-blur-sm"
           />
           <button
             onClick={handleSend}
             disabled={!inputValue.trim() || isTyping}
-            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all shadow-lg ${
+            aria-label="发送消息"
+            aria-disabled={!inputValue.trim() || isTyping}
+            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-lg ${
               inputValue.trim() && !isTyping
                 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50 active:scale-95'
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'

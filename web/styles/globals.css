@@ -222,6 +222,22 @@ body {
   animation: progress 2s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-slide-in,
+  .animate-pulse-glow,
+  .animate-gradient,
+  .animate-float,
+  .animate-shimmer,
+  .animate-scale-in,
+  .animate-bounce-in,
+  .animate-progress {
+    animation: none;
+    transition: none;
+  }
+}
+
 .glass {
   background: rgba(26, 26, 35, 0.8);
   backdrop-filter: blur(20px);
@@ -274,7 +290,7 @@ body {
 }
 
 .transition-smooth {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hover-lift {
