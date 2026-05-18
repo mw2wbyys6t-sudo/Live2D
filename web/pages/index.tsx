@@ -13,11 +13,12 @@ import { getErrorMessage } from '../lib/utils';
 
 type AppView = 'upload' | 'result';
 type AppMode = 'qa' | 'convert';
+type LoadingStage = 'idle' | 'loading' | 'parsing' | 'analyzing' | 'complete';
 
 const Home: NextPage = () => {
   const [view, setView] = useState<AppView>('upload');
   const [mode, setMode] = useState<AppMode>('qa');
-  const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<LoadingStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; width: number; height: number } | undefined>();
   const [result, setResult] = useState<{
@@ -48,26 +49,28 @@ const Home: NextPage = () => {
   } | null>(null);
 
   const handleUpload = useCallback(async (file: File) => {
-    setLoading(true);
+    setLoadingStage('loading');
     setError(null);
 
     if (file.size > 50 * 1024 * 1024) {
       setError('文件大小超过限制 (最大 50MB)');
-      setLoading(false);
+      setLoadingStage('idle');
       return;
     }
 
     try {
+      setLoadingStage('parsing');
       const buffer = await file.arrayBuffer();
       const psdInfo = parsePSD(buffer);
 
       if (!psdInfo.valid) {
         const errorInfo = getErrorMessage(psdInfo.error);
         setError(`${errorInfo.title}: ${errorInfo.message}\n\n建议: ${errorInfo.suggestion}`);
-        setLoading(false);
+        setLoadingStage('idle');
         return;
       }
 
+      setLoadingStage('analyzing');
       const qaResult = analyzePSD(psdInfo);
       const enhanced = getEnhancedResult(qaResult);
 
@@ -87,15 +90,18 @@ const Home: NextPage = () => {
         summary: qaResult.summary,
       });
 
-      setView('result');
+      setLoadingStage('complete');
+      setTimeout(() => setView('result'), 300);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       const errorInfo = getErrorMessage(msg);
       setError(`${errorInfo.title}: ${errorInfo.message}\n\n建议: ${errorInfo.suggestion}`);
     } finally {
-      setLoading(false);
+      if (loadingStage !== 'complete') {
+        setLoadingStage('idle');
+      }
     }
-  }, []);
+  }, [loadingStage]);
 
   const handleReset = useCallback(() => {
     setView('upload');
@@ -164,7 +170,7 @@ const Home: NextPage = () => {
           </div>
         )}
 
-        {view === 'upload' && !loading && mode === 'qa' && (
+        {view === 'upload' && loadingStage === 'idle' && mode === 'qa' && (
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6" style={{ height: 'calc(100vh - 120px)' }}>
             <div className="lg:w-[60%] flex items-center justify-center lg:justify-start">
               <div className="w-full max-w-lg px-2">
@@ -177,7 +183,7 @@ const Home: NextPage = () => {
                     上传 PSD 文件，自动检查 Live2D 风险并生成优化报告
                   </p>
                 </div>
-                <UploadArea onUpload={handleUpload} loading={loading} />
+                <UploadArea onUpload={handleUpload} loadingStage={loadingStage} />
                 <div className="mt-4 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-center text-xs text-gray-500">
                   <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
                     <p className="text-base sm:text-lg mb-1">🔍</p>
@@ -205,15 +211,15 @@ const Home: NextPage = () => {
           </div>
         )}
 
-        {view === 'upload' && !loading && mode === 'convert' && (
+        {view === 'upload' && loadingStage === 'idle' && mode === 'convert' && (
           <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
             <ImageToPsd />
           </div>
         )}
 
-        {loading && (
+        {loadingStage !== 'idle' && loadingStage !== 'complete' && (
           <div className="max-w-lg mx-auto mt-8 sm:mt-16 px-2">
-            <UploadArea onUpload={handleUpload} loading={loading} fileInfo={fileInfo} />
+            <UploadArea onUpload={handleUpload} loadingStage={loadingStage} fileInfo={fileInfo} />
           </div>
         )}
 

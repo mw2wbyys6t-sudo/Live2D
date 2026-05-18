@@ -2,9 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { formatSize } from '../lib/utils';
 import { validatePSDFile, MAX_FILE_SIZE } from '../lib/security';
 
+export type LoadingStage = 'idle' | 'loading' | 'parsing' | 'analyzing' | 'complete';
+
 interface UploadAreaProps {
   onUpload: (file: File) => void;
-  loading: boolean;
+  loadingStage: LoadingStage;
   fileInfo?: { name: string; size: number; width: number; height: number };
 }
 
@@ -38,7 +40,8 @@ const SpinnerIcon = () => (
   </svg>
 );
 
-export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaProps) {
+export default function UploadArea({ onUpload, loadingStage, fileInfo }: UploadAreaProps) {
+  const isLoading = loadingStage !== 'idle' && loadingStage !== 'complete';
   const [dragOver, setDragOver] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -96,21 +99,21 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
           ? 'bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-blue-500/20 border-2 border-pink-400/50 scale-[1.01] sm:scale-[1.02]'
           : 'bg-gradient-to-br from-gray-800/40 via-gray-800/30 to-gray-800/20 border-2 border-dashed border-gray-600/50 hover:border-gray-500/60 hover:from-gray-800/50'
         }
-        ${loading ? 'pointer-events-none' : 'cursor-pointer touch-manipulation'}
+        ${isLoading ? 'pointer-events-none' : 'cursor-pointer touch-manipulation'}
         ${isSuccess ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-400/50' : ''}
         backdrop-blur-xl
       `}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      onClick={() => !loading && fileRef.current?.click()}
+      onClick={() => !isLoading && fileRef.current?.click()}
       role="button"
       tabIndex={0}
       aria-label="上传 PSD 文件，点击或拖拽文件到此处"
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          if (!loading) fileRef.current?.click();
+          if (!isLoading) fileRef.current?.click();
         }
       }}
     >
@@ -128,16 +131,26 @@ export default function UploadArea({ onUpload, loading, fileInfo }: UploadAreaPr
         className="hidden"
       />
 
-      {loading ? (
+      {isLoading ? (
         <div className="py-12 px-4 sm:py-16 sm:px-8 flex flex-col items-center justify-center animate-pulse">
           <div className="text-pink-400 mb-3 sm:mb-4">
             <SpinnerIcon />
           </div>
-          <p className="text-gray-300 font-medium text-base sm:text-lg mb-2">正在分析 PSD 文件</p>
+          <p className="text-gray-300 font-medium text-base sm:text-lg mb-2">
+            {loadingStage === 'loading' && '正在准备文件...'}
+            {loadingStage === 'parsing' && '正在解析 PSD 文件...'}
+            {loadingStage === 'analyzing' && '正在进行质量分析...'}
+          </p>
           <p className="text-gray-500 text-xs sm:text-sm">请稍候...</p>
           
           <div className="mt-6 sm:mt-8 w-full max-w-xs h-1 bg-gray-700/50 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full animate-progress" />
+            <div 
+              className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full transition-all duration-300" 
+              style={{ 
+                width: loadingStage === 'loading' ? '20%' : 
+                       loadingStage === 'parsing' ? '50%' : '80%' 
+              }} 
+            />
           </div>
         </div>
       ) : fileInfo ? (
