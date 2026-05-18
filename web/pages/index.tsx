@@ -1,15 +1,28 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { NextPage } from 'next';
+import dynamic from 'next/dynamic';
 import UploadArea from '../components/UploadArea';
 import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
-import ChatAssistant from '../components/ChatAssistant';
-import ImageToPsd from '../components/ImageToPsd';
 import SEO from '../components/SEO';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 import { getErrorMessage } from '../lib/utils';
+
+const ChatAssistant = dynamic(() => import('../components/ChatAssistant'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full min-h-[400px] bg-gray-900/50 border border-gray-800 rounded-xl animate-pulse" />
+  ),
+});
+
+const ImageToPsd = dynamic(() => import('../components/ImageToPsd'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[60vh] bg-gray-900/50 border border-gray-800 rounded-xl animate-pulse" />
+  ),
+});
 
 type AppView = 'upload' | 'result';
 type AppMode = 'qa' | 'convert';
@@ -110,6 +123,27 @@ const Home: NextPage = () => {
     setError(null);
   }, []);
 
+  const handleSetMode = useCallback((newMode: AppMode) => {
+    setMode(newMode);
+    setError(null);
+  }, []);
+
+  const handleClearError = useCallback(() => setError(null), []);
+
+  const layerTreeData = useMemo(() => {
+    if (!result) return [];
+    return result.issues.map((i, idx) => ({
+      index: idx,
+      name: i.layer || 'unknown',
+      visible: true,
+      opacity: 1,
+      depth: 0,
+      isGroup: false,
+      bounds: { width: 0, height: 0 },
+      issues: [i.title],
+    }));
+  }, [result?.issues]);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-[#0f0f13] text-white sm:min-h-[100vh]">
@@ -131,13 +165,13 @@ const Home: NextPage = () => {
           <div className="flex items-center gap-2">
             <div className="flex bg-gray-800 rounded-lg p-0.5 mr-2">
               <button
-                onClick={() => { setMode('qa'); setError(null); }}
+                onClick={() => handleSetMode('qa')}
                 className={`text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-all ${mode === 'qa' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
               >
                 PSD 检测
               </button>
               <button
-                onClick={() => { setMode('convert'); setError(null); }}
+                onClick={() => handleSetMode('convert')}
                 className={`text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-md transition-all ${mode === 'convert' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
               >
                 图片转PSD
@@ -164,7 +198,7 @@ const Home: NextPage = () => {
               <p className="text-sm text-red-400 font-medium">分析失败</p>
               <p className="text-xs text-red-300/70 mt-0.5 break-all">{error}</p>
             </div>
-            <button onClick={() => setError(null)} className="ml-auto shrink-0 text-gray-500 hover:text-white text-xs">
+            <button onClick={handleClearError} className="ml-auto shrink-0 text-gray-500 hover:text-white text-xs">
               ✕
             </button>
           </div>
@@ -206,7 +240,7 @@ const Home: NextPage = () => {
             </div>
 
             <div className="lg:w-[40%] lg:min-w-[360px]">
-              <ChatAssistant qaResult={undefined} />
+              <ChatAssistant />
             </div>
           </div>
         )}
@@ -240,18 +274,7 @@ const Home: NextPage = () => {
                 )}
               </div>
               <div className="flex-1 overflow-hidden">
-                <LayerTree
-                  layers={result.issues.map((i, idx) => ({
-                    index: idx,
-                    name: i.layer || 'unknown',
-                    visible: true,
-                    opacity: 1,
-                    depth: 0,
-                    isGroup: false,
-                    bounds: { width: 0, height: 0 },
-                    issues: [i.title],
-                  }))}
-                />
+                <LayerTree layers={layerTreeData} />
               </div>
             </div>
 

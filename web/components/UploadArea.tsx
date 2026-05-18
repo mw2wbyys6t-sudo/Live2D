@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { formatSize } from '../lib/utils';
 import { validatePSDFile, MAX_FILE_SIZE } from '../lib/security';
 
@@ -10,37 +10,41 @@ interface UploadAreaProps {
   fileInfo?: { name: string; size: number; width: number; height: number };
 }
 
-const UploadIcon = () => (
+const UploadIcon = React.memo(() => (
   <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="8" y="12" width="48" height="40" rx="4" stroke="currentColor" strokeWidth="2" />
     <path d="M8 24C8 24 16 20 32 20C48 20 56 24 56 24" stroke="currentColor" strokeWidth="2" />
     <path d="M20 36L32 28L44 36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M32 28V44" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
-);
+));
+UploadIcon.displayName = 'UploadIcon';
 
-const FileIcon = () => (
+const FileIcon = React.memo(() => (
   <svg className="w-12 h-12" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M10 6C10 4.89543 10.8954 4 12 4H28L38 14V42C38 43.1046 37.1046 44 36 44H12C10.8954 44 10 43.1046 10 42V6Z" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="2" />
     <path d="M28 4V14H38" stroke="currentColor" strokeWidth="2" />
   </svg>
-);
+));
+FileIcon.displayName = 'FileIcon';
 
-const CheckIcon = () => (
+const CheckIcon = React.memo(() => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" />
     <path d="M10 16L14 20L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-);
+));
+CheckIcon.displayName = 'CheckIcon';
 
-const SpinnerIcon = () => (
+const SpinnerIcon = React.memo(() => (
   <svg className="w-12 h-12 animate-spin" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" strokeOpacity="0.2" />
     <path d="M44 24C44 35.0457 35.0457 44 24 44" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
   </svg>
-);
+));
+SpinnerIcon.displayName = 'SpinnerIcon';
 
-export default function UploadArea({ onUpload, loadingStage, fileInfo }: UploadAreaProps) {
+const UploadArea = React.memo(function UploadArea({ onUpload, loadingStage, fileInfo }: UploadAreaProps) {
   const isLoading = loadingStage !== 'idle' && loadingStage !== 'complete';
   const [dragOver, setDragOver] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -90,6 +94,26 @@ export default function UploadArea({ onUpload, loadingStage, fileInfo }: UploadA
     onUpload(file);
   }, [onUpload]);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (!isLoading) fileRef.current?.click();
+  }, [isLoading]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!isLoading) fileRef.current?.click();
+    }
+  }, [isLoading]);
+
   return (
     <div
       className={`
@@ -103,19 +127,14 @@ export default function UploadArea({ onUpload, loadingStage, fileInfo }: UploadA
         ${isSuccess ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-400/50' : ''}
         backdrop-blur-xl
       `}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => !isLoading && fileRef.current?.click()}
+      onClick={handleClick}
       role="button"
       tabIndex={0}
       aria-label="上传 PSD 文件，点击或拖拽文件到此处"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          if (!isLoading) fileRef.current?.click();
-        }
-      }}
+      onKeyDown={handleKeyDown}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-purple-500/5 pointer-events-none" />
       
@@ -241,4 +260,8 @@ export default function UploadArea({ onUpload, loadingStage, fileInfo }: UploadA
       )}
     </div>
   );
-}
+});
+
+UploadArea.displayName = 'UploadArea';
+
+export default UploadArea;

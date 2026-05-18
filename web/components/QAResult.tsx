@@ -1,5 +1,41 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { QAIssue, LayerStats } from '../lib/qa-engine';
+
+const ErrorIcon = React.memo(() => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+  </svg>
+));
+ErrorIcon.displayName = 'ErrorIcon';
+
+const WarningIcon = React.memo(() => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+  </svg>
+));
+WarningIcon.displayName = 'WarningIcon';
+
+const InfoIcon = React.memo(() => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+  </svg>
+));
+InfoIcon.displayName = 'InfoIcon';
+
+const ChevronDownIcon = React.memo(() => (
+  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+  </svg>
+));
+ChevronDownIcon.displayName = 'ChevronDownIcon';
+
+const CopyIcon = React.memo(() => (
+  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+  </svg>
+));
+CopyIcon.displayName = 'CopyIcon';
 
 interface QAResultProps {
   score: number;
@@ -18,76 +54,75 @@ interface QAResultProps {
   };
 }
 
-const ErrorIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-  </svg>
-);
+const getScoreColor = (s: number): string => {
+  if (s >= 80) return 'text-emerald-400';
+  if (s >= 60) return 'text-yellow-400';
+  return 'text-red-400';
+};
 
-const WarningIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-  </svg>
-);
+const getScoreBg = (s: number): string => {
+  if (s >= 80) return 'from-emerald-500/20 to-emerald-600/10';
+  if (s >= 60) return 'from-yellow-500/20 to-yellow-600/10';
+  return 'from-red-500/20 to-red-600/10';
+};
 
-const InfoIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-  </svg>
-);
+const getSeverityColor = (severity: string): string => {
+  switch (severity) {
+    case 'error': return 'text-red-400 bg-red-500/10 border-red-500/20';
+    case 'warning': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+    default: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+  }
+};
 
-const ChevronDownIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-  </svg>
-);
+const getSeverityIcon = (severity: string): React.ReactNode => {
+  switch (severity) {
+    case 'error': return <ErrorIcon />;
+    case 'warning': return <WarningIcon />;
+    default: return <InfoIcon />;
+  }
+};
 
-const CopyIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-  </svg>
-);
-
-export default function QAResult({
+const QAResult = React.memo(function QAResult({
   score,
   issues,
   warnings,
   suggestions,
   layer_stats,
-  summary,
 }: QAResultProps) {
   const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
   const [expandedWarnings, setExpandedWarnings] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const allIds = [...issues.map(i => i.id), ...warnings.map(w => w.id)];
     setExpandedIssues(new Set(issues.slice(0, 3).map(i => i.id)));
     setExpandedWarnings(new Set(warnings.slice(0, 2).map(w => w.id)));
   }, [issues, warnings]);
 
-  const toggleIssue = (id: string) => {
-    const newSet = new Set(expandedIssues);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setExpandedIssues(newSet);
-  };
+  const toggleIssue = useCallback((id: string) => {
+    setExpandedIssues(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
 
-  const toggleWarning = (id: string) => {
-    const newSet = new Set(expandedWarnings);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setExpandedWarnings(newSet);
-  };
+  const toggleWarning = useCallback((id: string) => {
+    setExpandedWarnings(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     const text = JSON.stringify({ score, issues, warnings, suggestions }, null, 2);
     try {
       await navigator.clipboard.writeText(text);
@@ -108,35 +143,12 @@ export default function QAResult({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }, [score, issues, warnings, suggestions]);
 
-  const getScoreColor = (s: number) => {
-    if (s >= 80) return 'text-emerald-400';
-    if (s >= 60) return 'text-yellow-400';
-    return 'text-red-400';
-  };
+  const scoreColor = useMemo(() => getScoreColor(score), [score]);
+  const scoreBg = useMemo(() => getScoreBg(score), [score]);
 
-  const getScoreBg = (s: number) => {
-    if (s >= 80) return 'from-emerald-500/20 to-emerald-600/10';
-    if (s >= 60) return 'from-yellow-500/20 to-yellow-600/10';
-    return 'from-red-500/20 to-red-600/10';
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'error': return 'text-red-400 bg-red-500/10 border-red-500/20';
-      case 'warning': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
-      default: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-    }
-  };
-
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case 'error': return <ErrorIcon />;
-      case 'warning': return <WarningIcon />;
-      default: return <InfoIcon />;
-    }
-  };
+  const hasAnyContent = issues.length > 0 || warnings.length > 0 || suggestions.length > 0;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -177,13 +189,13 @@ export default function QAResult({
         <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
           <div className={`
             relative px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl
-            bg-gradient-to-br ${getScoreBg(score)}
+            bg-gradient-to-br ${scoreBg}
             border border-white/5
             backdrop-blur-xl
           `}>
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
             <div className="relative">
-              <p className={`text-4xl sm:text-5xl font-bold ${getScoreColor(score)} mb-1`}>
+              <p className={`text-4xl sm:text-5xl font-bold ${scoreColor} mb-1`}>
                 {score}
               </p>
               <p className="text-xs text-gray-500 uppercase tracking-wider">综合评分</p>
@@ -370,7 +382,7 @@ export default function QAResult({
           </div>
         )}
 
-        {issues.length === 0 && warnings.length === 0 && suggestions.length === 0 && (
+        {!hasAnyContent && (
           <div className="flex flex-col items-center justify-center py-10 sm:py-16 text-center">
             <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center">
               <svg className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -409,4 +421,8 @@ export default function QAResult({
       )}
     </div>
   );
-}
+});
+
+QAResult.displayName = 'QAResult';
+
+export default QAResult;
