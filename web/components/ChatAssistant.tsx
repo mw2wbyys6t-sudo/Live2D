@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { getAIConfig, callAIAPI, buildSystemPrompt, type AIMessage } from '../lib/ai-service';
+import AIConfigPanel from './AIConfigPanel';
 
 const parseMarkdown = (text: string): React.ReactNode => {
   const parts: React.ReactNode[] = [];
@@ -148,6 +150,13 @@ const SparklesIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+  </svg>
+);
+
 export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -159,7 +168,14 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [apiMode, setApiMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const config = getAIConfig();
+    setApiMode(config.enabled && !!config.apiKey);
+  }, [showConfig]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -169,11 +185,11 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  const generateAIResponse = useCallback((userQuery: string) => {
+  const generateLocalResponse = useCallback((userQuery: string) => {
     let response = '';
 
     if (qaResult) {
-      const { score, issues, warnings, layer_stats } = qaResult;
+      const { score, issues, warnings } = qaResult;
       
       if (userQuery.includes('分析') || userQuery.includes('怎么样') || userQuery.includes('如何') || userQuery.includes('报告')) {
         response = `📊 **检测结果分析**\n\n`;
@@ -298,18 +314,63 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
     setInputValue('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(inputValue);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 800);
-  }, [inputValue, generateAIResponse]);
+    const config = getAIConfig();
+    const useApi = config.enabled && config.apiKey;
+
+    if (useApi) {
+      try {
+        const aiMessages: AIMessage[] = [
+          { role: 'system', content: buildSystemPrompt(qaResult) },
+          ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+          { role: 'user', content: inputValue },
+        ];
+
+        const response = await callAIAPI(aiMessages, config);
+
+        if (response.error) {
+          const fallbackResponse = generateLocalResponse(inputValue);
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `⚠️ API 调用失败，已切换至本地模式\n\n${fallbackResponse}`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        } else {
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: response.content || '抱歉，我没有理解您的问题。',
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        }
+      } catch {
+        const fallbackResponse = generateLocalResponse(inputValue);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `⚠️ API 调用异常，已切换至本地模式\n\n${fallbackResponse}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } finally {
+        setIsTyping(false);
+      }
+    } else {
+      setTimeout(() => {
+        const aiResponse = generateLocalResponse(inputValue);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsTyping(false);
+      }, 800);
+    }
+  }, [inputValue, messages, qaResult, generateLocalResponse]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -323,162 +384,176 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-800/30 border border-gray-800/50 rounded-xl sm:rounded-2xl overflow-hidden backdrop-blur-xl min-h-[400px]">
-      <div className="shrink-0 p-3 sm:p-5 border-b border-gray-800/50 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-blue-500/5">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
-              <SparklesIcon />
+    <>
+      <div className="flex flex-col h-full bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-gray-800/30 border border-gray-800/50 rounded-xl sm:rounded-2xl overflow-hidden backdrop-blur-xl min-h-[400px]">
+        <div className="shrink-0 p-3 sm:p-5 border-b border-gray-800/50 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-blue-500/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
+                  <SparklesIcon />
+                </div>
+                <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border-2 border-gray-900 ${apiMode ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-semibold text-white mb-0.5">AI 助手</h3>
+                <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${apiMode ? 'bg-blue-500' : 'bg-emerald-500'} animate-pulse`} />
+                  {apiMode ? 'AI API 模式' : '本地规则模式'}
+                </p>
+              </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 rounded-full border-2 border-gray-900 animate-pulse" />
-          </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-semibold text-white mb-0.5">AI 助手</h3>
-            <p className="text-xs text-gray-500 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Live2D 质量顾问
-            </p>
+            <button
+              onClick={() => setShowConfig(true)}
+              className="p-2 text-gray-500 hover:text-white bg-gray-800/50 hover:bg-gray-800 rounded-xl transition-all"
+              aria-label="配置 AI API"
+              title="配置 AI API"
+            >
+              <SettingsIcon />
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4" role="log" aria-live="polite" aria-label="对话消息">
-        {messages.map((msg, idx) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
-            style={{ animationDelay: `${idx * 50}ms` }}
-            aria-label={msg.role === 'user' ? '用户消息' : 'AI 助手消息'}
-          >
+        <div className="flex-1 overflow-y-auto p-5 space-y-4" role="log" aria-live="polite" aria-label="对话消息">
+          {messages.map((msg, idx) => (
             <div
-              className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
-                msg.role === 'user'
-                  ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
-                  : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
-              }`}
-              aria-hidden="true"
+              key={msg.id}
+              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
+              style={{ animationDelay: `${idx * 50}ms` }}
+              aria-label={msg.role === 'user' ? '用户消息' : 'AI 助手消息'}
             >
-              {msg.role === 'user' ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              ) : (
+              <div
+                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
+                  msg.role === 'user'
+                    ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
+                    : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
+                }`}
+                aria-hidden="true"
+              >
+                {msg.role === 'user' ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                ) : (
+                  <SparklesIcon />
+                )}
+              </div>
+              <div
+                className={`max-w-[85%] sm:max-w-[80%] rounded-xl sm:rounded-2xl p-3 sm:p-4 ${
+                  msg.role === 'user'
+                    ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
+                    : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
+                }`}
+              >
+                <div className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                  {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
+                </div>
+                <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
+                  {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex gap-3 animate-fade-in">
+              <div className="shrink-0 w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
                 <SparklesIcon />
-              )}
-            </div>
-            <div
-              className={`max-w-[85%] sm:max-w-[80%] rounded-xl sm:rounded-2xl p-3 sm:p-4 ${
-                msg.role === 'user'
-                  ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
-                  : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
-              }`}
-            >
-              <div className="text-xs sm:text-sm text-gray-200 leading-relaxed">
-                {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
               </div>
-              <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
-                {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+              <div className="bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm rounded-2xl p-4">
+                <div className="flex gap-1.5">
+                  <span className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '100ms' }} />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )}
 
-        {isTyping && (
-          <div className="flex gap-3 animate-fade-in">
-            <div className="shrink-0 w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
-              <SparklesIcon />
-            </div>
-            <div className="bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm rounded-2xl p-4">
-              <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '100ms' }} />
-                <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-              </div>
+          <div ref={messagesEndRef} />
+        </div>
+
+        {!qaResult && messages.length === 1 && (
+          <div className="px-5 pb-3">
+            <p className="text-xs text-gray-500 mb-2 text-center">快捷提问</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => handleQuickAsk('如何正确分层？')}
+                className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
+              >
+                📝 分层规范
+              </button>
+              <button
+                onClick={() => handleQuickAsk('命名规范是什么？')}
+                className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
+              >
+                🏷️ 命名规则
+              </button>
+              <button
+                onClick={() => handleQuickAsk('画布尺寸建议多少？')}
+                className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
+              >
+                📐 画布尺寸
+              </button>
             </div>
           </div>
         )}
 
-        <div ref={messagesEndRef} />
-      </div>
+        {qaResult && messages.length === 1 && (
+          <div className="px-5 pb-3">
+            <p className="text-xs text-gray-500 mb-2 text-center">快速分析</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => handleQuickAsk('分析一下这个报告')}
+                className="text-xs px-3 py-1.5 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-300 hover:text-pink-200 rounded-lg border border-pink-500/20 hover:border-pink-500/30 transition-all"
+              >
+                📊 分析报告
+              </button>
+              <button
+                onClick={() => handleQuickAsk('主要问题是什么？')}
+                className="text-xs px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 text-red-300 hover:text-red-200 rounded-lg border border-red-500/20 hover:border-red-500/30 transition-all"
+              >
+                🔴 主要问题
+              </button>
+              <button
+                onClick={() => handleQuickAsk('如何优先修复？')}
+                className="text-xs px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 hover:text-emerald-200 rounded-lg border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
+              >
+                ⚡ 优先修复
+              </button>
+            </div>
+          </div>
+        )}
 
-      {!qaResult && messages.length === 1 && (
-        <div className="px-5 pb-3">
-          <p className="text-xs text-gray-500 mb-2 text-center">快捷提问</p>
-          <div className="flex flex-wrap gap-2 justify-center">
+        <div className="shrink-0 p-3 sm:p-5 border-t border-gray-800/50 bg-gradient-to-t from-gray-900/50 to-transparent backdrop-blur-sm">
+          <div className="flex gap-2 sm:gap-3">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={apiMode ? '已连接 AI API，直接提问...' : '问我关于 PSD 或 Live2D 的问题...'}
+              aria-label="输入消息"
+              className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-colors backdrop-blur-sm"
+            />
             <button
-              onClick={() => handleQuickAsk('如何正确分层？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isTyping}
+              aria-label="发送消息"
+              aria-disabled={!inputValue.trim() || isTyping}
+              className={`shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-lg ${
+                inputValue.trim() && !isTyping
+                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50 active:scale-95'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              📝 分层规范
-            </button>
-            <button
-              onClick={() => handleQuickAsk('命名规范是什么？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
-            >
-              🏷️ 命名规则
-            </button>
-            <button
-              onClick={() => handleQuickAsk('画布尺寸建议多少？')}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg border border-gray-700/50 hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-gray-500/10"
-            >
-              📐 画布尺寸
+              <SendIcon />
             </button>
           </div>
         </div>
-      )}
-
-      {qaResult && messages.length === 1 && (
-        <div className="px-5 pb-3">
-          <p className="text-xs text-gray-500 mb-2 text-center">快速分析</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            <button
-              onClick={() => handleQuickAsk('分析一下这个报告')}
-              className="text-xs px-3 py-1.5 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-300 hover:text-pink-200 rounded-lg border border-pink-500/20 hover:border-pink-500/30 transition-all"
-            >
-              📊 分析报告
-            </button>
-            <button
-              onClick={() => handleQuickAsk('主要问题是什么？')}
-              className="text-xs px-3 py-1.5 bg-gradient-to-r from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 text-red-300 hover:text-red-200 rounded-lg border border-red-500/20 hover:border-red-500/30 transition-all"
-            >
-              🔴 主要问题
-            </button>
-            <button
-              onClick={() => handleQuickAsk('如何优先修复？')}
-              className="text-xs px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 hover:text-emerald-200 rounded-lg border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
-            >
-              ⚡ 优先修复
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="shrink-0 p-3 sm:p-5 border-t border-gray-800/50 bg-gradient-to-t from-gray-900/50 to-transparent backdrop-blur-sm">
-        <div className="flex gap-2 sm:gap-3">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="问我关于 PSD 或 Live2D 的问题..."
-            aria-label="输入消息"
-            className="flex-1 bg-gray-800/60 border border-gray-700/50 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-pink-500/50 focus:bg-gray-800/80 transition-colors backdrop-blur-sm"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isTyping}
-            aria-label="发送消息"
-            aria-disabled={!inputValue.trim() || isTyping}
-            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-lg ${
-              inputValue.trim() && !isTyping
-                ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-pink-500/30 hover:shadow-pink-500/50 active:scale-95'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            <SendIcon />
-          </button>
-        </div>
       </div>
-    </div>
+
+      <AIConfigPanel isOpen={showConfig} onClose={() => setShowConfig(false)} />
+    </>
   );
 }
