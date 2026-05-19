@@ -1,15 +1,10 @@
 import React from 'react';
-
-export type WorkflowStep = {
-  id: string;
-  title: string;
-  description?: string;
-};
+import { STEP_NAMES } from '../lib-shared/types';
 
 export interface WorkflowTrackerProps {
-  steps: WorkflowStep[];
   currentStep: number;
-  expertMode?: boolean;
+  completed: boolean[];
+  mode: 'wizard' | 'expert';
   onStepClick?: (stepIndex: number) => void;
 }
 
@@ -50,17 +45,17 @@ const SpinnerIcon = React.memo(() => (
 SpinnerIcon.displayName = 'SpinnerIcon';
 
 export default React.memo(function WorkflowTracker({
-  steps,
   currentStep,
-  expertMode = false,
+  completed,
+  mode,
   onStepClick,
 }: WorkflowTrackerProps) {
-  const completedSteps = currentStep;
-  const totalSteps = steps.length;
-  const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+  const totalSteps = STEP_NAMES.length;
+  const completedCount = completed.filter(c => c).length;
+  const progress = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
   const handleStepClick = (index: number) => {
-    if (expertMode && onStepClick && index <= currentStep) {
+    if (mode === 'expert' && onStepClick) {
       onStepClick(index);
     }
   };
@@ -85,15 +80,16 @@ export default React.memo(function WorkflowTracker({
       </div>
 
       <div className="space-y-3">
-        {steps.map((step, index) => {
-          const isCompleted = index < currentStep;
-          const isCurrent = index === currentStep;
-          const isPending = index > currentStep;
-          const isClickable = expertMode && index <= currentStep && onStepClick;
+        {STEP_NAMES.map((stepName, index) => {
+          const stepNum = index + 1;
+          const isCompleted = completed[index];
+          const isCurrent = stepNum === currentStep;
+          const isPending = !isCompleted && !isCurrent;
+          const isClickable = mode === 'expert' && onStepClick;
 
           return (
             <div
-              key={step.id}
+              key={stepNum}
               className={`
                 relative flex items-center gap-3 p-3 rounded-lg transition-all duration-300
                 ${isCurrent
@@ -123,7 +119,7 @@ export default React.memo(function WorkflowTracker({
                 ) : isCurrent ? (
                   <SpinnerIcon />
                 ) : (
-                  <span className="text-sm font-medium">{index + 1}</span>
+                  <span className="text-sm font-medium">{stepNum}</span>
                 )}
               </div>
 
@@ -135,15 +131,12 @@ export default React.memo(function WorkflowTracker({
                       ${isCurrent ? 'text-pink-300' : isCompleted ? 'text-green-300' : 'text-gray-400'}
                     `}
                   >
-                    {step.title}
+                    {stepName}
                   </span>
                   {isClickable && (
                     <ChevronRightIcon className="text-gray-500 flex-shrink-0" />
                   )}
                 </div>
-                {step.description && (
-                  <p className="text-xs text-gray-500 mt-1">{step.description}</p>
-                )}
               </div>
 
               {isCurrent && (
@@ -158,13 +151,13 @@ export default React.memo(function WorkflowTracker({
         })}
       </div>
 
-      {expertMode && (
+      {mode === 'expert' && (
         <div className="mt-4 pt-4 border-t border-gray-700/50">
           <p className="text-xs text-gray-500 flex items-center gap-2">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            专家模式：点击已完成步骤可跳转回顾
+            专家模式：点击任意步骤可跳转
           </p>
         </div>
       )}

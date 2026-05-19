@@ -6,11 +6,12 @@ import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import SEO from '../components/SEO';
 import ErrorBoundary from '../components/ErrorBoundary';
-import WorkflowTracker, { WorkflowStep as TrackerStep } from '../components/WorkflowTracker';
+import WorkflowTracker from '../components/WorkflowTracker';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 import { getErrorMessage } from '../lib/utils';
-import { Live2DWorkflow, WORKFLOW_STEPS, STEP_DISPLAY_NAMES, WorkflowStep } from '../lib/workflow';
+import { Live2DWorkflow } from '../lib-shared/workflow';
+import { STEP_NAMES } from '../lib-shared/types';
 
 const ChatAssistant = dynamic(() => import('../components/ChatAssistant'), {
   ssr: false,
@@ -66,20 +67,13 @@ const Home: NextPage = () => {
   const workflowRef = useRef<Live2DWorkflow>(new Live2DWorkflow());
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [expertMode, setExpertMode] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState<Set<WorkflowStep>>(new Set());
-
-  const workflowSteps: TrackerStep[] = useMemo(() => {
-    return WORKFLOW_STEPS.map((step) => ({
-      id: step,
-      title: STEP_DISPLAY_NAMES[step],
-    }));
-  }, []);
+  const [completedSteps, setCompletedSteps] = useState<boolean[]>([false, false, false, false, false, false, false, false]);
 
   useEffect(() => {
     const workflow = workflowRef.current;
     const state = workflow.getState();
-    setCurrentStepIndex(WORKFLOW_STEPS.indexOf(state.currentStep));
-    setCompletedSteps(new Set(state.completedSteps));
+    setCurrentStepIndex(state.currentStep - 1);
+    setCompletedSteps([...state.completed]);
     setExpertMode(state.mode === 'expert');
   }, []);
 
@@ -153,26 +147,25 @@ const Home: NextPage = () => {
     const workflow = workflowRef.current;
     workflow.reset();
     setCurrentStepIndex(0);
-    setCompletedSteps(new Set());
+    setCompletedSteps([false, false, false, false, false, false, false, false]);
     setExpertMode(false);
   }, []);
 
   const handleStepClick = useCallback((stepIndex: number) => {
     const workflow = workflowRef.current;
-    const targetStep = WORKFLOW_STEPS[stepIndex];
     
     if (expertMode || stepIndex <= currentStepIndex) {
-      workflow.goToStep(targetStep);
+      workflow.goToStep(stepIndex + 1);
       setCurrentStepIndex(stepIndex);
     }
   }, [expertMode, currentStepIndex]);
 
   const handleCompleteStep = useCallback(() => {
     const workflow = workflowRef.current;
-    workflow.markStepComplete();
-    setCompletedSteps(new Set(workflow.getState().completedSteps));
+    workflow.markCurrentStepComplete();
+    setCompletedSteps([...workflow.getState().completed]);
 
-    if (currentStepIndex < WORKFLOW_STEPS.length - 1) {
+    if (currentStepIndex < 7) {
       workflow.nextStep();
       setCurrentStepIndex(currentStepIndex + 1);
     }
@@ -277,17 +270,17 @@ const Home: NextPage = () => {
 
         <div className="mb-3 sm:mb-4">
           <WorkflowTracker
-            steps={workflowSteps}
-            currentStep={currentStepIndex}
-            expertMode={expertMode}
+            currentStep={currentStepIndex + 1}
+            completed={completedSteps}
+            mode={expertMode ? 'expert' : 'wizard'}
             onStepClick={handleStepClick}
           />
           <div className="mt-3 flex items-center justify-center gap-3">
             <button
               onClick={handleCompleteStep}
-              disabled={currentStepIndex >= WORKFLOW_STEPS.length - 1}
+              disabled={currentStepIndex >= 7}
               className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                currentStepIndex >= WORKFLOW_STEPS.length - 1
+                currentStepIndex >= 7
                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/25'
               }`}
