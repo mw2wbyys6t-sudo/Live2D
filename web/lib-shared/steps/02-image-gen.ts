@@ -1,3 +1,5 @@
+import { SeedreamService, SeedreamVersion, SeedreamSize, SeedreamOptions } from '../seedream-service';
+
 export interface ImageGenStepInput {
   prompt: string;
   negativePrompt?: string;
@@ -11,6 +13,9 @@ export interface ImageGenStepInput {
   cfgScale?: number;
   sampler?: string;
   model?: string;
+  useSeedream?: boolean;
+  seedreamVersion?: SeedreamVersion;
+  seedreamSize?: SeedreamSize;
 }
 
 export type ImageStyle = 
@@ -27,12 +32,16 @@ export type ResolutionPreset =
   | 'square-768' 
   | 'square-1024' 
   | 'square-1280'
+  | 'square-2048'
+  | 'square-4096'
   | 'portrait-512x768' 
   | 'portrait-768x1024' 
   | 'portrait-1024x1536'
+  | 'portrait-2048x3072'
   | 'landscape-768x512' 
   | 'landscape-1024x768' 
-  | 'landscape-1536x1024';
+  | 'landscape-1536x1024'
+  | 'landscape-3072x2048';
 
 export type QualityLevel = 'draft' | 'standard' | 'high' | 'ultra';
 
@@ -43,6 +52,8 @@ export interface ImageGenStepOutput {
   settings: ImageGenStepInput;
   generationTime: number;
   modelUsed: string;
+  seedreamUsed: boolean;
+  seedreamVersion?: SeedreamVersion;
 }
 
 const RESOLUTION_MAP: Record<ResolutionPreset, { width: number; height: number }> = {
@@ -50,19 +61,43 @@ const RESOLUTION_MAP: Record<ResolutionPreset, { width: number; height: number }
   'square-768': { width: 768, height: 768 },
   'square-1024': { width: 1024, height: 1024 },
   'square-1280': { width: 1280, height: 1280 },
+  'square-2048': { width: 2048, height: 2048 },
+  'square-4096': { width: 4096, height: 4096 },
   'portrait-512x768': { width: 512, height: 768 },
   'portrait-768x1024': { width: 768, height: 1024 },
   'portrait-1024x1536': { width: 1024, height: 1536 },
+  'portrait-2048x3072': { width: 2048, height: 3072 },
   'landscape-768x512': { width: 768, height: 512 },
   'landscape-1024x768': { width: 1024, height: 768 },
-  'landscape-1536x1024': { width: 1536, height: 1024 },
+  'landscape-1536x1026': { width: 1536, height: 1024 },
+  'landscape-3072x2048': { width: 3072, height: 2048 },
 };
 
-const QUALITY_SETTINGS: Record<QualityLevel, { steps: number; cfg: number }> = {
-  'draft': { steps: 15, cfg: 5.5 },
-  'standard': { steps: 25, cfg: 7.0 },
-  'high': { steps: 35, cfg: 7.5 },
-  'ultra': { steps: 50, cfg: 8.0 },
+const QUALITY_SETTINGS: Record<QualityLevel, { steps: number; cfg: number; seedreamVersion: SeedreamVersion; seedreamSize: SeedreamSize }> = {
+  'draft': { 
+    steps: 15, 
+    cfg: 5.5, 
+    seedreamVersion: '4.0',
+    seedreamSize: '1024x1024',
+  },
+  'standard': { 
+    steps: 25, 
+    cfg: 7.0, 
+    seedreamVersion: '4.5',
+    seedreamSize: '2048x2048',
+  },
+  'high': { 
+    steps: 35, 
+    cfg: 7.5, 
+    seedreamVersion: '5.0',
+    seedreamSize: '2048x2048',
+  },
+  'ultra': { 
+    steps: 50, 
+    cfg: 8.0, 
+    seedreamVersion: '5.0',
+    seedreamSize: '4096x4096',
+  },
 };
 
 const STYLE_PREFIXES: Record<ImageStyle, string> = {
@@ -77,7 +112,15 @@ const STYLE_PREFIXES: Record<ImageStyle, string> = {
 
 const NEGATIVE_PROMPT_BASE = 'low quality, blurry, distorted, pixelated, ugly, deformed, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra limb, missing limb, floating limbs, disconnected limbs, malformed hands, long neck, bad proportions, watermark, text, signature, logo, cropped, out of frame';
 
+const SEEDREAM_LIVE2D_ENHANCEMENTS = 'perfect for Live2D rigging, clean layer separation, isolated character, solid background, easy to rig, professional artwork';
+
 export class ImageGenStep {
+  private seedreamService: SeedreamService;
+  
+  constructor() {
+    this.seedreamService = new SeedreamService();
+  }
+
   private getResolution(preset: ResolutionPreset): { width: number; height: number } {
     return RESOLUTION_MAP[preset] || { width: 1024, height: 1024 };
   }
@@ -130,6 +173,10 @@ export class ImageGenStep {
     const finalPrompt = this.buildPrompt(input);
     const finalNegativePrompt = this.buildNegativePrompt(input);
 
+    if (input.useSeedream) {
+      return this.executeWithSeedream(input, seed, startTime);
+    }
+
     try {
       const result = await this.generateImage({
         prompt: finalPrompt,
@@ -160,6 +207,7 @@ export class ImageGenStep {
         },
         generationTime,
         modelUsed: model,
+        seedreamUsed: false,
       };
     } catch (error) {
       console.error('Image generation failed:', error);
@@ -179,8 +227,77 @@ export class ImageGenStep {
         },
         generationTime: Date.now() - startTime,
         modelUsed: 'fallback',
+        seedreamUsed: false,
       };
     }
+  }
+
+  private async executeWithSeedream(
+    input: ImageGenStepInput,
+    seed: number,
+    startTime: number
+  ): Promise<ImageGenStepOutput> {
+    const quality = QUALITY_SETTINGS[input.quality || 'standard'];
+    const version = input.seedreamVersion || quality.seedreamVersion;
+    const size = input.seedreamSize || quality.seedreamSize;
+
+    const stylePrefix = input.style ? STYLE_PREFIXES[input.style] : STYLE_PREFIXES['anime'];
+    const seedreamPrompt = `${stylePrefix}, ${input.prompt}, ${SEEDREAM_LIVE2D_ENHANCEMENTS}`;
+
+    const options: SeedreamOptions = {
+      version,
+      size,
+      watermark: false,
+      responseFormat: 'url',
+      outputFormat: 'png',
+      optimizePromptMode: 'standard',
+    };
+
+    try {
+      const result = await this.seedreamService.generate(seedreamPrompt, options);
+      
+      if (result.success && result.images.length > 0) {
+        const imageUrl = result.images[0].url || result.images[0].base64 || '';
+        return {
+          imagePath: `output/character-seedream-${seed}.png`,
+          imageUrl,
+          seed,
+          settings: {
+            ...input,
+            seedreamVersion: version,
+            seedreamSize: size,
+          },
+          generationTime: result.generationTime,
+          modelUsed: result.model,
+          seedreamUsed: true,
+          seedreamVersion: version,
+        };
+      }
+
+      return this.getFallbackResult(input, seed, startTime, version);
+    } catch (error) {
+      console.error('Seedream generation failed:', error);
+      return this.getFallbackResult(input, seed, startTime, version);
+    }
+  }
+
+  private getFallbackResult(
+    input: ImageGenStepInput,
+    seed: number,
+    startTime: number,
+    version: SeedreamVersion
+  ): ImageGenStepOutput {
+    const finalPrompt = this.buildPrompt(input);
+    return {
+      imagePath: `output/character-${seed}.png`,
+      imageUrl: `https://neeko-copilot.bytedance.net/api/text2image?prompt=${encodeURIComponent(finalPrompt)}&image_size=portrait_16_9`,
+      seed,
+      settings: input,
+      generationTime: Date.now() - startTime,
+      modelUsed: 'fallback',
+      seedreamUsed: false,
+      seedreamVersion: version,
+    };
   }
 
   private async generateImage(params: {
@@ -198,6 +315,14 @@ export class ImageGenStep {
     const imageUrl = `https://neeko-copilot.bytedance.net/api/text2image?prompt=${encodeURIComponent(params.prompt)}&image_size=portrait_16_9`;
 
     return { imagePath, imageUrl };
+  }
+
+  getVersionInfo(version: SeedreamVersion) {
+    return this.seedreamService.getVersionInfo(version);
+  }
+
+  listSeedreamVersions() {
+    this.seedreamService.listVersions();
   }
 }
 

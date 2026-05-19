@@ -4,14 +4,43 @@
 
 ---
 
+## 🎨 Seedream 高质量图像生成
+
+### 版本说明
+
+| 版本 | 模型名称 | 描述 | 推荐场景 |
+|------|----------|------|----------|
+| **5.0** | doubao-seedream-5-0-260128 | 当前最强版本！突破性创意表达和超高细节质量 | **推荐用于 Live2D** |
+| **4.5** | doubao-seedream-4-5-251128 | 细节表现更好，复杂场景处理更优 | 高质量日常使用 |
+| **4.0** | doubao-seedream-4-0-250828 | 稳定可靠，响应快速 | 快速预览 |
+
+### 质量级别与 Seedream 映射
+
+| 质量级别 | Seedream 版本 | 分辨率 | 描述 |
+|---------|--------------|--------|------|
+| **Ultra** | 5.0 | 4096×4096 | 超高质量，8K级别细节 |
+| **High** | 5.0 | 2048×2048 | 高质量，细节丰富 |
+| **Standard** | 4.5 | 2048×2048 | 标准质量，平衡速度与效果 |
+| **Draft** | 4.0 | 1024×1024 | 快速预览 |
+
+### Seedream 支持的分辨率
+
+- **1K**: 1024×1024
+- **2K**: 2048×2048
+- **3K**: 3072×3072
+- **4K**: 4096×4096
+- 自定义: 如 `2048x3072`
+
+---
+
 ## 质量级别预设
 
-| 级别 | 步数 | CFG | 描述 |
-|------|------|-----|------|
-| **Draft** | 15 | 5.5 | 快速预览，质量一般 |
-| **Standard** | 25 | 7.0 | 标准质量，平衡速度与效果 |
-| **High** | 35 | 7.5 | 高质量，细节丰富 |
-| **Ultra** | 50 | 8.0 | 超高质量，8K 级别细节 |
+| 级别 | 步数 | CFG | Seedream版本 | 描述 |
+|------|------|-----|-------------|------|
+| **Draft** | 15 | 5.5 | 4.0 | 快速预览，质量一般 |
+| **Standard** | 25 | 7.0 | 4.5 | 标准质量，平衡速度与效果 |
+| **High** | 35 | 7.5 | 5.0 | 高质量，细节丰富 |
+| **Ultra** | 50 | 8.0 | 5.0 | 超高质量，8K 级别细节 |
 
 ---
 
@@ -23,15 +52,18 @@
 | square-768 | 768×768 | 标准头像 |
 | square-1024 | 1024×1024 | 高质量头像 |
 | square-1280 | 1280×1280 | 超高清头像 |
+| square-2048 | 2048×2048 | Seedream 标准质量 |
+| square-4096 | 4096×4096 | Seedream 超高质量 |
 | portrait-512x768 | 512×768 | 小尺寸半身像 |
 | portrait-768x1024 | 768×1024 | 标准半身像 |
 | portrait-1024x1536 | 1024×1536 | 高质量半身像 |
+| portrait-2048x3072 | 2048×3072 | Seedream 高质量半身像 |
 
 ---
 
 ## 风格类型
 
-### 1. Anime (动漫风格)
+### 1. Anime (动漫风格) - **推荐用于 Live2D**
 ```
 anime style, beautiful detailed anime artwork, anime aesthetic, sharp clean lines, vibrant colors, studio quality animation cel
 ```
@@ -109,34 +141,11 @@ Q版可爱动漫女孩，正面朝向，粉色短发，红色大眼睛，校服�
 
 ---
 
-## 角色元素清单
+## Live2D 专用增强关键词
 
-### 头发选项
-- 短发、中长发、长发
-- 双马尾、单马尾
-- 卷发、直发
-- 渐变发色、挑染
-- 刘海样式：齐刘海、斜刘海、无刘海
-
-### 眼睛选项
-- 眼睛大小：大眼睛、中等眼睛、小眼睛
-- 眼睛颜色：蓝色、绿色、紫色、金色、棕色、红色、粉色、琥珀色
-- 眼睛样式：圆形、杏仁形、下垂眼、锐利眼
-
-### 服装选项
-- 水手服、连衣裙、洛丽塔、校服、休闲装
-- 偶像装、女仆装、魔法少女装
-- 哥特风、朋克风、和风、古风
-
-### 配件选项
-- 兽耳：猫耳、兔耳、狐耳、狼耳、熊耳
-- 头饰：发夹、发带、帽子、皇冠
-- 尾巴：猫尾、兔尾、狐尾
-- 翅膀：天使翅膀、恶魔翅膀
-- 其他：眼镜、项链、耳环、围巾
-
-### 表情选项
-- 微笑、开心大笑、平静、害羞、惊讶、生气、悲伤、眨眼
+```
+perfect for Live2D rigging, clean layer separation, isolated character, solid background, easy to rig, professional artwork
+```
 
 ---
 
@@ -168,17 +177,73 @@ low quality, blurry, distorted, pixelated, ugly, deformed, bad anatomy, disfigur
 
 ## 完整提示词示例
 
-### 示例 1: 高质量动漫角色
+### 示例 1: Seedream 5.0 高质量动漫角色
 ```
 anime style, beautiful detailed anime artwork, cute anime girl, front view, half body, pink long hair twin tails, big blue eyes, sailor uniform, sweet smile, white background, 8K, ultra detailed, masterpiece, award-winning, professional artwork, perfect for Live2D rigging, clean layer separation, isolated character, solid background
 ```
 
-### 示例 2: 超高质量兽耳角色
+**推荐参数:**
+- Seedream 版本: 5.0
+- 分辨率: 4096×4096
+- 输出格式: PNG
+
+### 示例 2: Seedream 5.0 超高质量兽耳角色
 ```
 anime style, beautiful detailed anime artwork, cute cat girl, front facing, half body portrait, golden long hair, green eyes, lolita dress, happy expression, pure white background, 8K resolution, ultra detailed, masterpiece quality, stunning visuals, perfect for Live2D rigging, clean layers, easy to animate
 ```
 
+**推荐参数:**
+- Seedream 版本: 5.0
+- 分辨率: 2048×2048
+- 输出格式: PNG
+
 ### 示例 3: Q版角色
 ```
 chibi anime style, cute chibi girl, front view, pink short hair, big red eyes, school uniform, cheerful expression, white background, high quality, clean lines, simple design, perfect for Live2D chibi rigging
+```
+
+**推荐参数:**
+- Seedream 版本: 4.5
+- 分辨率: 1024×1024
+- 输出格式: PNG
+
+---
+
+## 使用 Seedream 生成 Live2D 立绘
+
+### 配置 API Key
+
+```typescript
+import { SeedreamService } from './lib/seedream-service';
+
+const service = new SeedreamService();
+service.setApiKey('your-ark-api-key');
+```
+
+### 生成高质量立绘
+
+```typescript
+const result = await service.generate(
+  'cute anime girl, pink hair, blue eyes, sailor uniform',
+  {
+    version: '5.0',
+    size: '4096x4096',
+    outputFormat: 'png',
+    watermark: false,
+  }
+);
+```
+
+### 使用 ImageGenStep
+
+```typescript
+import { ImageGenStep } from './lib/steps';
+
+const step = new ImageGenStep();
+const result = await step.execute({
+  prompt: 'cute anime girl, pink hair, blue eyes',
+  useSeedream: true,
+  quality: 'ultra',
+  style: 'anime',
+});
 ```
