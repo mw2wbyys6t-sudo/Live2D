@@ -6,8 +6,6 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
-  basePath: '/Live2D',
-  assetPrefix: '/Live2D/',
 }
 
 module.exports = nextConfig
