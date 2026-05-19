@@ -29,7 +29,7 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'im
 
 export default function ImageToPsd() {
   const [dragOver, setDragOver] = useState(false);
-  const [image, setImage] = useState<{ file: File; dataUrl: string } | null>(null);
+  const [image, setImage] = useState<{ file: File; dataUrl: string; width?: number; height?: number } | null>(null);
   const [converting, setConverting] = useState(false);
   const [done, setDone] = useState(false);
   const [psdName, setPsdName] = useState('');
@@ -58,7 +58,20 @@ export default function ImageToPsd() {
     }
 
     const dataUrl = URL.createObjectURL(file);
-    setImage({ file, dataUrl });
+    
+    // 获取图片尺寸
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('图片加载失败'));
+      });
+      
+      setImage({ file, dataUrl, width: img.width, height: img.height });
+    } catch {
+      setImage({ file, dataUrl });
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -140,7 +153,7 @@ export default function ImageToPsd() {
     return () => {
       if (image?.dataUrl) URL.revokeObjectURL(image.dataUrl);
     };
-  }, []);
+  }, [image]);
 
   return (
     <div className="w-full max-w-lg mx-auto">
@@ -226,9 +239,11 @@ export default function ImageToPsd() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-gray-400 mb-4">
               <span className="px-2 py-1 bg-gray-700/50 rounded-lg">{formatSize(image.file.size)}</span>
-              <span className="px-2 py-1 bg-gray-700/50 rounded-lg">
-                <span id="img-dims">加载中...</span>
-              </span>
+              {image.width && image.height && (
+                <span className="px-2 py-1 bg-gray-700/50 rounded-lg">
+                  {image.width} × {image.height}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button

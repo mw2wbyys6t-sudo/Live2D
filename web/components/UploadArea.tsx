@@ -8,6 +8,7 @@ interface UploadAreaProps {
   onUpload: (file: File) => void;
   loadingStage: LoadingStage;
   fileInfo?: { name: string; size: number; width: number; height: number };
+  onError?: (message: string) => void;
 }
 
 const UploadIcon = React.memo(() => (
@@ -44,11 +45,19 @@ const SpinnerIcon = React.memo(() => (
 ));
 SpinnerIcon.displayName = 'SpinnerIcon';
 
-const UploadArea = React.memo(function UploadArea({ onUpload, loadingStage, fileInfo }: UploadAreaProps) {
+const UploadArea = React.memo(function UploadArea({ onUpload, loadingStage, fileInfo, onError }: UploadAreaProps) {
   const isLoading = loadingStage !== 'idle' && loadingStage !== 'complete';
   const [dragOver, setDragOver] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const showError = useCallback((message: string) => {
+    if (onError) {
+      onError(message);
+    } else {
+      console.warn(message);
+    }
+  }, [onError]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -56,43 +65,43 @@ const UploadArea = React.memo(function UploadArea({ onUpload, loadingStage, file
     const file = e.dataTransfer.files[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      alert('文件大小超过限制 (最大 50MB)');
+      showError('文件大小超过限制 (最大 50MB)');
       return;
     }
     if (!file.name.toLowerCase().endsWith('.psd')) {
-      alert('请上传 PSD 文件');
+      showError('请上传 PSD 文件');
       return;
     }
     const valid = await validatePSDFile(file);
     if (!valid) {
-      alert('文件不是有效的 PSD 格式');
+      showError('文件不是有效的 PSD 格式');
       return;
     }
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 2000);
     onUpload(file);
-  }, [onUpload]);
+  }, [onUpload, showError]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      alert('文件大小超过限制 (最大 50MB)');
+      showError('文件大小超过限制 (最大 50MB)');
       return;
     }
     if (!file.name.toLowerCase().endsWith('.psd')) {
-      alert('请上传 PSD 文件');
+      showError('请上传 PSD 文件');
       return;
     }
     const valid = await validatePSDFile(file);
     if (!valid) {
-      alert('文件不是有效的 PSD 格式');
+      showError('文件不是有效的 PSD 格式');
       return;
     }
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 2000);
     onUpload(file);
-  }, [onUpload]);
+  }, [onUpload, showError]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

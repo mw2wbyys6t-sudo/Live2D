@@ -109,12 +109,9 @@ const Home: NextPage = () => {
       const msg = err instanceof Error ? err.message : String(err);
       const errorInfo = getErrorMessage(msg);
       setError(`${errorInfo.title}: ${errorInfo.message}\n\n建议: ${errorInfo.suggestion}`);
-    } finally {
-      if (loadingStage !== 'complete') {
-        setLoadingStage('idle');
-      }
+      setLoadingStage('idle');
     }
-  }, [loadingStage]);
+  }, []);
 
   const handleReset = useCallback(() => {
     setView('upload');
@@ -148,7 +145,6 @@ const Home: NextPage = () => {
     <ErrorBoundary>
       <div className="min-h-screen bg-[#0f0f13] text-white sm:min-h-[100vh]">
       <SEO />
-      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>" />
 
       <header className="border-b border-gray-800 sticky top-0 z-50 bg-[#0f0f13]/95 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
@@ -217,7 +213,11 @@ const Home: NextPage = () => {
                     上传 PSD 文件，自动检查 Live2D 风险并生成优化报告
                   </p>
                 </div>
-                <UploadArea onUpload={handleUpload} loadingStage={loadingStage} />
+                <UploadArea 
+                  onUpload={handleUpload} 
+                  loadingStage={loadingStage}
+                  onError={setError}
+                />
                 <div className="mt-4 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-center text-xs text-gray-500">
                   <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg">
                     <p className="text-base sm:text-lg mb-1">🔍</p>
@@ -253,7 +253,12 @@ const Home: NextPage = () => {
 
         {loadingStage !== 'idle' && loadingStage !== 'complete' && (
           <div className="max-w-lg mx-auto mt-8 sm:mt-16 px-2">
-            <UploadArea onUpload={handleUpload} loadingStage={loadingStage} fileInfo={fileInfo} />
+            <UploadArea 
+              onUpload={handleUpload} 
+              loadingStage={loadingStage} 
+              fileInfo={fileInfo}
+              onError={setError}
+            />
           </div>
         )}
 
