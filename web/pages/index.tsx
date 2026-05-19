@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import dynamic from 'next/dynamic';
 import UploadArea from '../components/UploadArea';
@@ -6,9 +6,11 @@ import LayerTree from '../components/LayerTree';
 import QAResult from '../components/QAResult';
 import SEO from '../components/SEO';
 import ErrorBoundary from '../components/ErrorBoundary';
+import WorkflowTracker, { WorkflowStep as TrackerStep } from '../components/WorkflowTracker';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 import { getErrorMessage } from '../lib/utils';
+import { Live2DWorkflow, WORKFLOW_STEPS, STEP_DISPLAY_NAMES, WorkflowStep } from '../lib/workflow';
 
 const ChatAssistant = dynamic(() => import('../components/ChatAssistant'), {
   ssr: false,
@@ -60,6 +62,26 @@ const Home: NextPage = () => {
       hasStructuralIssues: boolean;
     };
   } | null>(null);
+
+  const workflowRef = useRef<Live2DWorkflow>(new Live2DWorkflow());
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [expertMode, setExpertMode] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Set<WorkflowStep>>(new Set());
+
+  const workflowSteps: TrackerStep[] = useMemo(() => {
+    return WORKFLOW_STEPS.map((step) => ({
+      id: step,
+      title: STEP_DISPLAY_NAMES[step],
+    }));
+  }, []);
+
+  useEffect(() => {
+    const workflow = workflowRef.current;
+    const state = workflow.getState();
+    setCurrentStepIndex(WORKFLOW_STEPS.indexOf(state.currentStep));
+    setCompletedSteps(new Set(state.completedSteps));
+    setExpertMode(state.mode === 'expert');
+  }, []);
 
   const handleUpload = useCallback(async (file: File) => {
     setLoadingStage('loading');
@@ -127,6 +149,47 @@ const Home: NextPage = () => {
 
   const handleClearError = useCallback(() => setError(null), []);
 
+  const handleWorkflowReset = useCallback(() => {
+    const workflow = workflowRef.current;
+    workflow.reset();
+    setCurrentStepIndex(0);
+    setCompletedSteps(new Set());
+    setExpertMode(false);
+  }, []);
+
+  const handleStepClick = useCallback((stepIndex: number) => {
+    const workflow = workflowRef.current;
+    const targetStep = WORKFLOW_STEPS[stepIndex];
+    
+    if (expertMode || stepIndex <= currentStepIndex) {
+      workflow.goToStep(targetStep);
+      setCurrentStepIndex(stepIndex);
+    }
+  }, [expertMode, currentStepIndex]);
+
+  const handleCompleteStep = useCallback(() => {
+    const workflow = workflowRef.current;
+    workflow.markStepComplete();
+    setCompletedSteps(new Set(workflow.getState().completedSteps));
+
+    if (currentStepIndex < WORKFLOW_STEPS.length - 1) {
+      workflow.nextStep();
+      setCurrentStepIndex(currentStepIndex + 1);
+    }
+  }, [currentStepIndex]);
+
+  const handleToggleExpertMode = useCallback(() => {
+    const workflow = workflowRef.current;
+    const newMode = expertMode ? 'wizard' : 'expert';
+    
+    if (newMode === 'expert') {
+      workflow.switchToExpert();
+    } else {
+      workflow.switchToWizard();
+    }
+    setExpertMode(!expertMode);
+  }, [expertMode]);
+
   const layerTreeData = useMemo(() => {
     if (!result) return [];
     return result.issues.map((i, idx) => ({
@@ -181,6 +244,18 @@ const Home: NextPage = () => {
                 ↺ 重新分析
               </button>
             )}
+            <button
+              onClick={handleToggleExpertMode}
+              className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors ${expertMode ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700'}`}
+            >
+              🔧 {expertMode ? '专家模式' : '向导模式'}
+            </button>
+            <button
+              onClick={handleWorkflowReset}
+              className="text-xs sm:text-sm text-gray-400 hover:text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+            >
+              🔄 重置工作流
+            </button>
             <span className="hidden sm:block text-xs text-gray-500">v2.0.0</span>
           </div>
         </div>
@@ -199,6 +274,28 @@ const Home: NextPage = () => {
             </button>
           </div>
         )}
+
+        <div className="mb-3 sm:mb-4">
+          <WorkflowTracker
+            steps={workflowSteps}
+            currentStep={currentStepIndex}
+            expertMode={expertMode}
+            onStepClick={handleStepClick}
+          />
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <button
+              onClick={handleCompleteStep}
+              disabled={currentStepIndex >= WORKFLOW_STEPS.length - 1}
+              className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+                currentStepIndex >= WORKFLOW_STEPS.length - 1
+                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/25'
+              }`}
+            >
+              ✓ 完成当前步骤
+            </button>
+          </div>
+        </div>
 
         {view === 'upload' && loadingStage === 'idle' && mode === 'qa' && (
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6" style={{ height: 'calc(100vh - 120px)' }}>
