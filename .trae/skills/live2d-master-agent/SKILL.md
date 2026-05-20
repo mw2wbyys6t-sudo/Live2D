@@ -137,12 +137,21 @@ python auto_generator.py
 ## API 配置（已集成）
 
 ### 火山引擎 ARK API
-技能已预配置 API 密钥，开箱即用：
 
+**注意**: API 密钥需要用户自行配置，请勿在代码中硬编码密钥！
+
+配置方法：
+1. 复制 `.env.example` 为 `.env`
+2. 填入你的 API 密钥：
 ```
-ARK_API_KEY=ark-d0dd55e5-ee35-426f-9321-7c09b8d76a81-4283b
+ARK_API_KEY=your-api-key-here
 ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 ```
+
+**安全提示**:
+- ⚠️ 不要将 API 密钥提交到版本控制
+- ⚠️ 不要在公开代码中暴露密钥
+- ✅ 使用环境变量或配置文件管理密钥
 
 ### 配置文件位置
 - `.env` - 环境变量配置
