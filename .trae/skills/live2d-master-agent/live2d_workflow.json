@@ -1,0 +1,140 @@
+{
+  "name": "Live2D Character Generator",
+  "version": "1.0",
+  "description": "ComfyUI workflow for generating high-quality Live2D-ready anime characters",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "1",
+        "type": "KSampler",
+        "inputs": {
+          "model": ["18", 0],
+          "seed": ["2", 0],
+          "steps": ["3", 0],
+          "cfg": ["4", 0],
+          "sampler_name": ["5", 0],
+          "scheduler": ["6", 0],
+          "positive": ["7", 0],
+          "negative": ["8", 0],
+          "latent_image": ["16", 0]
+        }
+      },
+      {
+        "id": "2",
+        "type": "RandomNoise",
+        "inputs": {
+          "noise_seed": -1
+        }
+      },
+      {
+        "id": "3",
+        "type": "IntNumber",
+        "inputs": {
+          "int": 30
+        }
+      },
+      {
+        "id": "4",
+        "type": "FloatNumber",
+        "inputs": {
+          "float": 7.0
+        }
+      },
+      {
+        "id": "5",
+        "type": "KSamplerSelect",
+        "inputs": {
+          "sampler_name": "euler"
+        }
+      },
+      {
+        "id": "6",
+        "type": "KSamplerSchedulerSelect",
+        "inputs": {
+          "scheduler": "normal"
+        }
+      },
+      {
+        "id": "7",
+        "type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["18", 1],
+          "text": "anime girl, cute kawaii style, beautiful face, big expressive eyes, long flowing pink hair, soft pink gradient hair, hair strands detailed, wearing JK school uniform, white blouse, navy blue pleated skirt, red ribbon tie, slender figure, elegant pose, standing pose, perfect for Live2D rigging, clean layer separation, isolated character on white background, easy to rig, sharp clean lines, vibrant colors, ultra detailed, masterpiece, award-winning quality, professional artwork, 4K resolution, high quality render, anime art style, soft lighting, detailed facial features, sparkling eyes"
+        }
+      },
+      {
+        "id": "8",
+        "type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["18", 1],
+          "text": "blurry, low quality, bad anatomy, bad hands, multiple characters, complex background, merged layers, overlapping parts, extra fingers, mutated, deformed, disfigured, lowres, text, watermark, signature, logo, worst quality, low quality, normal quality, jpeg artifacts, blurry, out of focus"
+        }
+      },
+      {
+        "id": "9",
+        "type": "VAEDecode",
+        "inputs": {
+          "vae": ["10", 0],
+          "samples": ["1", 0]
+        }
+      },
+      {
+        "id": "10",
+        "type": "VAELoader",
+        "inputs": {
+          "vae_name": "auto"
+        }
+      },
+      {
+        "id": "11",
+        "type": "SaveImage",
+        "inputs": {
+          "filename_prefix": "Live2D_Character",
+          "images": ["9", 0]
+        }
+      },
+      {
+        "id": "16",
+        "type": "EmptyLatentImage",
+        "inputs": {
+          "width": 2048,
+          "height": 2048,
+          "batch_size": 1
+        }
+      },
+      {
+        "id": "18",
+        "type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "AnythingV5.safetensors"
+        }
+      }
+    ]
+  },
+  "presets": [
+    {
+      "name": "Cute Kawaii",
+      "description": "可爱萌系风格",
+      "positive": "anime girl, cute kawaii style, big eyes, soft features, pastel colors, gentle expression",
+      "negative": "blurry, low quality, bad anatomy"
+    },
+    {
+      "name": "Cool Tomboy",
+      "description": "帅气中性风格",
+      "positive": "anime girl, cool style, tomboy, sharp features, confident expression, dark colors",
+      "negative": "blurry, low quality, bad anatomy"
+    },
+    {
+      "name": "Elegant Refined",
+      "description": "优雅精致风格",
+      "positive": "anime girl, elegant, refined, detailed features, graceful pose, vibrant colors",
+      "negative": "blurry, low quality, bad anatomy"
+    },
+    {
+      "name": "Magical Fantasy",
+      "description": "奇幻魔法风格",
+      "positive": "anime girl, magical girl, fantasy, sparkles, magical elements, ethereal",
+      "negative": "blurry, low quality, bad anatomy"
+    }
+  ]
+}
