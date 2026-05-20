@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 3.0
+version: 3.1
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成、实时进度反馈、智能错误恢复等先进功能
+description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导等先进功能
 ---
 
 # Role
@@ -147,6 +147,89 @@ ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 ### 配置文件位置
 - `.env` - 环境变量配置
 - `config.py` - 配置加载器
+
+## 🔍 增强质量检查
+
+### 全面检查项目
+
+使用增强版质量检查引擎 `scripts/qa_engine_enhanced.py`：
+
+| 检查类型 | 说明 | 严重程度 |
+|----------|------|----------|
+| **命名检查** | 中文、空格、数字开头 | Error/Warning |
+| **结构检查** | 必需图层完整性 | Warning |
+| **遮挡分析** | 图层重叠关系 | Warning |
+| **透明度检查** | 半透明、完全透明 | Info/Warning |
+| **混合模式检查** | 非 Normal 模式 | Error/Warning |
+| **分辨率检查** | 尺寸、正方形、过大 | Info/Warning |
+| **Draw Order** | 重复绘制顺序 | Warning |
+
+### 使用方法
+
+```python
+from scripts.qa_engine_enhanced import EnhancedQAEngine
+
+engine = EnhancedQAEngine()
+report = engine.check_all(psd_data)
+print(engine.generate_report_markdown(report))
+```
+
+## ⚙️ 增强参数设计
+
+### 预设参数模板
+
+使用增强版参数设计器 `scripts/parameter_designer_enhanced.py`：
+
+| 模板 | 参数数量 | 适用场景 |
+|------|----------|----------|
+| 基础模板 | 13 | 所有角色 |
+| 标准模板 | 19 | 标准角色/VTuber |
+| 完整模板 | 24 | 专业角色 |
+| 简单模板 | 4 | 简单角色 |
+| 表情丰富模板 | 23 | 互动VTuber |
+| 物理丰富模板 | 22 | 长发/有配饰 |
+
+### 表情配置
+
+内置 8 种表情配置：
+- 默认、开心、悲伤、生气、惊讶
+- 眨眼、眨左眼、眨右眼
+
+### 使用方法
+
+```python
+from scripts.parameter_designer_enhanced import EnhancedParameterDesigner
+
+designer = EnhancedParameterDesigner()
+config = designer.generate_config_json('标准模板')
+print(designer.generate_report_markdown('标准模板'))
+```
+
+## 📚 详细 Rigging 指导
+
+### 完整指南位置
+
+`docs/RIGGING_GUIDE.md` - 包含：
+
+- ✅ 10 个详细绑定步骤
+- ✅ 5 个部件绑定指导（眼睛、嘴巴、头发、手臂、裙子）
+- ✅ 8 个常见问题解答
+- ✅ 视频教程链接
+- ✅ 最佳实践
+
+### 快速参考
+
+**绑定步骤**:
+1. 导入 PSD 文件
+2. 设置画布
+3. 创建参数
+4. 创建变形器
+5. 设置网格
+6. 创建关键形状
+7. 设置物理效果
+8. 添加动画
+9. 测试和调整
+10. 导出模型
 
 ### 修改配置
 如需修改 API 配置，编辑 `.env` 文件：
@@ -526,6 +609,14 @@ isolated character
 5. 遵循质检报告的建议
 
 # Changelog
+
+## v3.1 (2026-05-20)
+- ✨ 新增增强版质量检查引擎（遮挡、透明度、混合模式、分辨率）
+- ✨ 新增增强版参数设计器（6个预设模板、8种表情配置）
+- ✨ 新增完整 Rigging 指导（10步骤、5部件、8 FAQ）
+- ✨ 新增免费图像生成方案（Pollinations.ai）
+- 📚 完善文档和教程
+- 🎯 功能完善度提升至 95%
 
 ## v3.0 (2026-05-20)
 - ✨ 新增高质量图像生成功能（Seedream 5.0 支持 2K/4K）
