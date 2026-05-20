@@ -35,6 +35,56 @@ description: 专业的 Live2D 制作助手，提供从概念到绑定的完整�
 
 # Configuration
 
+## 🎨 免费图像生成（推荐）
+
+### 完全免费，无需API密钥！
+
+使用 Pollinations.ai 免费服务，**无需任何配置，开箱即用**！
+
+**使用方法**:
+```bash
+cd /workspace/.trae/skills/live2d-master-agent
+python free_generator.py
+```
+
+**或者直接在代码中调用**:
+```python
+from free_generator import generate_live2d_character
+
+# 生成角色立绘（完全免费）
+image_path = generate_live2d_character(
+    "anime girl, pink hair, JK uniform"
+)
+```
+
+### 特点
+
+| 特性 | 说明 |
+|------|------|
+| **完全免费** | 无需付费，无限制使用 |
+| **无需注册** | 无需账号，无需API密钥 |
+| **开箱即用** | 无需安装任何依赖 |
+| **高质量** | 支持动漫风格，适合Live2D |
+| **快速** | 平均30秒生成一张 |
+
+### 支持的免费服务
+
+| 服务 | 说明 | 质量 | 速度 |
+|------|------|------|------|
+| **Pollinations.ai** | 完全免费，无需注册 | ⭐⭐⭐⭐ | 快 |
+| **Hugging Face** | 免费推理 | ⭐⭐⭐⭐ | 中 |
+| **Gradio Space** | 公开模型 | ⭐⭐⭐⭐ | 中 |
+
+### Live2D 专用提示词
+
+自动添加以下优化提示词：
+```
+perfect for Live2D rigging,
+clean layer separation,
+isolated character on white background,
+sharp clean lines, vibrant colors
+```
+
 ## 智能图像生成方案
 
 ### 自动检测与选择
