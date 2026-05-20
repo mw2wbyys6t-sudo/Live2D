@@ -160,6 +160,43 @@ const Home: NextPage = () => {
     }
   }, [expertMode, currentStepIndex]);
 
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && expertMode) {
+      if (currentStepIndex < 7) {
+        handleStepClick(currentStepIndex + 1);
+      }
+    }
+    
+    if (isRightSwipe && expertMode) {
+      if (currentStepIndex > 0) {
+        handleStepClick(currentStepIndex - 1);
+      }
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
   const handleCompleteStep = useCallback(() => {
     const workflow = workflowRef.current;
     workflow.markCurrentStepComplete();
@@ -256,37 +293,93 @@ const Home: NextPage = () => {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {error && (
-          <div className="mb-3 sm:mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
-            <span className="shrink-0">❌</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-red-400 font-medium">分析失败</p>
-              <p className="text-xs text-red-300/70 mt-0.5 break-all">{error}</p>
+          <div className="mb-3 sm:mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <span className="text-xl">❌</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-red-400 font-semibold">分析失败</p>
+                  <button 
+                    onClick={() => navigator.clipboard.writeText(error)}
+                    className="text-xs text-gray-500 hover:text-white px-2 py-1 rounded-lg hover:bg-gray-700/50 transition-colors"
+                    title="复制错误信息"
+                  >
+                    📋 复制
+                  </button>
+                </div>
+                <p className="text-xs text-red-300/80 mt-1 leading-relaxed">{error}</p>
+                
+                {error.includes('大小超过') && (
+                  <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                    <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                      💡 <span className="font-medium">修复建议:</span>
+                    </p>
+                    <ul className="text-xs text-gray-300 space-y-1.5">
+                      <li>• 尝试导出为更小的 PSD 格式</li>
+                      <li>• 减小画布尺寸或分辨率</li>
+                      <li>• 合并不需要的图层</li>
+                      <li>• 导出前清理历史记录和缓存</li>
+                    </ul>
+                  </div>
+                )}
+                
+                {error.includes('不是有效的 PSD') && (
+                  <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                    <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                      💡 <span className="font-medium">修复建议:</span>
+                    </p>
+                    <ul className="text-xs text-gray-300 space-y-1.5">
+                      <li>• 确保文件是 .psd 格式（Photoshop 源文件）</li>
+                      <li>• 不要上传 .psb（大型文档格式）</li>
+                      <li>• 重新导出 PSD 文件</li>
+                      <li>• 检查文件是否损坏</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={handleClearError} 
+                className="shrink-0 text-gray-500 hover:text-white p-2 rounded-lg hover:bg-gray-700/50 transition-colors"
+                aria-label="关闭错误提示"
+              >
+                ✕
+              </button>
             </div>
-            <button onClick={handleClearError} className="ml-auto shrink-0 text-gray-500 hover:text-white text-xs">
-              ✕
-            </button>
           </div>
         )}
 
         <div className="mb-3 sm:mb-4">
-          <WorkflowTracker
-            currentStep={currentStepIndex + 1}
-            completed={completedSteps}
-            mode={expertMode ? 'expert' : 'wizard'}
-            onStepClick={handleStepClick}
-          />
+          <div
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            <WorkflowTracker
+              currentStep={currentStepIndex + 1}
+              completed={completedSteps}
+              mode={expertMode ? 'expert' : 'wizard'}
+              onStepClick={handleStepClick}
+            />
+          </div>
           <div className="mt-3 flex items-center justify-center gap-3">
             <button
               onClick={handleCompleteStep}
               disabled={currentStepIndex >= 7}
-              className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+              className={`min-h-[48px] min-w-[48px] px-4 py-2 rounded-lg font-medium transition-all text-sm ${
                 currentStepIndex >= 7
                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/25'
+                  : 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/25 active:scale-95'
               }`}
             >
               ✓ 完成当前步骤
             </button>
+            {expertMode && (
+              <p className="text-xs text-gray-600 sm:hidden">
+                左右滑动切换步骤
+              </p>
+            )}
           </div>
         </div>
 

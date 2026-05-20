@@ -89,6 +89,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  status?: 'sending' | 'sent' | 'error';
 }
 
 interface ChatAssistantProps {
@@ -137,6 +138,8 @@ interface ChatAssistantProps {
   };
 }
 
+const MESSAGE_MAX_LENGTH = 500;
+
 const SendIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -164,12 +167,14 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
       role: 'assistant',
       content: '你好！我是 Live2D PSD 质量检测助手 ✨\n\n我可以帮你：\n• 分析检测结果和问题\n• 提供针对性的修复建议\n• 解答 Live2D 制作相关问题\n\n上传 PSD 文件后，我们开始吧！',
       timestamp: new Date(),
+      status: 'sent',
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [apiMode, setApiMode] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -179,6 +184,18 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const toggleExpandMessage = useCallback((msgId: string) => {
+    setExpandedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId);
+      } else {
+        newSet.add(msgId);
+      }
+      return newSet;
+    });
   }, []);
 
   useEffect(() => {
@@ -308,6 +325,7 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
       role: 'user',
       content: inputValue,
       timestamp: new Date(),
+      status: 'sent',
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -415,45 +433,92 @@ export default function ChatAssistant({ qaResult }: ChatAssistantProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4" role="log" aria-live="polite" aria-label="对话消息">
-          {messages.map((msg, idx) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
-              style={{ animationDelay: `${idx * 50}ms` }}
-              aria-label={msg.role === 'user' ? '用户消息' : 'AI 助手消息'}
-            >
+          {messages.map((msg, idx) => {
+            const isExpanded = expandedMessages.has(msg.id);
+            const shouldTruncate = msg.content.length > MESSAGE_MAX_LENGTH && !isExpanded;
+            const displayContent = shouldTruncate 
+              ? msg.content.slice(0, MESSAGE_MAX_LENGTH) + '...' 
+              : msg.content;
+
+            return (
               <div
-                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
-                    : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
-                }`}
-                aria-hidden="true"
+                key={msg.id}
+                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-fade-in`}
+                style={{ animationDelay: `${idx * 50}ms` }}
+                aria-label={msg.role === 'user' ? '用户消息' : 'AI 助手消息'}
               >
-                {msg.role === 'user' ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                ) : (
-                  <SparklesIcon />
-                )}
-              </div>
-              <div
-                className={`max-w-[85%] sm:max-w-[80%] rounded-xl sm:rounded-2xl p-3 sm:p-4 ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
-                    : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
-                }`}
-              >
-                <div className="text-xs sm:text-sm text-gray-200 leading-relaxed">
-                  {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
+                <div
+                  className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-lg ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
+                      : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
+                  }`}
+                  aria-hidden="true"
+                >
+                  {msg.role === 'user' ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  ) : (
+                    <SparklesIcon />
+                  )}
                 </div>
-                <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
-                  {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                <div
+                  className={`max-w-[85%] sm:max-w-[80%] rounded-xl sm:rounded-2xl p-3 sm:p-4 ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/20'
+                      : 'bg-gray-800/60 border border-gray-700/50 backdrop-blur-sm'
+                  }`}
+                >
+                  <div className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                    {msg.role === 'assistant' ? parseMarkdown(displayContent) : displayContent}
+                  </div>
+                  
+                  {shouldTruncate && (
+                    <button 
+                      onClick={() => toggleExpandMessage(msg.id)}
+                      className="text-pink-400 hover:text-pink-300 text-xs mt-2 inline-flex items-center gap-1 transition-colors"
+                    >
+                      📖 展开全文 ({msg.content.length} 字符)
+                    </button>
+                  )}
+
+                  {isExpanded && msg.content.length > MESSAGE_MAX_LENGTH && (
+                    <button 
+                      onClick={() => toggleExpandMessage(msg.id)}
+                      className="text-gray-500 hover:text-gray-300 text-xs mt-2 inline-flex items-center gap-1 transition-colors"
+                    >
+                      📕 收起
+                    </button>
+                  )}
+
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700/30">
+                    <span className="text-xs text-gray-600">
+                      {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    
+                    {msg.status && (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        {msg.status === 'sending' && '⏳ 发送中'}
+                        {msg.status === 'sent' && '✓ 已发送'}
+                        {msg.status === 'error' && '❌ 发送失败'}
+                      </span>
+                    )}
+
+                    {msg.role === 'assistant' && (
+                      <button 
+                        onClick={() => {/* TODO: Implement regenerate */}}
+                        className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors ml-2"
+                        title="重新生成回复"
+                      >
+                        🔄
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isTyping && (
             <div className="flex gap-3 animate-fade-in">

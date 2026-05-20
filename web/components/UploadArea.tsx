@@ -171,14 +171,38 @@ const UploadArea = React.memo(function UploadArea({ onUpload, loadingStage, file
           </p>
           <p className="text-gray-500 text-xs sm:text-sm">请稍候...</p>
           
-          <div className="mt-6 sm:mt-8 w-full max-w-xs h-1 bg-gray-700/50 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full transition-all duration-300" 
-              style={{ 
-                width: loadingStage === 'loading' ? '20%' : 
-                       loadingStage === 'parsing' ? '50%' : '80%' 
-              }} 
-            />
+          <div className="mt-6 sm:mt-8 w-full max-w-xs">
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <span>
+                {loadingStage === 'loading' && '📤 读取文件'}
+                {loadingStage === 'parsing' && '🔍 解析图层'}
+                {loadingStage === 'analyzing' && '✨ 质量分析'}
+              </span>
+              <span>
+                {loadingStage === 'loading' && '20%'}
+                {loadingStage === 'parsing' && '50%'}
+                {loadingStage === 'analyzing' && '80%'}
+              </span>
+            </div>
+            <div className="h-2.5 bg-gray-700/50 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 rounded-full transition-all duration-500 ease-out" 
+                style={{ 
+                  width: loadingStage === 'loading' ? '20%' : 
+                         loadingStage === 'parsing' ? '50%' : '80%' 
+                }} 
+              />
+            </div>
+            {loadingStage === 'parsing' && fileInfo && (
+              <p className="text-xs text-gray-600 mt-3 text-center">
+                正在处理图层结构，请稍候...
+              </p>
+            )}
+            {loadingStage === 'analyzing' && fileInfo && (
+              <p className="text-xs text-gray-600 mt-3 text-center">
+                正在进行质量检测和风险评估...
+              </p>
+            )}
           </div>
         </div>
       ) : fileInfo ? (

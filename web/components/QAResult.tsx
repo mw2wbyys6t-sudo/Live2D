@@ -191,29 +191,91 @@ const QAResult = React.memo(function QAResult({
             relative px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl
             bg-gradient-to-br ${scoreBg}
             border border-white/5
-            backdrop-blur-xl
+            backdrop-blur-xl flex items-center gap-4
           `}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
-            <div className="relative">
-              <p className={`text-4xl sm:text-5xl font-bold ${scoreColor} mb-1`}>
-                {score}
+            <div className="relative flex-shrink-0">
+              <svg className="w-20 h-20 sm:w-24 sm:h-24 transform -rotate-90">
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  stroke="#374151"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  stroke={score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171'}
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(score / 100) * 226.2} 226.2`}
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className={`text-2xl sm:text-3xl font-bold ${scoreColor}`}>{score}</p>
+                <p className="text-xs text-gray-500">分</p>
+              </div>
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <p className="text-sm sm:text-base font-semibold text-white mb-1">
+                {score >= 80 ? '✅ 优秀' : score >= 60 ? '⚠️ 良好' : '❌ 需改进'}
               </p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">综合评分</p>
+              <p className="text-xs text-gray-500">
+                {score >= 80 
+                  ? '这是一个高质量的 PSD 文件！' 
+                  : score >= 60 
+                    ? '有小幅改进空间，请关注以下问题' 
+                    : '需要重点修复几个关键问题'}
+              </p>
+              {layer_stats && (
+                <div className="mt-2 text-xs text-gray-400">
+                  共 {layer_stats.total} 个图层 · {layer_stats.groups} 个组
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex-1 grid grid-cols-3 gap-2 sm:gap-3 w-full">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
               <p className="text-xl sm:text-2xl font-bold text-red-400">{issues.length}</p>
               <p className="text-xs text-gray-500">严重问题</p>
+              {issues.length > 0 && (
+                <div className="mt-1 w-full h-1 bg-red-500/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-red-500 rounded-full"
+                    style={{ width: `${Math.min((issues.length / Math.max(issues.length + warnings.length + suggestions.length, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
               <p className="text-xl sm:text-2xl font-bold text-yellow-400">{warnings.length}</p>
               <p className="text-xs text-gray-500">警告</p>
+              {warnings.length > 0 && (
+                <div className="mt-1 w-full h-1 bg-yellow-500/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-yellow-500 rounded-full"
+                    style={{ width: `${Math.min((warnings.length / Math.max(issues.length + warnings.length + suggestions.length, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3">
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
               <p className="text-xl sm:text-2xl font-bold text-blue-400">{suggestions.length}</p>
               <p className="text-xs text-gray-500">优化建议</p>
+              {suggestions.length > 0 && (
+                <div className="mt-1 w-full h-1 bg-blue-500/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 rounded-full"
+                    style={{ width: `${Math.min((suggestions.length / Math.max(issues.length + warnings.length + suggestions.length, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
