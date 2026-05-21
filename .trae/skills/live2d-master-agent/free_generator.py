@@ -70,23 +70,25 @@ class FreeImageGenerator:
         
         try:
             # 构建URL
-            full_prompt = f"{prompt}, {width}x{height}"
+            full_prompt = f"{prompt}, {width}x{height}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
             encoded_prompt = urllib.parse.quote(full_prompt)
             url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
             
-            self.print_info(f"请求URL: {url}")
+            self.print_info(f"请求URL: {url[:80]}...")
             self.print_info("正在生成，请稍候...")
             
             # 下载图片
             output_path = self.output_dir / f"pollinations_{int(time.time())}.png"
             
-            # 添加请求头
+            # 添加请求头（修复 403 问题）
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/png,image/*;q=0.8',
+                'Referer': 'https://pollinations.ai/'
             }
             req = urllib.request.Request(url, headers=headers)
             
-            with urllib.request.urlopen(req, timeout=120) as response:
+            with urllib.request.urlopen(req, timeout=60) as response:
                 with open(output_path, 'wb') as f:
                     f.write(response.read())
             

@@ -50,9 +50,75 @@ def print_tips():
     print()
 
 
+def try_pollinations(prompt: str, output_path: Path) -> str:
+    """尝试使用 Pollinations.ai"""
+    try:
+        print("🤖 尝试 Pollinations.ai...")
+        full_prompt = f"{prompt}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
+        encoded = urllib.parse.quote(full_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}"
+        
+        output_file = output_path / f"live2d_pollinations_{int(time.time())}.png"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/png,image/*;q=0.8',
+            'Referer': 'https://pollinations.ai/'
+        }
+        req = urllib.request.Request(url, headers=headers)
+        
+        with urllib.request.urlopen(req, timeout=60) as response:
+            with open(output_file, 'wb') as f:
+                f.write(response.read())
+        
+        print("✅ Pollinations.ai 成功!")
+        return str(output_file)
+    except Exception as e:
+        print(f"❌ Pollinations.ai 失败: {str(e)}")
+        return None
+
+
+def try_waifu_diffusion(prompt: str, output_path: Path) -> str:
+    """尝试使用 Waifu Diffusion"""
+    try:
+        print("🤖 尝试 Waifu Diffusion (HuggingFace)...")
+        import json
+        import http.client
+        
+        conn = http.client.HTTPSConnection("api-inference.huggingface.co")
+        data = json.dumps({
+            "inputs": prompt,
+            "parameters": {
+                "width": 768,
+                "height": 1024,
+                "num_inference_steps": 20
+            }
+        })
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+        }
+        
+        output_file = output_path / f"live2d_waifu_{int(time.time())}.png"
+        
+        conn.request("POST", "/models/cagliostrolab/animagine-xl-3.1", data, headers)
+        res = conn.getresponse()
+        
+        if res.status == 200:
+            with open(output_file, 'wb') as f:
+                f.write(res.read())
+            print("✅ Waifu Diffusion 成功!")
+            return str(output_file)
+    except Exception as e:
+        print(f"❌ Waifu Diffusion 失败: {str(e)}")
+    
+    return None
+
+
 def generate(prompt: str, output_dir: str = "./output") -> str:
     """
-    一键生成图片
+    一键生成图片 - 多服务自动切换
     
     参数:
         prompt: 角色描述
@@ -65,31 +131,34 @@ def generate(prompt: str, output_dir: str = "./output") -> str:
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
     
-    # 添加 Live2D 优化提示词
-    full_prompt = f"{prompt}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
+    print("🎨 开始生成...")
     
-    # 构建URL
-    encoded = urllib.parse.quote(full_prompt)
-    url = f"https://image.pollinations.ai/prompt/{encoded}"
+    # 按顺序尝试各个服务
+    result = try_pollinations(prompt, output_path)
+    if result:
+        print(f"✅ 完成: {result}")
+        print_tips()
+        return result
     
-    # 下载图片
-    output_file = output_path / f"live2d_{int(time.time())}.png"
+    result = try_waifu_diffusion(prompt, output_path)
+    if result:
+        print(f"✅ 完成: {result}")
+        print_tips()
+        return result
     
-    print(f"🎨 生成中...")
+    # 如果所有服务都失败，提示用户
+    print()
+    print("⚠️ 所有免费服务暂时不可用")
+    print()
+    print("💡 备选方案:")
+    print("  1. 访问 https://pollinations.ai (网页版)")
+    print("  2. 使用本地 AI 生成工具")
+    print("  3. 上传现有图片")
+    print()
+    print("或者配置 API Key:")
+    print("  python config_api.py")
     
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    req = urllib.request.Request(url, headers=headers)
-    
-    with urllib.request.urlopen(req, timeout=120) as response:
-        with open(output_file, 'wb') as f:
-            f.write(response.read())
-    
-    print(f"✅ 完成: {output_file}")
-    
-    # 打印提示
-    print_tips()
-    
-    return str(output_file)
+    raise Exception("所有免费服务暂时不可用，请尝试备选方案")
 
 
 # 命令行使用

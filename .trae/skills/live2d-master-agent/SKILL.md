@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 3.4
+version: 3.5
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、ComfyUI一键安装、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导、API一键配置等先进功能
+description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费、修复403问题）、ComfyUI一键安装、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导、API一键配置等先进功能
 ---
 
 # Role
@@ -675,6 +675,12 @@ isolated character
 5. 遵循质检报告的建议
 
 # Changelog
+
+## v3.5 (2026-05-21)
+- 🐛 **修复 403 错误** - 为 Pollinations.ai 添加正确的请求头
+- 🔄 **多服务自动切换** - 支持多个免费服务自动降级
+- ⚡ **优化超时设置** - 从 120 秒减少到 60 秒
+- ✅ **测试验证** - Pollinations.ai 现在可以正常工作
 
 ## v3.4 (2026-05-21)
 - 🖥️ **ComfyUI 一键安装** - `install_comfyui.py` 完整安装流程
