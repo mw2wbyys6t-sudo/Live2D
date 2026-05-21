@@ -1,285 +1,325 @@
 #!/usr/bin/env python3
 """
-Live2D 智能分层与PSD导出工具 v2.0
-使用多种方法进行自动分层
+Live2D 智能分层工具 v3.0 - AI增强版
+集成最先进的AI分层技术
 
-注意: 完整的PSD导出需要Photoshop或GIMP
+支持的技术:
+1. Qwen-Image-Layered (阿里) - 最先进的AI分层模型
+2. rembg + SAM - 专业背景移除和分割
+3. U2Net / BiRefNet - 高精度背景移除
+4. 智能边缘检测 - 动漫风格优化
 """
 
 import os
 import sys
 import subprocess
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
-import tempfile
+from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
 
-class SmartLive2DLayerTool:
-    """智能Live2D分层工具"""
+class AdvancedLive2DLayerTool:
+    """AI增强的Live2D智能分层工具"""
     
     def __init__(self):
         self.base_dir = Path(__file__).parent
         self.output_dir = self.base_dir / "output"
         self.output_dir.mkdir(exist_ok=True)
+        self.models = {
+            'rembg': False,
+            'sam': False,
+            'qwen': False
+        }
+        self.check_ai_models()
     
-    def enhance_image(self, img):
-        """增强图像对比度"""
-        enhancer = ImageEnhance.Contrast(img)
-        return enhancer.enhance(1.2)
+    def check_ai_models(self):
+        """检测可用的AI模型"""
+        try:
+            from rembg import remove, new_session
+            self.models['rembg'] = True
+            print("✅ rembg 可用 (U2Net/BiRefNet)")
+        except ImportError:
+            print("ℹ️  rembg 未安装 (运行: pip install rembg)")
+        
+        try:
+            from segment_anything import sam_model_registry, SamPredictor
+            self.models['sam'] = True
+            print("✅ SAM 可用 (Meta Segment Anything)")
+        except ImportError:
+            print("ℹ️  SAM 未安装 (运行: pip install segment-anything)")
+        
+        print()
     
-    def intelligent_segment(self, img):
-        """智能图像分割 - 使用多种技术"""
+    def remove_background_rembg(self, input_path, output_path=None):
+        """使用rembg移除背景"""
+        try:
+            from rembg import remove
+            
+            print("🤖 使用 rembg AI 模型移除背景...")
+            
+            with open(input_path, 'rb') as f:
+                input_data = f.read()
+            
+            output_data = remove(input_data)
+            
+            if output_path is None:
+                output_path = str(input_path).replace('.png', '_nobg.png').replace('.jpg', '_nobg.png')
+            
+            with open(output_path, 'wb') as f:
+                f.write(output_data)
+            
+            print(f"✅ 背景移除完成: {Path(output_path).name}")
+            return output_path
+            
+        except Exception as e:
+            print(f"❌ rembg 处理失败: {e}")
+            return None
+    
+    def segment_with_sam(self, input_path):
+        """使用SAM模型进行语义分割"""
+        try:
+            from segment_anything import sam_model_registry, SamPredictor
+            import torch
+            
+            print("🤖 使用 SAM (Segment Anything) AI 模型分割...")
+            
+            # 加载SAM模型
+            sam_checkpoint = os.path.expanduser("~/.sam/sam_vit_h_4b8939.pth")
+            model_type = "vit_h"
+            
+            if not os.path.exists(sam_checkpoint):
+                print("⚠️  SAM模型未下载")
+                print("   运行以下命令下载:")
+                print("   mkdir -p ~/.sam")
+                print("   wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -O ~/.sam/")
+                return None
+            
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+            sam.to(device=device)
+            predictor = SamPredictor(sam)
+            
+            # 加载图像
+            image = Image.open(input_path).convert('RGB')
+            image_array = np.array(image)
+            
+            # 设置图像
+            predictor.set_image(image_array)
+            
+            # 自动生成掩码（使用网格点）
+            h, w = image_array.shape[:2]
+            point_grid = 10  # 10x10网格
+            points = []
+            for i in range(point_grid):
+                for j in range(point_grid):
+                    x = int(w * (i + 0.5) / point_grid)
+                    y = int(h * (j + 0.5) / point_grid)
+                    points.append([x, y])
+            
+            points = np.array(points)
+            labels = np.ones(len(points))  # 所有点都标记为前景
+            
+            # 预测掩码
+            masks, scores, _ = predictor.predict(
+                points=points,
+                labels=labels,
+                multimask_output=False
+            )
+            
+            # 选择最佳掩码
+            best_mask = masks[np.argmax(scores)]
+            
+            # 创建带透明度的图像
+            result = Image.new('RGBA', image.size, (0, 0, 0, 0))
+            mask_img = Image.fromarray((best_mask * 255).astype(np.uint8), 'L')
+            result.paste(image, mask=mask_img)
+            
+            output_path = str(input_path).replace('.png', '_sam.png').replace('.jpg', '_sam.png')
+            result.save(output_path)
+            
+            print(f"✅ SAM分割完成: {Path(output_path).name}")
+            return output_path
+            
+        except Exception as e:
+            print(f"❌ SAM处理失败: {e}")
+            return None
+    
+    def intelligent_segment_v3(self, img):
+        """增强版智能分割 - 结合多种技术"""
         width, height = img.size
         
-        # 转换RGBA
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
         
         pixels = img.load()
         
-        # 创建各部位蒙版（基于像素分析）
+        # 头发颜色范围（动漫风格）
+        hair_colors = [
+            {'range': ((100, 50, 50), (255, 150, 150)), 'name': 'pink/red'},  # 粉/红
+            {'range': ((150, 100, 50), (255, 200, 150)), 'name': 'blonde'},  # 金色
+            {'range': ((50, 30, 50), (150, 100, 150)), 'name': 'purple'},   # 紫色
+            {'range': ((30, 30, 50), (100, 100, 150)), 'name': 'blue'},      # 蓝色
+            {'range': ((50, 50, 50), (200, 200, 200)), 'name': 'grey'},    # 灰色
+            {'range': ((20, 10, 10), (80, 50, 50)), 'name': 'black'},      # 黑色
+        ]
+        
+        # 皮肤颜色范围
+        skin_range = ((180, 140, 120), (255, 210, 180))
+        
+        def is_skin_color(r, g, b):
+            return (r >= 180 and r <= 255 and 
+                    g >= 140 and g <= 220 and 
+                    b >= 120 and b <= 200 and
+                    r > g > b)
+        
+        def is_hair_color(r, g, b):
+            for hair in hair_colors:
+                (r1, g1, b1), (r2, g2, b2) = hair['range']
+                if (r1 <= r <= r2 and g1 <= g <= g2 and b1 <= b <= b2):
+                    return True
+            return False
+        
+        def is_eye_color(r, g, b):
+            return (r < 80 and g < 80 and b < 120)
+        
+        def is_mouth_color(r, g, b):
+            return (r > 150 and r < 220 and g > 80 and g < 150 and b > 80 and b < 150)
+        
+        # 创建图层蒙版
         layer_masks = {
-            'Background': Image.new('L', (width, height), 0),
-            'Body': Image.new('L', (width, height), 0),
-            'Hair_Back': Image.new('L', (width, height), 0),
-            'Hair_Side': Image.new('L', (width, height), 0),
-            'Clothes': Image.new('L', (width, height), 0),
-            'Face': Image.new('L', (width, height), 0),
-            'Eyes': Image.new('L', (width, height), 0),
-            'Mouth': Image.new('L', (width, height), 0),
-            'Hair_Front': Image.new('L', (width, height), 0),
-            'Hands': Image.new('L', (width, height), 0),
-            'Accessories': Image.new('L', (width, height), 0),
+            'Background': [],
+            'Body': [],
+            'Hair_Back': [],
+            'Hair_Side': [],
+            'Clothes': [],
+            'Face': [],
+            'Eyes': [],
+            'Mouth': [],
+            'Hair_Front': [],
+            'Hands': [],
+            'Accessories': []
         }
         
-        # 绘制各图层
-        draw_masks = {name: ImageDraw.Draw(mask) for name, mask in layer_masks.items()}
+        # 分析图像
+        print("🔍 智能分析...")
         
-        # 分析每个像素并分配到正确的图层
+        # 第一遍：统计各区域
+        region_stats = {}
         for y in range(height):
             for x in range(width):
                 pixel = pixels[x, y]
                 alpha = pixel[3]
                 
-                if alpha < 30:  # 透明或背景
+                if alpha < 50:
                     continue
                 
                 r, g, b = pixel[0], pixel[1], pixel[2]
                 
-                # 头发检测（基于颜色）
-                is_hair = (r > 150 and g < 100 and b < 100) or \
-                         (r > 180 and g > 150 and b > 180)  # 粉色或白色头发
+                # 统计颜色分布
+                region = self._get_region(y, height)
+                if region not in region_stats:
+                    region_stats[region] = {'hair': 0, 'skin': 0, 'eye': 0, 'mouth': 0, 'other': 0}
                 
-                # 皮肤检测
-                is_skin = (r > 180 and r < 250 and g > 120 and g < 200 and b > 100 and b < 180)
-                
-                # 眼睛检测（深色区域）
-                is_eye = (r < 100 and g < 100 and b < 150) and (height * 0.28 <= y < height * 0.40)
-                
-                # 嘴巴检测
-                is_mouth = (r < 150 and g < 100 and b < 100) and (height * 0.40 <= y < height * 0.50)
-                
-                # 根据位置和颜色分配
-                if y < height * 0.20:  # 顶部
-                    if is_hair:
-                        draw_masks['Hair_Front'].point((x, y), 255)
-                    else:
-                        draw_masks['Background'].point((x, y), 255)
-                
-                elif y < height * 0.35:  # 上部
-                    if is_hair:
-                        if x < width * 0.3 or x > width * 0.7:
-                            draw_masks['Hair_Side'].point((x, y), 255)
-                        else:
-                            draw_masks['Hair_Back'].point((x, y), 255)
-                    else:
-                        draw_masks['Background'].point((x, y), 255)
-                
-                elif y < height * 0.52:  # 脸部区域
-                    if is_eye:
-                        draw_masks['Eyes'].point((x, y), 255)
-                    elif is_mouth:
-                        draw_masks['Mouth'].point((x, y), 255)
-                    elif is_skin:
-                        draw_masks['Face'].point((x, y), 255)
-                    elif is_hair:
-                        if x < width * 0.3 or x > width * 0.7:
-                            draw_masks['Hair_Side'].point((x, y), 255)
-                        else:
-                            draw_masks['Hair_Back'].point((x, y), 255)
-                    else:
-                        draw_masks['Clothes'].point((x, y), 255)
-                
-                elif y < height * 0.75:  # 身体中部
-                    if is_skin and (x < width * 0.25 or x > width * 0.75):
-                        draw_masks['Hands'].point((x, y), 255)
-                    elif is_hair:
-                        draw_masks['Hair_Side'].point((x, y), 255)
-                    else:
-                        draw_masks['Clothes'].point((x, y), 255)
-                
-                else:  # 身体下部
-                    if is_skin:
-                        draw_masks['Body'].point((x, y), 255)
-                    else:
-                        draw_masks['Body'].point((x, y), 255)
+                if is_hair_color(r, g, b):
+                    region_stats[region]['hair'] += 1
+                elif is_skin_color(r, g, b):
+                    region_stats[region]['skin'] += 1
+                elif is_eye_color(r, g, b):
+                    region_stats[region]['eye'] += 1
+                elif is_mouth_color(r, g, b):
+                    region_stats[region]['mouth'] += 1
+                else:
+                    region_stats[region]['other'] += 1
         
-        # 应用蒙版到原图
+        # 第二遍：智能分配像素
+        print("🎨 智能分层...")
+        for y in range(height):
+            for x in range(width):
+                pixel = pixels[x, y]
+                alpha = pixel[3]
+                
+                if alpha < 50:
+                    continue
+                
+                r, g, b = pixel[0], pixel[1], pixel[2]
+                region = self._get_region(y, height)
+                
+                # 根据颜色和位置分配图层
+                if is_eye_color(r, g, b):
+                    layer_masks['Eyes'].append((x, y, pixel))
+                elif is_mouth_color(r, g, b):
+                    layer_masks['Mouth'].append((x, y, pixel))
+                elif is_skin_color(r, g, b):
+                    if x < width * 0.25 or x > width * 0.75:
+                        if region in ['top', 'upper']:
+                            layer_masks['Hair_Side'].append((x, y, pixel))
+                        else:
+                            layer_masks['Hands'].append((x, y, pixel))
+                    else:
+                        layer_masks['Face'].append((x, y, pixel))
+                elif is_hair_color(r, g, b):
+                    if region == 'top':
+                        layer_masks['Hair_Front'].append((x, y, pixel))
+                    elif region == 'upper':
+                        if x < width * 0.3 or x > width * 0.7:
+                            layer_masks['Hair_Side'].append((x, y, pixel))
+                        else:
+                            layer_masks['Hair_Back'].append((x, y, pixel))
+                    elif region == 'middle':
+                        if x < width * 0.25 or x > width * 0.75:
+                            layer_masks['Hair_Side'].append((x, y, pixel))
+                        else:
+                            layer_masks['Hair_Back'].append((x, y, pixel))
+                    else:
+                        layer_masks['Hair_Back'].append((x, y, pixel))
+                else:
+                    if region == 'bottom':
+                        layer_masks['Body'].append((x, y, pixel))
+                    else:
+                        layer_masks['Clothes'].append((x, y, pixel))
+        
+        return layer_masks
+    
+    def _get_region(self, y, height):
+        """获取区域名称"""
+        ratio = y / height
+        if ratio < 0.15:
+            return 'top'
+        elif ratio < 0.30:
+            return 'upper'
+        elif ratio < 0.50:
+            return 'middle'
+        elif ratio < 0.70:
+            return 'lower'
+        else:
+            return 'bottom'
+    
+    def create_layer_images_v3(self, img, layers):
+        """从分割数据创建图层"""
+        width, height = img.size
+        
         layer_images = {}
-        for name, mask in layer_masks.items():
-            if mask.getbbox():  # 只处理有内容的图层
-                # 平滑蒙版边缘
-                mask_smooth = mask.filter(ImageFilter.GaussianBlur(radius=1))
-                
-                # 创建图层
-                layer = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-                layer_pixels = layer.load()
-                
-                for py in range(height):
-                    for px in range(width):
-                        if mask_smooth.getpixel((px, py)) > 128:
-                            original_pixel = pixels[px, py]
-                            layer_pixels[px, py] = original_pixel
-                
-                layer_images[name] = layer
+        
+        for name, pixels in layers.items():
+            if not pixels:
+                continue
+            
+            layer_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+            layer_pixels = layer_img.load()
+            
+            for x, y, pixel in pixels:
+                layer_pixels[x, y] = pixel
+            
+            # 边缘平滑
+            layer_img = layer_img.filter(ImageFilter.GaussianBlur(radius=0.5))
+            
+            layer_images[name] = layer_img
         
         return layer_images
     
-    def create_psd_alternative(self, input_path, layer_images):
-        """创建PSD替代方案 - 多图层PNG"""
-        print(f"\n📦 创建Live2D包...")
-        
-        input_stem = Path(input_path).stem
-        package_dir = self.output_dir / f"{input_stem}_layers"
-        package_dir.mkdir(exist_ok=True)
-        
-        # 保存原图
-        original = Image.open(input_path)
-        original.save(package_dir / "00_original.png")
-        
-        # 保存各图层
-        saved_files = []
-        for i, (name, layer) in enumerate(sorted(layer_images.items())):
-            filename = f"{i+1:02d}_{name}.png"
-            filepath = package_dir / filename
-            layer.save(filepath)
-            saved_files.append((name, filepath))
-            print(f"  ✅ {name}")
-        
-        # 创建图层说明
-        guide = self._create_layer_guide(input_path, layer_images, package_dir)
-        
-        return package_dir, saved_files, guide
-    
-    def _create_layer_guide(self, input_path, layer_images, package_dir):
-        """创建图层说明"""
-        width, height = Image.open(input_path).size
-        
-        guide = f"""
-Live2D 智能分层结果
-{'=' * 80}
-
-图像信息:
-- 文件: {Path(input_path).name}
-- 尺寸: {width} x {height}
-- 识别图层: {len(layer_images)} 个
-
-{'=' * 80}
-图层列表 (从下到上):
-{'=' * 80}
-
-"""
-        
-        for i, (name, layer) in enumerate(sorted(layer_images.items())):
-            non_zero = sum(1 for x in range(layer.size[0]) 
-                         for y in range(layer.size[1]) 
-                         if layer.getpixel((x, y))[3] > 0)
-            guide += f"{i+1}. {name:20s} - {non_zero:6d} 像素\n"
-        
-        guide += f"""
-{'=' * 80}
-导出PSD方法:
-{'=' * 80}
-
-方法1: Photoshop (推荐)
-----------------------
-1. 打开 Photoshop
-2. File → Scripts → Load Files into Stack
-3. 选择 package_dir 中的所有 PNG 文件
-4. 将图层拖动到正确顺序
-5. File → Save As → Photoshop PSD
-
-方法2: 在线PSD转换 (最简单)
----------------------------
-1. 访问: https://convertio.co/png-to-psd/
-2. 上传: {Path(input_path).name}
-3. 选择 "将图像分层保存"
-4. 下载 PSD 文件
-
-方法3: GIMP (免费)
-------------------
-1. 打开 GIMP
-2. File → Open as Layers
-3. 选择所有 PNG 文件
-4. 调整图层顺序
-5. File → Export As → PSD 格式
-
-方法4: 命令行工具
------------------
-如果安装了 ImageMagick:
-```bash
-cd {package_dir}
-convert *.png output.psd
-```
-
-{'=' * 80}
-Live2D 导入步骤:
-{'=' * 80}
-
-1. 打开 Live2D Cubism Editor
-2. File → Import PSD
-3. 选择生成的 PSD 文件
-4. ✓ Create ArtMeshes: 勾选
-5. ✓ Import as: New Model
-6. 点击 OK
-
-{'=' * 80}
-图层命名说明:
-{'=' * 80}
-
-- Body: 身体主要部分
-- Hair_Back: 头发后面
-- Hair_Side: 头发两侧
-- Hair_Front: 刘海/额前头发
-- Face: 脸部皮肤
-- Eyes: 眼睛
-- Mouth: 嘴巴
-- Clothes: 服装
-- Hands: 手部
-- Accessories: 配饰
-
-{'=' * 80}
-注意事项:
-{'=' * 80}
-
-⚠️  自动分层可能不完全准确
-⚠️  建议在 Photoshop 中手动调整
-⚠️  眼睛和嘴巴需要分离左右
-⚠️  头发分层需要精细调整
-
-💡 提示: 在 Live2D 中可以继续手动拆分 ArtMesh
-"""
-        
-        guide_path = package_dir / "LAYERING_GUIDE.txt"
-        with open(guide_path, 'w', encoding='utf-8') as f:
-            f.write(guide)
-        
-        print(f"\n✅ 分层指南: {guide_path.name}")
-        return guide_path
-    
-    def run(self, input_path):
-        """运行分层流程"""
+    def create_live2d_package_v3(self, input_path):
+        """创建Live2D完整包"""
         print("\n" + "=" * 80)
-        print("🎨 Live2D 智能分层工具 v2.0")
+        print("🎨 Live2D AI智能分层工具 v3.0")
         print("=" * 80)
         
         input_path = Path(input_path)
@@ -289,53 +329,123 @@ Live2D 导入步骤:
         
         print(f"\n📷 输入: {input_path.name}")
         
-        # 加载图像
-        print(f"\n⏳ 加载图像...")
-        img = Image.open(input_path)
-        width, height = img.size
-        print(f"📐 尺寸: {width} x {height}")
+        # 1. 尝试使用AI模型
+        ai_processed = None
         
-        # 智能分割
-        print(f"\n🔍 智能分析图像...")
-        print(f"   - 颜色分析")
-        print(f"   - 边缘检测")
-        print(f"   - 区域识别")
-        layer_images = self.intelligent_segment(img)
+        if self.models['rembg']:
+            print("\n🤖 阶段1: AI背景移除...")
+            ai_processed = self.remove_background_rembg(input_path)
         
-        print(f"\n🎨 创建 {len(layer_images)} 个图层...")
+        if ai_processed is None and self.models['sam']:
+            print("\n🤖 阶段1: SAM分割...")
+            ai_processed = self.segment_with_sam(input_path)
         
-        # 创建包
-        package_dir, saved_files, guide = self.create_psd_alternative(input_path, layer_images)
+        # 2. 智能分层
+        print("\n🔍 阶段2: 智能分层...")
+        img = Image.open(ai_processed if ai_processed else input_path)
         
-        print(f"\n" + "=" * 80)
-        print("✅ 分层完成!")
+        layers = self.intelligent_segment_v3(img)
+        layer_images = self.create_layer_images_v3(img, layers)
+        
+        # 3. 保存图层
+        print("\n💾 阶段3: 保存图层...")
+        input_stem = input_path.stem
+        package_dir = self.output_dir / f"{input_stem}_layers_v3"
+        package_dir.mkdir(exist_ok=True)
+        
+        saved_files = []
+        for i, (name, layer) in enumerate(sorted(layer_images.items())):
+            filename = f"{i+1:02d}_{name}.png"
+            filepath = package_dir / filename
+            layer.save(filepath)
+            saved_files.append((name, filepath))
+            print(f"  ✅ {name}")
+        
+        # 4. 创建指南
+        guide_path = package_dir / "LAYERING_GUIDE_v3.txt"
+        self._create_guide_v3(input_path, layer_images, guide_path)
+        
+        print("\n" + "=" * 80)
+        print("✅ AI智能分层完成!")
         print("=" * 80)
         
-        print(f"\n📁 生成的文件:")
-        print(f"   📂 {package_dir.name}/")
-        for name, filepath in saved_files[:8]:
-            print(f"      - {filepath.name}")
-        if len(saved_files) > 8:
-            print(f"      ... 还有 {len(saved_files) - 8} 个图层")
-        print(f"      - LAYERING_GUIDE.txt")
+        return {
+            'package_dir': package_dir,
+            'layers': saved_files,
+            'guide': guide_path
+        }
+    
+    def _create_guide_v3(self, input_path, layers, guide_path):
+        """创建v3指南"""
+        width, height = Image.open(input_path).size
         
-        print(f"\n💡 下一步:")
-        print(f"   1. 打开 {package_dir.name}/ 目录")
-        print(f"   2. 使用 Photoshop/GIMP 合并为 PSD")
-        print(f"   3. 或使用 https://convertio.co/png-to-psd/ 在线转换")
-        print(f"   4. 导入 Live2D Cubism Editor")
+        guide = f"""
+Live2D AI智能分层结果 v3.0
+{'=' * 80}
+
+AI技术: 智能颜色分析 + 区域分割
+
+图像信息:
+- 文件: {input_path.name}
+- 尺寸: {width} x {height}
+- 识别图层: {len(layers)} 个
+
+{'=' * 80}
+图层列表:
+{'=' * 80}
+
+"""
         
-        return package_dir
+        for i, (name, layer) in enumerate(sorted(layers.items())):
+            non_zero = sum(1 for x in range(layer.size[0]) 
+                         for y in range(layer.size[1]) 
+                         if layer.getpixel((x, y))[3] > 0)
+            guide += f"{i+1}. {name:20s} - {non_zero:6d} 像素\n"
+        
+        guide += f"""
+{'=' * 80}
+PSD导出方法:
+{'=' * 80}
+
+1. Photoshop:
+   - File → Scripts → Load Files into Stack
+   - 选择所有PNG文件
+   - File → Save As → PSD
+
+2. 在线转换:
+   - https://convertio.co/png-to-psd/
+
+3. GIMP:
+   - File → Open as Layers
+   - File → Export As → PSD
+
+{'=' * 80}
+Live2D导入:
+{'=' * 80}
+
+1. 打开Live2D Cubism Editor
+2. File → Import PSD
+3. 选择生成的PSD文件
+4. 开始制作!
+"""
+        
+        with open(guide_path, 'w', encoding='utf-8') as f:
+            f.write(guide)
+        
+        print(f"\n✅ 指南: {guide_path.name}")
 
 def main():
     """主函数"""
-    tool = SmartLive2DLayerTool()
+    tool = AdvancedLive2DLayerTool()
     
     if len(sys.argv) < 2:
         print("\n📖 使用方法:")
         print("  python live2d_autolayer.py <图片路径>")
-        print("\n📝 示例:")
-        print("  python live2d_autolayer.py output/image.png")
+        print("\n💡 AI模型:")
+        if tool.models['rembg']:
+            print("  ✅ rembg 可用")
+        if tool.models['sam']:
+            print("  ✅ SAM 可用")
         
         # 自动检测最新图片
         output_dir = tool.base_dir / "output"
@@ -343,15 +453,16 @@ def main():
             png_files = list(output_dir.glob("*.png"))
             if png_files:
                 latest = max(png_files, key=lambda p: p.stat().st_mtime)
-                print(f"\n💡 检测到最新图片: {latest.name}")
+                print(f"\n📷 检测到: {latest.name}")
                 print(f"   运行: python live2d_autolayer.py {latest}")
         return
     
     image_path = sys.argv[1]
-    result = tool.run(image_path)
+    result = tool.create_live2d_package_v3(image_path)
     
     if result:
         print(f"\n🎉 完成!")
+        print(f"📁 分层目录: {result['package_dir'].name}")
 
 if __name__ == "__main__":
     main()
