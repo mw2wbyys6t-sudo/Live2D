@@ -96,6 +96,32 @@ class Live2DMaster:
             self.print_error(f"Pollinations.ai 失败: {str(e)}")
             return None
     
+    def generate_with_high_quality(self, prompt: str, width: int = 768, height: int = 768, 
+                                   seed: Optional[int] = None) -> Optional[str]:
+        """使用高质量图片生成器"""
+        try:
+            from high_quality_image_generator import HighQualityImageGenerator
+            
+            print("🎨 使用高质量图片生成器...")
+            
+            generator = HighQualityImageGenerator()
+            result = generator.generate(prompt, width=width, height=height, 
+                                      seed=seed, service='pollinations')
+            
+            if result:
+                self.generated_image = result
+                return result
+            else:
+                self.print_error("高质量生成失败")
+                return None
+                
+        except ImportError:
+            self.print_error("高质量生成器未找到")
+            return None
+        except Exception as e:
+            self.print_error(f"生成失败: {str(e)}")
+            return None
+    
     def generate_offline(self, prompt: str) -> Optional[str]:
         """离线模式 - 使用已生成的图片"""
         print("💡 离线模式")
