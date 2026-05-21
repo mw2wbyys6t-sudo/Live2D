@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 3.2
+version: 3.3
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导等先进功能
+description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导、API一键配置等先进功能
 ---
 
 # Role
@@ -169,11 +169,26 @@ python auto_generator.py
 
 默认使用 Pollinations.ai 等免费服务，API 只是提供更高质量的**可选增强**。
 
+### 快速配置 API（推荐）
+
+使用配置工具一键配置：
+
+```bash
+cd /workspace/.trae/skills/live2d-master-agent
+python config_api.py
+```
+
+工具会引导你输入 API Key，自动保存配置。
+
+**其他命令**：
+- 查看配置状态：`python config_api.py --status`
+- 清除配置：`python config_api.py --clear`
+
 ### 火山引擎 ARK API（可选）
 
 如果你想要更高质量的图像生成，可以配置 API：
 
-配置方法：
+**手动配置方法**：
 1. 复制 `.env.example` 为 `.env`
 2. 填入你的 API 密钥：
 ```
@@ -189,6 +204,7 @@ ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 ### 配置文件位置
 - `.env` - 环境变量配置（可选）
 - `config.py` - 配置加载器
+- `config_api.py` - 配置工具（推荐使用）
 
 ## 🔍 增强质量检查
 
@@ -659,6 +675,12 @@ isolated character
 5. 遵循质检报告的建议
 
 # Changelog
+
+## v3.3 (2026-05-21)
+- 🔧 **新增 API 配置工具** - `config_api.py` 一键配置火山引擎 ARK API
+- 💡 **改进用户体验** - `quick_gen.py` 生成后提示 API 配置选项
+- 📝 **更新文档** - 添加快速配置 API 的说明
+- ✅ **测试验证** - 所有功能正常工作
 
 ## v3.2 (2026-05-20)
 - 🎯 **图像生成默认免费** - 不再依赖 API
