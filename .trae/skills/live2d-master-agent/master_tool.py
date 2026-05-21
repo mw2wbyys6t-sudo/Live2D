@@ -220,6 +220,27 @@ class Live2DMaster:
             self.print_error(f"创建分层规划失败: {e}")
             return None
     
+    def convert_to_psd(self, image_path: str) -> Optional[str]:
+        """直接转换图片为可导入Live2D的PSD文件"""
+        try:
+            print()
+            print("🎨 正在转换为 Live2D PSD 文件...")
+            
+            from live2d_psd_converter import Live2DPSDConverter
+            
+            converter = Live2DPSDConverter()
+            psd_path = converter.convert(image_path)
+            
+            self.print_success(f"PSD文件已生成: {psd_path}")
+            return psd_path
+            
+        except ImportError:
+            self.print_error("Live2D PSD 转换器未找到")
+            return None
+        except Exception as e:
+            self.print_error(f"PSD转换失败: {e}")
+            return None
+    
     # ============ 主流程 ============
     
     def run(self, prompt: str = None, skip_generate: bool = False):
@@ -258,7 +279,10 @@ class Live2DMaster:
         # 2. 创建 PSD 分层规划
         psd_plan = self.create_psd_plan(image_path)
         
-        # 3. 完成
+        # 3. 直接转换为 PSD 文件（可导入Live2D）
+        psd_path = self.convert_to_psd(image_path)
+        
+        # 4. 完成
         print()
         print("=" * 70)
         print("🎉 Live2D 角色制作准备完成！")
@@ -268,13 +292,16 @@ class Live2DMaster:
         print(f"  📷 图片: {image_path}")
         if psd_plan:
             print(f"  📋 分层规划: {psd_plan}")
+        if psd_path:
+            print(f"  🎨 PSD文件: {psd_path} (可直接导入Live2D)")
         print()
         print("💡 下一步:")
         print("  1. 查看生成的图片")
-        print("  2. 按照 LAYER_GUIDE.txt 进行 Photoshop 分层")
-        print("  3. 质量检查: python scripts/qa_engine_enhanced.py")
-        print("  4. 参数设计: python scripts/parameter_designer_enhanced.py")
-        print("  5. 查看 Rigging 指南: docs/RIGGING_GUIDE.md")
+        print("  2. 直接导入PSD到 Live2D Cubism")
+        print("  3. 或按 LAYER_GUIDE.txt 进行 Photoshop 分层")
+        print("  4. 质量检查: python scripts/qa_engine_enhanced.py")
+        print("  5. 参数设计: python scripts/parameter_designer_enhanced.py")
+        print("  6. 查看 Rigging 指南: docs/RIGGING_GUIDE.md")
         print()
     
     def help(self):
