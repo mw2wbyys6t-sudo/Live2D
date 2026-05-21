@@ -21,17 +21,32 @@ def check_api_config() -> bool:
         return False
 
 
+def check_comfyui_installed() -> bool:
+    """检查 ComfyUI 是否已安装"""
+    comfyui_dir = Path(__file__).parent / "Live2D-ComfyUI" / "ComfyUI"
+    return comfyui_dir.exists()
+
+
 def print_tips():
     """打印使用提示"""
     print()
     print("💡 提示:")
     print("  - 免费方案（当前使用）: Pollinations.ai")
+    
     if check_api_config():
         print("  - 🔑 已配置 API Key，可使用更高质量的 Seedream:")
         print("     python scripts/seedream_image_generate.py --prompt \"描述\"")
     else:
         print("  - 想要更高质量？配置 API Key:")
         print("     python config_api.py")
+    
+    if check_comfyui_installed():
+        print("  - 🖥️ ComfyUI 已安装，可使用本地最高质量:")
+        print("     python comfyui_integration.py")
+    else:
+        print("  - 🖥️ 想要本地最高质量？一键安装 ComfyUI:")
+        print("     python install_comfyui.py")
+    
     print()
 
 

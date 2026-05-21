@@ -263,6 +263,12 @@ merged layers, overlapping parts, text, watermark
     return generator.generate(positive_prompt, negative_prompt)
 
 
+def check_comfyui_installed() -> bool:
+    """检查 ComfyUI 是否已安装"""
+    comfyui_dir = Path(__file__).parent / "Live2D-ComfyUI" / "ComfyUI"
+    return comfyui_dir.exists()
+
+
 def main():
     """主函数"""
     generator = FreeImageGenerator()
@@ -295,6 +301,18 @@ def main():
         print("  1. 查看生成的图片")
         print("  2. 进行 PSD 分层规划")
         print("  3. 使用 Live2D Master Agent 进行质量检查")
+        
+        # 添加 ComfyUI 安装提示
+        print()
+        print("💡 想要更高质量？")
+        if check_comfyui_installed():
+            print("  - 🖥️ ComfyUI 已安装，可使用本地最高质量:")
+            print("     python comfyui_integration.py")
+        else:
+            print("  - 🖥️ 一键安装本地最高质量方案 ComfyUI:")
+            print("     python install_comfyui.py")
+        print()
+        
     else:
         generator.print_error("生成失败")
         print()
@@ -302,6 +320,12 @@ def main():
         print("  1. 访问 https://playground.com/ 免费生成")
         print("  2. 访问 https://leonardo.ai/ 免费生成")
         print("  3. 手动上传已有图片")
+        
+        # 添加 ComfyUI 安装提示
+        print()
+        print("💡 或者一键安装本地最高质量方案:")
+        print("     python install_comfyui.py")
+        print()
 
 
 if __name__ == "__main__":
