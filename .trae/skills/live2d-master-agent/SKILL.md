@@ -1,6 +1,6 @@
 ---
 name: live2d-master-agent
-version: 3.7
+version: 3.8
 creator: Live2D Community
 description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、一站式工具箱、PSD分层规划、ComfyUI一键安装、增强质量检查、丰富参数模板、详细Rigging指导等先进功能
 ---
@@ -160,6 +160,31 @@ python auto_generator.py
 - ✅ 安装依赖
 - ✅ 引导下载模型
 - ✅ 启动并生成图片
+
+### 🌐 备选方案（如果在线服务暂时不可用）
+
+如果 Pollinations.ai 等在线服务暂时不可用，可以：
+
+**在线生成（无需安装）**:
+- 访问 https://pollinations.ai - 直接在网页上生成
+- 访问 https://playground.com - Playground AI
+- 访问 https://leonardo.ai - Leonardo AI (免费额度)
+- 访问 https://civitai.com - Civitai 模型社区
+- 访问 https://huggingface.co/spaces
+
+**本地生成**:
+```bash
+# 一键安装本地最高质量方案
+python install_comfyui.py
+```
+
+**API 配置**:
+```bash
+# 配置火山引擎 API Key
+python config_api.py
+```
+
+**详细方案**: 查看 `FREE_SOLUTIONS.md`
 
 ## API 配置（可选增强）
 

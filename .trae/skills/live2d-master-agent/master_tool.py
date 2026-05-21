@@ -70,20 +70,22 @@ class Live2DMaster:
             # 构建提示词
             full_prompt = f"{prompt}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
             encoded = urllib.parse.quote(full_prompt)
-            url = f"https://image.pollinations.ai/prompt/{encoded}"
+            url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={int(time.time()) % 1000000}"
             
             # 下载
             output_file = self.output_dir / f"live2d_{int(time.time())}.png"
             
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'image/png,image/*;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Referer': 'https://pollinations.ai/'
             }
             
             req = urllib.request.Request(url, headers=headers)
             
-            with urllib.request.urlopen(req, timeout=60) as response:
+            with urllib.request.urlopen(req, timeout=120) as response:
                 with open(output_file, 'wb') as f:
                     f.write(response.read())
             
@@ -124,11 +126,22 @@ class Live2DMaster:
         print("⚠️ 在线生成服务暂时不可用")
         print()
         print("💡 备选方案:")
-        print("  1. 直接访问 https://pollinations.ai 生成图片")
-        print("  2. 使用其他 AI 绘图工具")
-        print("  3. 上传已有的角色图片")
         print()
-        print("📁 请将图片放到 output/ 目录中")
+        print("🌐 在线生成（推荐，无需安装）:")
+        print("   1. 访问 https://pollinations.ai 生成图片")
+        print("   2. 访问 https://playground.com")
+        print("   3. 访问 https://leonardo.ai (免费额度)")
+        print()
+        print("💻 本地最高质量:")
+        print("   python install_comfyui.py")
+        print()
+        print("🔑 API Key 配置:")
+        print("   python config_api.py")
+        print()
+        print("📖 查看详细解决方案: FREE_SOLUTIONS.md")
+        print()
+        print("📁 请将生成的图片放到 output/ 目录中")
+        print("   然后运行: python master_tool.py --skip-generate")
         
         return None
     

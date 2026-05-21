@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Live2D Master Agent - 一键生成工具
-版本: 3.1
+版本: 3.2
 特点: 完全免费，无需配置，一行命令生成图片
 提示: 如需更高质量，可运行 python config_api.py 配置 API Key
 """

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Live2D Master Agent - 免费图像生成器
-版本: 2.0
+版本: 3.0
 特点: 完全免费，无需API密钥，开箱即用
 支持的免费服务:
-1. Hugging Face Inference (免费)
-2. Gradio Spaces (免费)
-3. Pollinations.ai (完全免费，无需注册)
+1. Pollinations.ai (主服务，完全免费)
+2. Hugging Face Inference (免费)
+3. 网页版备选方案
 """
 
 import os
@@ -61,7 +61,7 @@ class FreeImageGenerator:
     def print_info(self, msg: str):
         print(f"ℹ️ {msg}")
     
-    def generate_with_pollinations(self, prompt: str, width: int = 1024, height: int = 1024) -> Optional[str]:
+    def generate_with_pollinations(self, prompt: str, width: int = 768, height: int = 768) -> Optional[str]:
         """
         使用 Pollinations.ai 生成图片
         完全免费，无需注册，无限制
@@ -69,34 +69,73 @@ class FreeImageGenerator:
         self.print_info("使用 Pollinations.ai 生成图片...")
         
         try:
-            # 构建URL
-            full_prompt = f"{prompt}, {width}x{height}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
+            # 构建提示词
+            full_prompt = f"{prompt}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
             encoded_prompt = urllib.parse.quote(full_prompt)
-            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
             
-            self.print_info(f"请求URL: {url[:80]}...")
-            self.print_info("正在生成，请稍候...")
+            # Pollinations API URL
+            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={int(time.time()) % 1000000}"
+            
+            self.print_info(f"请求URL: {url[:100]}...")
+            self.print_info("正在生成，请稍候（可能需要 30-60 秒）...")
             
             # 下载图片
             output_path = self.output_dir / f"pollinations_{int(time.time())}.png"
             
-            # 添加请求头（修复 403 问题）
+            # 添加浏览器请求头
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'image/png,image/*;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0',
                 'Referer': 'https://pollinations.ai/'
             }
+            
+            # 尝试使用 urllib
             req = urllib.request.Request(url, headers=headers)
             
-            with urllib.request.urlopen(req, timeout=60) as response:
-                with open(output_path, 'wb') as f:
-                    f.write(response.read())
-            
-            self.print_success(f"图片已保存: {output_path}")
-            return str(output_path)
-            
+            try:
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    data = response.read()
+                    
+                    # 检查是否返回了错误信息
+                    if len(data) < 1000:  # 通常错误响应很小
+                        try:
+                            error_json = json.loads(data)
+                            if 'error' in error_json:
+                                self.print_error(f"Pollinations.ai 返回错误: {error_json.get('message', 'Unknown error')}")
+                                return None
+                        except:
+                            pass
+                    
+                    with open(output_path, 'wb') as f:
+                        f.write(data)
+                    
+                    # 验证图片
+                    try:
+                        from PIL import Image
+                        img = Image.open(output_path)
+                        img.verify()
+                        self.print_success(f"图片已保存: {output_path}")
+                        return str(output_path)
+                    except:
+                        self.print_error("生成的图片无效")
+                        return None
+                        
+            except urllib.error.HTTPError as e:
+                error_msg = e.read().decode('utf-8', errors='ignore')
+                self.print_error(f"HTTP 错误 {e.code}: {error_msg[:200]}")
+                return None
+                
         except Exception as e:
-            self.print_error(f"Pollinations.ai 生成失败: {e}")
+            self.print_error(f"Pollinations.ai 生成失败: {str(e)}")
             return None
     
     def generate_with_huggingface(self, prompt: str, negative_prompt: str = "") -> Optional[str]:
@@ -219,6 +258,32 @@ class FreeImageGenerator:
             return result
         
         self.print_error("所有免费服务都失败了")
+        
+        print()
+        print("=" * 60)
+        print("💡 免费备选方案:")
+        print("=" * 60)
+        print()
+        print("🌐 在线生成（无需安装）:")
+        print("   1. https://pollinations.ai - Pollinations（推荐）")
+        print("   2. https://playground.com - Playground AI")
+        print("   3. https://leonardo.ai - Leonardo AI (免费额度)")
+        print("   4. https://civitai.com - Civitai")
+        print("   5. https://huggingface.co/spaces")
+        print()
+        print("📱 手机 APP:")
+        print("   1. diffusion - 免费 AI 绘图")
+        print("   2. 像素工作室 - 中文界面")
+        print()
+        print("💻 本地生成:")
+        print("   python install_comfyui.py - 一键安装本地最高质量方案")
+        print()
+        print("🔑 API 配置:")
+        print("   python config_api.py - 配置火山引擎 API Key")
+        print()
+        print("📖 查看详细方案: FREE_SOLUTIONS.md")
+        print("=" * 60)
+        
         return None
 
 
