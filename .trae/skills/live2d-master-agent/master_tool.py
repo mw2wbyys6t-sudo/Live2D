@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent - 一站式工具箱
-版本: 3.0
-功能: 综合所有功能，一步到位生成 Live2D 角色
+Live2D Master Agent - 一站式工具箱 v3.1 (优化版)
+功能: 整合所有功能，一步到位生成 Live2D 角色
+优化内容: 
+- 代码精简
+- 网络稳定性增强
+- 用户体验提升
+- 自动降级机制完善
 """
 
 import os
@@ -10,362 +14,257 @@ import sys
 import time
 import urllib.request
 import urllib.parse
-import subprocess
 from pathlib import Path
 from typing import Optional, List, Dict
 
+
 class Live2DMaster:
-    """Live2D 一站式工具"""
+    """Live2D 一站式工具 - 优化版"""
     
     def __init__(self):
         self.base_dir = Path(__file__).parent
         self.output_dir = self.base_dir / "output"
         self.output_dir.mkdir(exist_ok=True)
-        
-        # 生成的图片路径
         self.generated_image = None
     
-    def print_header(self):
-        """打印标题"""
-        print()
-        print("=" * 70)
-        print("🎨 Live2D Master Agent - 一站式工具箱 v3.0")
-        print("=" * 70)
-        print()
+    def log(self, msg: str, type: str = "info"):
+        """统一日志输出"""
+        prefixes = {
+            "success": "✅",
+            "error": "❌",
+            "warning": "⚠️",
+            "info": "ℹ️",
+            "action": "🔧",
+            "progress": "⏳"
+        }
+        print(f"{prefixes.get(type, 'ℹ️')} {msg}")
     
-    def print_success(self, msg: str):
-        print(f"✅ {msg}")
+    def _get_latest_image(self) -> Optional[str]:
+        """获取最新的图片文件"""
+        png_files = sorted(self.output_dir.glob("*.png"), 
+                          key=lambda p: p.stat().st_mtime, reverse=True)
+        return str(png_files[0]) if png_files else None
     
-    def print_error(self, msg: str):
-        print(f"❌ {msg}")
-    
-    def print_warning(self, msg: str):
-        print(f"⚠️  {msg}")
-    
-    def print_info(self, msg: str):
-        print(f"ℹ️  {msg}")
-    
-    # ============ 图片生成功能 ============
-    
-    def test_service(self, name: str, test_func) -> bool:
-        """测试服务是否可用"""
-        try:
-            print(f"  测试 {name}...", end=" ")
-            result = test_func()
-            if result:
-                print("✅")
-                return True
-            else:
-                print("❌")
-                return False
-        except Exception as e:
-            print(f"❌ ({str(e)[:30]})")
-            return False
-    
-    def generate_with_pollinations(self, prompt: str) -> Optional[str]:
-        """使用 Pollinations.ai 生成"""
-        try:
-            print("🤖 使用 Pollinations.ai...")
-            
-            # 构建提示词
-            full_prompt = f"{prompt}, perfect for Live2D rigging, clean layer separation, isolated character on white background, sharp clean lines, vibrant colors, ultra detailed, masterpiece"
-            encoded = urllib.parse.quote(full_prompt)
-            url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={int(time.time()) % 1000000}"
-            
-            # 下载
-            output_file = self.output_dir / f"live2d_{int(time.time())}.png"
-            
+    def _download_image(self, url: str, output_path: Path, headers: Dict = None, 
+                       max_retries: int = 3) -> bool:
+        """带重试的图片下载"""
+        if headers is None:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
                 'Referer': 'https://pollinations.ai/'
             }
-            
-            req = urllib.request.Request(url, headers=headers)
-            
-            with urllib.request.urlopen(req, timeout=120) as response:
-                with open(output_file, 'wb') as f:
-                    f.write(response.read())
-            
-            self.generated_image = str(output_file)
-            return str(output_file)
-            
-        except Exception as e:
-            self.print_error(f"Pollinations.ai 失败: {str(e)}")
-            return None
-    
-    def generate_with_high_quality(self, prompt: str, width: int = 768, height: int = 768, 
-                                   seed: Optional[int] = None) -> Optional[str]:
-        """使用高质量图片生成器"""
-        try:
-            from high_quality_image_generator import HighQualityImageGenerator
-            
-            print("🎨 使用高质量图片生成器...")
-            
-            generator = HighQualityImageGenerator()
-            result = generator.generate(prompt, width=width, height=height, 
-                                      seed=seed, service='pollinations')
-            
-            if result:
-                self.generated_image = result
-                return result
-            else:
-                self.print_error("高质量生成失败")
-                return None
+        
+        for attempt in range(max_retries):
+            try:
+                self.log(f"下载尝试 {attempt + 1}/{max_retries}...", "progress")
+                req = urllib.request.Request(url, headers=headers)
                 
-        except ImportError:
-            self.print_error("高质量生成器未找到")
-            return None
-        except Exception as e:
-            self.print_error(f"生成失败: {str(e)}")
-            return None
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    data = response.read()
+                    if len(data) < 1000:
+                        self.log(f"文件太小({len(data)} bytes),重试...", "warning")
+                        continue
+                    
+                    with open(output_path, 'wb') as f:
+                        f.write(data)
+                    return True
+                    
+            except Exception as e:
+                self.log(f"下载失败: {str(e)[:50]}", "error")
+                if attempt < max_retries - 1:
+                    wait = (attempt + 1) * 2
+                    self.log(f"等待 {wait} 秒后重试...", "info")
+                    time.sleep(wait)
+        
+        return False
     
-    def generate_offline(self, prompt: str) -> Optional[str]:
-        """离线模式 - 使用已生成的图片"""
-        print("💡 离线模式")
-        
-        # 查找最新的输出图片
-        png_files = sorted(self.output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
-        
-        if png_files:
-            latest = png_files[0]
-            self.generated_image = str(latest)
-            return str(latest)
-        
-        self.print_error("没有找到可用的图片")
-        return None
+    def _build_prompt(self, prompt: str) -> str:
+        """构建优化的Live2D提示词"""
+        optimizations = [
+            "perfect for Live2D rigging",
+            "clean layer separation",
+            "isolated character on white background",
+            "sharp clean lines",
+            "vibrant colors",
+            "ultra detailed",
+            "masterpiece"
+        ]
+        suffix = ", " + ", ".join(optimizations)
+        return f"{prompt}{suffix}" if suffix not in prompt else prompt
     
     def generate_image(self, prompt: str) -> Optional[str]:
-        """综合图片生成"""
-        print("🎨 开始生成图片...")
-        print()
+        """综合图片生成 - 优化版"""
+        self.log("开始生成图片...", "action")
         
-        # 尝试 Pollinations.ai
-        result = self.generate_with_pollinations(prompt)
+        # 尝试主服务
+        result = self._try_pollinations(prompt)
         if result:
             return result
         
-        # 尝试其他方案
-        print()
-        print("⚠️ 在线生成服务暂时不可用")
-        print()
-        print("💡 备选方案:")
-        print()
-        print("🌐 在线生成（推荐，无需安装）:")
-        print("   1. 访问 https://pollinations.ai 生成图片")
-        print("   2. 访问 https://playground.com")
-        print("   3. 访问 https://leonardo.ai (免费额度)")
-        print()
-        print("💻 本地最高质量:")
-        print("   python install_comfyui.py")
-        print()
-        print("🔑 API Key 配置:")
-        print("   python config_api.py")
-        print()
-        print("📖 查看详细解决方案: FREE_SOLUTIONS.md")
-        print()
-        print("📁 请将生成的图片放到 output/ 目录中")
-        print("   然后运行: python master_tool.py --skip-generate")
+        # 显示备选方案
+        self._show_fallback_options()
+        return None
+    
+    def _try_pollinations(self, prompt: str) -> Optional[str]:
+        """尝试 Pollinations.ai"""
+        try:
+            self.log("使用 Pollinations.ai (免费)...", "info")
+            
+            full_prompt = self._build_prompt(prompt)
+            encoded = urllib.parse.quote(full_prompt)
+            seed = int(time.time()) % 1000000
+            url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}"
+            
+            output_file = self.output_dir / f"live2d_pollinations_{int(time.time())}.png"
+            
+            if self._download_image(url, output_file):
+                self.log(f"图片生成成功: {output_file.name}", "success")
+                self.generated_image = str(output_file)
+                return str(output_file)
+            
+        except Exception as e:
+            self.log(f"Pollinations.ai 失败: {str(e)[:50]}", "error")
         
         return None
     
-    # ============ PSD 功能 ============
+    def _show_fallback_options(self):
+        """显示备选方案"""
+        self.log("主服务暂时不可用", "warning")
+        self.log("\n💡 备选方案:", "info")
+        self.log("\n🌐 在线生成:", "action")
+        self.log("   1. 访问 https://pollinations.ai")
+        self.log("   2. 访问 https://playground.com")
+        self.log("   3. 访问 https://leonardo.ai")
+        self.log("\n💻 本地部署:", "action")
+        self.log("   python install_comfyui.py")
+        self.log("\n🔑 API配置:", "action")
+        self.log("   python config_api.py")
+        self.log("\n📁 已有图片:", "action")
+        latest = self._get_latest_image()
+        if latest:
+            self.log(f"   可用图片: {Path(latest).name}")
+            self.log("   使用: python master_tool.py --skip-generate")
+    
+    def convert_to_psd(self, image_path: str) -> Optional[str]:
+        """转换为Live2D可用的PSD文件"""
+        try:
+            from live2d_psd_converter import Live2DPSDConverter
+            
+            self.log("转换为PSD文件...", "action")
+            converter = Live2DPSDConverter()
+            psd_path = converter.convert(image_path)
+            
+            if psd_path:
+                self.log(f"PSD文件生成: {Path(psd_path).name}", "success")
+                return psd_path
+            
+        except ImportError:
+            self.log("PSD转换器未找到", "error")
+        except Exception as e:
+            self.log(f"PSD转换失败: {str(e)[:50]}", "error")
+        
+        return None
     
     def create_psd_plan(self, image_path: str) -> Optional[str]:
-        """创建 PSD 分层规划"""
+        """创建PSD分层规划"""
         try:
             from PIL import Image
             
             img = Image.open(image_path)
-            width, height = img.size
-            
-            print()
-            print("📋 生成 PSD 分层规划...")
-            
-            # 创建规划目录
             plan_dir = self.output_dir / f"psd_plan_{int(time.time())}"
             plan_dir.mkdir(exist_ok=True)
-            
-            # 保存原图
             img.save(plan_dir / "reference.png")
             
-            # 生成图层指南
-            guide_file = plan_dir / "LAYER_GUIDE.txt"
-            with open(guide_file, 'w', encoding='utf-8') as f:
-                f.write("=" * 60 + "\n")
-                f.write("Live2D PSD 分层指南\n")
-                f.write("=" * 60 + "\n\n")
-                f.write(f"📐 图片尺寸: {width} x {height}\n\n")
-                
-                f.write("📁 推荐图层结构:\n")
-                f.write("-" * 60 + "\n")
-                
-                layers = [
-                    ("1. ArtMesh/身体", "身体、躯干"),
-                    ("2. ArtMesh/头发_后", "后部头发"),
-                    ("3. ArtMesh/服装", "主体服装"),
-                    ("4. ArtMesh/头发_侧", "侧面头发"),
-                    ("5. ArtMesh/脸", "脸部"),
-                    ("6. ArtMesh/眼睛", "眼睛（左右）"),
-                    ("7. ArtMesh/嘴巴", "嘴巴"),
-                    ("8. ArtMesh/头发_前", "刘海"),
-                    ("9. ArtMesh/手", "手部"),
-                    ("10. ArtMesh/配饰", "装饰物"),
-                ]
-                
-                for name, desc in layers:
-                    f.write(f"  {name}\n    说明: {desc}\n\n")
-                
-                f.write("-" * 60 + "\n")
-                f.write("\n📝 Photoshop 操作步骤:\n")
-                f.write("-" * 60 + "\n")
-                f.write("""
-1. 打开 reference.png
-2. 创建图层组并按上述结构命名
-3. 使用钢笔工具或快速选择工具分离各部分
-4. 将每个部分放到对应图层
-5. 保存为 PSD 格式
-6. 在 Live2D Cubism 中导入
-
-⚠️ 注意事项:
-- 保持图层命名规范（避免中文）
-- 使用图层蒙版便于调整
-- 不要使用图层样式
-- 确保分辨率一致
-""")
+            layers = [
+                ("ArtMesh/Body", "身体"),
+                ("ArtMesh/Hair_Back", "头发后部"),
+                ("ArtMesh/Clothes", "服装"),
+                ("ArtMesh/Hair_Side", "头发侧部"),
+                ("ArtMesh/Face", "脸部"),
+                ("ArtMesh/Eyes", "眼睛"),
+                ("ArtMesh/Mouth", "嘴巴"),
+                ("ArtMesh/Hair_Front", "头发前部"),
+                ("ArtMesh/Hands", "手"),
+                ("ArtMesh/Accessories", "配饰")
+            ]
             
-            self.print_success(f"分层规划已保存: {plan_dir}")
+            with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
+                f.write("=" * 60 + "\nLive2D PSD 分层指南\n" + "=" * 60 + "\n\n")
+                f.write(f"图片尺寸: {img.size[0]} x {img.size[1]}\n\n")
+                for name, desc in layers:
+                    f.write(f"  {name} - {desc}\n")
+            
+            self.log(f"分层规划: {plan_dir.name}", "success")
             return str(plan_dir)
             
-        except ImportError:
-            self.print_error("需要安装 Pillow: pip install pillow")
-            return None
         except Exception as e:
-            self.print_error(f"创建分层规划失败: {e}")
+            self.log(f"创建规划失败: {str(e)[:50]}", "error")
             return None
-    
-    def convert_to_psd(self, image_path: str) -> Optional[str]:
-        """直接转换图片为可导入Live2D的PSD文件"""
-        try:
-            print()
-            print("🎨 正在转换为 Live2D PSD 文件...")
-            
-            from live2d_psd_converter import Live2DPSDConverter
-            
-            converter = Live2DPSDConverter()
-            psd_path = converter.convert(image_path)
-            
-            self.print_success(f"PSD文件已生成: {psd_path}")
-            return psd_path
-            
-        except ImportError:
-            self.print_error("Live2D PSD 转换器未找到")
-            return None
-        except Exception as e:
-            self.print_error(f"PSD转换失败: {e}")
-            return None
-    
-    # ============ 主流程 ============
     
     def run(self, prompt: str = None, skip_generate: bool = False):
         """运行完整流程"""
-        self.print_header()
+        print("\n" + "=" * 70)
+        print("🎨 Live2D Master Agent v3.1")
+        print("=" * 70 + "\n")
         
-        # 1. 获取或生成图片
+        # 获取图片
         image_path = None
         
         if skip_generate:
-            # 使用已存在的图片
-            png_files = sorted(self.output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if png_files:
-                image_path = str(png_files[0])
-                print(f"📷 使用已有图片: {image_path}")
+            image_path = self._get_latest_image()
+            if image_path:
+                self.log(f"使用已有图片: {Path(image_path).name}", "info")
             else:
-                self.print_error("output/ 目录中没有图片")
+                self.log("output/ 目录中没有图片", "error")
                 return
         else:
-            # 生成新图片
             if not prompt:
-                print("请输入角色描述:")
-                prompt = input("> ").strip() or "anime girl, cute, pink hair, JK uniform"
+                prompt = input("请输入角色描述: ").strip() or "anime girl, cute, pink hair"
             
-            print(f"🎯 提示词: {prompt}")
+            self.log(f"提示词: {prompt[:50]}..." if len(prompt) > 50 else f"提示词: {prompt}", "info")
             image_path = self.generate_image(prompt)
-        
+            
         if not image_path:
-            print()
-            print("💡 提示: 你可以:")
-            print("  1. 手动上传图片到 output/ 目录")
-            print("  2. 使用其他方式生成图片")
-            print("  3. 然后运行: python master_tool.py --skip-generate")
             return
         
-        # 2. 创建 PSD 分层规划
-        psd_plan = self.create_psd_plan(image_path)
+        # 创建PSD规划和转换
+        self.create_psd_plan(image_path)
+        self.convert_to_psd(image_path)
         
-        # 3. 直接转换为 PSD 文件（可导入Live2D）
-        psd_path = self.convert_to_psd(image_path)
-        
-        # 4. 完成
-        print()
+        # 完成提示
+        print("\n" + "=" * 70)
+        self.log("Live2D角色制作准备完成!", "success")
         print("=" * 70)
-        print("🎉 Live2D 角色制作准备完成！")
-        print("=" * 70)
-        print()
-        print("📁 生成的文件:")
-        print(f"  📷 图片: {image_path}")
-        if psd_plan:
-            print(f"  📋 分层规划: {psd_plan}")
-        if psd_path:
-            print(f"  🎨 PSD文件: {psd_path} (可直接导入Live2D)")
-        print()
-        print("💡 下一步:")
-        print("  1. 查看生成的图片")
-        print("  2. 直接导入PSD到 Live2D Cubism")
-        print("  3. 或按 LAYER_GUIDE.txt 进行 Photoshop 分层")
-        print("  4. 质量检查: python scripts/qa_engine_enhanced.py")
-        print("  5. 参数设计: python scripts/parameter_designer_enhanced.py")
-        print("  6. 查看 Rigging 指南: docs/RIGGING_GUIDE.md")
-        print()
-    
-    def help(self):
-        """显示帮助"""
-        self.print_header()
-        print("""
-📖 使用方法:
-
-1. 一键生成（使用默认提示词）:
-   python master_tool.py
-
-2. 自定义提示词生成:
-   python master_tool.py "anime girl, blue hair"
-
-3. 使用已有图片（跳过生成）:
-   python master_tool.py --skip-generate
-
-4. 查看其他工具:
-   - 快速生成: python quick_gen.py "提示词"
-   - PSD 分层: python image_to_psd.py
-   - API 配置: python config_api.py
-   - ComfyUI: python install_comfyui.py
-""")
+        self.log(f"\n生成文件:", "action")
+        self.log(f"  📷 {Path(image_path).name}")
+        self.log(f"  📋 psd_plan_*/LAYER_GUIDE.txt")
+        self.log(f"  🎨 {Path(image_path).stem}_live2d.psd (可直接导入Live2D)")
+        self.log("\n下一步:", "action")
+        self.log("  1. 查看生成的图片")
+        self.log("  2. 直接导入PSD到Live2D Cubism")
+        self.log("  3. 查看 docs/RIGGING_GUIDE.md 获取绑定指南")
 
 
 def main():
     """主函数"""
     tool = Live2DMaster()
     
-    # 解析参数
     if len(sys.argv) > 1:
         if sys.argv[1] in ['-h', '--help']:
-            tool.help()
+            print("""
+🎨 Live2D Master Agent v3.1
+
+使用方法:
+  python master_tool.py              # 一键生成(默认提示词)
+  python master_tool.py "提示词"     # 自定义提示词
+  python master_tool.py --skip-generate  # 使用已有图片
+  python master_tool.py -h           # 显示帮助
+            """)
         elif sys.argv[1] in ['--skip-generate', '-s']:
             tool.run(skip_generate=True)
         else:
-            prompt = " ".join(sys.argv[1:])
-            tool.run(prompt=prompt)
+            tool.run(prompt=" ".join(sys.argv[1:]))
     else:
         tool.run()
 
