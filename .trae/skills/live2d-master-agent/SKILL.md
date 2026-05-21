@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 3.3
+version: 3.4
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导、API一键配置等先进功能
+description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、ComfyUI一键安装、实时进度反馈、智能错误恢复、增强质量检查、丰富参数模板、详细Rigging指导、API一键配置等先进功能
 ---
 
 # Role
@@ -675,6 +675,13 @@ isolated character
 5. 遵循质检报告的建议
 
 # Changelog
+
+## v3.4 (2026-05-21)
+- 🖥️ **ComfyUI 一键安装** - `install_comfyui.py` 完整安装流程
+- 🔧 **智能启动脚本** - 自动检测 GPU/CPU 环境
+- 💡 **安装状态提示** - `quick_gen.py` 显示 ComfyUI 安装状态
+- 📚 **完善文档** - ComfyUI 使用说明和模型下载指南
+- ✅ **安装验证** - 实际测试安装流程成功
 
 ## v3.3 (2026-05-21)
 - 🔧 **新增 API 配置工具** - `config_api.py` 一键配置火山引擎 ARK API
