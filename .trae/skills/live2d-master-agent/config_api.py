@@ -61,17 +61,21 @@ def print_header():
 
 def show_current_status():
     """显示当前配置状态"""
-    from config import config as cfg
-    print("当前配置状态:")
-    print("-" * 50)
-    print(f"  API Key: {'已配置' if cfg.has_api_key else '未配置'}")
-    if cfg.has_api_key:
-        print(f"  Key 末尾: ...{cfg.ark_api_key[-8:]}")
-    print(f"  Base URL: {cfg.ark_base_url}")
-    print(f"  默认版本: {cfg.seedream_version}")
-    print(f"  默认尺寸: {cfg.seedream_size}")
-    print("-" * 50)
-    print()
+    try:
+        from config import config as cfg
+        print("当前配置状态:")
+        print("-" * 50)
+        print(f"  API Key: {'已配置' if cfg.has_api_key else '未配置'}")
+        if cfg.has_api_key:
+            print(f"  Key 末尾: ...{cfg.ark_api_key[-8:]}")
+        print(f"  Base URL: {cfg.ark_base_url}")
+        print(f"  默认版本: {cfg.seedream_version}")
+        print(f"  默认尺寸: {cfg.seedream_size}")
+        print("-" * 50)
+        print()
+    except Exception as e:
+        print(f"⚠️  无法加载配置: {e}")
+        print()
 
 def configure_api_key():
     """配置 API Key"""
@@ -109,6 +113,20 @@ def configure_api_key():
 
 def main():
     """主函数"""
+    # 显示帮助信息
+    if len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h"]:
+        print_header()
+        print("📖 使用方法:")
+        print("  python config_api.py                # 交互式配置")
+        print("  python config_api.py --status       # 查看当前配置")
+        print("  python config_api.py --clear        # 清除配置")
+        print()
+        print("示例:")
+        print("  1. 配置API Key: python config_api.py")
+        print("  2. 查看状态: python config_api.py --status")
+        print("  3. 清除配置: python config_api.py --clear")
+        return
+    
     if len(sys.argv) > 1 and sys.argv[1] in ["--status", "-s"]:
         print_header()
         show_current_status()

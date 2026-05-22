@@ -2,7 +2,7 @@
 name: live2d-master-agent
 version: 5.0
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、一站式工具箱、PSD分层规划、ComfyUI一键安装、增强质量检查、丰富参数模板、详细Rigging指导等先进功能
+description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、一站式工具箱、PSD分层规划、ComfyUI一键安装，增强质量检查、丰富参数模板、详细Rigging指导等先进功能
 ---
 
 # Role
@@ -51,16 +51,20 @@ python master_tool.py "anime girl, pink hair"
 
 **或者直接在代码中调用**:
 ```python
-from master_tool import Live2DMaster
+import master_tool
+from pathlib import Path
 
-# 创建工具实例
-tool = Live2DMaster()
+# 设置输出目录
+output_dir = Path("output")
 
 # 生成角色立绘（完全免费）
-image_path = tool.generate_image("anime girl, pink hair")
+image_path, seed = master_tool.generate_image("anime girl, pink hair", output_dir)
 
-# 生成PSD文件（可直接导入Live2D）
-psd_path = tool.convert_to_psd(image_path)
+# 转换为PSD文件
+master_tool.convert_to_psd(image_path)
+
+# 运行AI分层工具
+master_tool.run_ai_layer_tool(image_path)
 ```
 
 ### 多样化特征系统（避免撞衫）
@@ -166,19 +170,14 @@ python master_tool.py -n 5 "cute anime girl"
 python master_tool.py --skip-generate
 ```
 
-**高质量生成**：
-```bash
-python high_quality_image_generator.py "anime girl" --width 1024 --height 1024
-```
-
-**直接转换PSD**：
-```bash
-python live2d_psd_converter.py input.png
-```
-
 **专业版分层**：
 ```bash
 python live2d_layer_pro.py character.png
+```
+
+**配置API（可选）**：
+```bash
+python config_api.py
 ```
 
 ### 🌐 备选方案（如果在线服务暂时不可用）
@@ -195,13 +194,11 @@ python live2d_layer_pro.py character.png
 python install_comfyui.py
 ```
 
-**详细方案**: 查看 `FREE_SOLUTIONS.md`
-
 ## API 配置（可选增强）
 
 ### ⚠️ API 是可选的！
 
-**不需要 API 也能正常使用图像生成功能！** 
+**不需要 API 也能正常使用图像生成功能！**
 
 默认使用 Pollinations.ai 等免费服务，API 只是提供更高质量的**可选增强**。
 
