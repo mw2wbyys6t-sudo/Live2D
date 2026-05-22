@@ -1,6 +1,6 @@
 ---
 name: live2d-master-agent
-version: 4.0
+version: 5.0
 creator: Live2D Community
 description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、一站式工具箱、PSD分层规划、ComfyUI一键安装、增强质量检查、丰富参数模板、详细Rigging指导等先进功能
 ---
@@ -33,10 +33,11 @@ description: 专业的 Live2D 制作助手，提供从概念到绑定的完整�
 8. 提供导出建议
 9. 完成从概念到 Live2D 模型的完整制作流程
 10. 直接生成可导入Live2D的PSD文件
+11. 多样化角色生成（避免撞衫）
 
 # Configuration
 
-## 🎨 免费图像生成（推荐）
+## 🎨 多样化图像生成（推荐）
 
 ### 完全免费，无需API密钥！
 
@@ -62,6 +63,20 @@ image_path = tool.generate_image("anime girl, pink hair")
 psd_path = tool.convert_to_psd(image_path)
 ```
 
+### 多样化特征系统（避免撞衫）
+
+每次生成自动随机选择特征组合：
+
+| 特征类型 | 选项数量 | 示例 |
+|----------|----------|------|
+| 发型 | 15种 | long hair, twintails, bob cut |
+| 发色 | 15种 | pink, purple, blue, blonde |
+| 眼睛颜色 | 10种 | blue, green, golden, pink |
+| 服装 | 14种 | school uniform, kimono, maid outfit |
+| 配饰 | 12种 | hair ribbon, glasses, hat |
+| 表情 | 13种 | smile, shy, cool, surprised |
+| 姿势 | 9种 | standing, sitting, waving |
+
 ### 特点
 
 | 特性 | 说明 |
@@ -72,7 +87,9 @@ psd_path = tool.convert_to_psd(image_path)
 | **高质量** | 支持动漫风格，适合Live2D |
 | **快速** | 平均30秒生成一张 |
 | **自动重试** | 网络不稳定时自动重试3次 |
-| **优雅降级** | 主服务失败时提供备选方案 |
+| **多服务降级** | 主服务失败时自动切换备用服务 |
+| **多样化生成** | 随机特征组合，避免撞衫 |
+| **随机种子** | 每次生成不同结果 |
 
 ### 支持的免费服务
 
@@ -83,6 +100,23 @@ psd_path = tool.convert_to_psd(image_path)
 | **SiliconFlow** | 新用户2000万Tokens | ⭐⭐⭐⭐⭐ | 快 |
 | **Hugging Face** | 免费推理 | ⭐⭐⭐⭐ | 中 |
 | **ComfyUI本地** | 最高质量，完全离线 | ⭐⭐⭐⭐⭐+ | 取决于硬件 |
+
+### 多服务自动降级机制
+
+```
+用户请求生成角色立绘
+     ↓
+【首选】使用 Pollinations.ai（完全免费）
+     ↓ (成功) → 返回图片 ✅
+     ↓ (失败)
+尝试备用服务
+     ↓ (成功) → 返回图片 ✅
+     ↓ (失败)
+检测 ComfyUI 本地是否可用
+     ↓ (是) → 使用 ComfyUI 生成 ✅
+     ↓ (否)
+显示详细备选方案
+```
 
 ### Live2D 专用提示词
 
@@ -115,31 +149,16 @@ ultra detailed, masterpiece
 | 6 | **Seedream API** | API已配置（可选） | ⭐⭐⭐⭐ | 按量计费 |
 | 7 | **手动上传** | 始终可用 | 用户提供 | 免费 |
 
-### 方案自动切换流程
-
-```
-用户请求生成角色立绘
-     ↓
-【首选】使用 Pollinations.ai（完全免费，无需配置）
-     ↓ (成功) → 返回图片 ✅
-     ↓ (失败)
-尝试其他免费服务
-     ↓ (成功) → 返回图片 ✅
-     ↓ (失败)
-检测 ComfyUI 本地是否可用
-     ↓ (是) → 使用 ComfyUI 生成 ✅
-     ↓ (否)
-检测可选API是否已配置
-     ↓ (是) → 使用API生成
-     ↓ (否)
-引导使用在线免费工具或手动上传
-```
-
 ### 🎯 推荐使用方式
 
 **最简单** - 一键生成：
 ```bash
 python master_tool.py "anime girl, pink hair"
+```
+
+**生成多个多样化角色**：
+```bash
+python master_tool.py -n 5 "cute anime girl"
 ```
 
 **使用已有图片（离线可用）**：
@@ -157,44 +176,23 @@ python high_quality_image_generator.py "anime girl" --width 1024 --height 1024
 python live2d_psd_converter.py input.png
 ```
 
-### 自动安装支持
-
-对于没有安装 ComfyUI 的用户，技能提供一键安装：
-
+**专业版分层**：
 ```bash
-# 运行自动安装器
-python install_comfyui.py
+python live2d_layer_pro.py character.png
 ```
-
-自动完成：
-- ✅ 检测系统要求
-- ✅ 克隆 ComfyUI 仓库
-- ✅ 创建虚拟环境
-- ✅ 安装依赖
-- ✅ 引导下载模型
-- ✅ 启动并生成图片
 
 ### 🌐 备选方案（如果在线服务暂时不可用）
 
-如果 Pollinations.ai 等在线服务暂时不可用，可以：
-
 **在线生成（无需安装）**:
-- 访问 https://pollinations.ai - 直接在网页上生成
-- 访问 https://playground.com - Playground AI
-- 访问 https://leonardo.ai - Leonardo AI (免费额度)
-- 访问 https://civitai.com - Civitai 模型社区
-- 访问 https://huggingface.co/spaces
+- https://pollinations.ai - 直接在网页上生成
+- https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell
+- https://puter.com/ai/image-generator
+- https://www.playground.com/
+- https://leonardo.ai/
 
 **本地生成**:
 ```bash
-# 一键安装本地最高质量方案
 python install_comfyui.py
-```
-
-**API 配置**:
-```bash
-# 配置火山引擎 API Key
-python config_api.py
 ```
 
 **详细方案**: 查看 `FREE_SOLUTIONS.md`
@@ -216,34 +214,6 @@ cd /workspace/.trae/skills/live2d-master-agent
 python config_api.py
 ```
 
-工具会引导你输入 API Key，自动保存配置。
-
-**其他命令**：
-- 查看配置状态：`python config_api.py --status`
-- 清除配置：`python config_api.py --clear`
-
-### 火山引擎 ARK API（可选）
-
-如果你想要更高质量的图像生成，可以配置 API：
-
-**手动配置方法**：
-1. 复制 `.env.example` 为 `.env`
-2. 填入你的 API 密钥：
-```
-ARK_API_KEY=your-api-key-here
-ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-```
-
-**安全提示**:
-- ⚠️ 不要将 API 密钥提交到版本控制
-- ⚠️ 不要在公开代码中暴露密钥
-- ✅ 使用环境变量或配置文件管理密钥
-
-### 配置文件位置
-- `.env` - 环境变量配置（可选）
-- `config.py` - 配置加载器
-- `config_api.py` - 配置工具（推荐使用）
-
 ## 🔍 增强质量检查
 
 ### 全面检查项目
@@ -260,30 +230,6 @@ ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 | **分辨率检查** | 尺寸、正方形、过大 | Info/Warning |
 | **Draw Order** | 重复绘制顺序 | Warning |
 
-### 检查流程
-
-```bash
-# 检查 PSD 文件
-python scripts/qa_engine_enhanced.py --input your_character.psd
-
-# 详细报告
-python scripts/qa_engine_enhanced.py --input your_character.psd --report detailed
-
-# 修复建议
-python scripts/qa_engine_enhanced.py --input your_character.psd --fix
-```
-
-### 修复建议
-
-质量检查工具会提供针对性的修复建议：
-
-| 问题类型 | 修复建议 |
-|----------|----------|
-| 中文图层名 | 建议重命名为英文 |
-| 混合模式错误 | 建议改为 Normal 模式 |
-| 图层缺失 | 建议添加必要图层 |
-| 过大尺寸 | 建议缩小到 1024x1024 |
-
 ## ⚙️ 参数设计器
 
 ### 预设模板
@@ -297,36 +243,6 @@ python scripts/qa_engine_enhanced.py --input your_character.psd --fix
 4. **Advanced** - 高级参数集（包含高级控制）
 5. **Chibi** - Q版专用参数集
 6. **Custom** - 自定义参数集
-
-**使用方法**:
-```bash
-# 使用标准模板生成参数
-python scripts/parameter_designer_enhanced.py --preset standard
-
-# 使用Q版模板
-python scripts/parameter_designer_enhanced.py --preset chibi
-
-# 自定义参数
-python scripts/parameter_designer_enhanced.py --custom
-```
-
-### 参数配置
-
-| 参数类别 | 参数名称 | 说明 |
-|----------|----------|------|
-| **表情** | EyeBlink | 眨眼 |
-| | EyeWink | 单眼眨眼 |
-| | MouthOpen | 张嘴 |
-| | MouthSmile | 微笑 |
-| | EyebrowUp | 挑眉 |
-| | EyebrowDown | 皱眉 |
-| **头部** | HeadX | 头部左右 |
-| | HeadY | 头部上下 |
-| | HeadZ | 头部旋转 |
-| **身体** | BodyX | 身体左右 |
-| | BodyY | 身体上下 |
-| **眼睛** | EyeBallX | 眼球左右 |
-| | EyeBallY | 眼球上下 |
 
 ### 8种表情配置
 
@@ -343,41 +259,55 @@ python scripts/parameter_designer_enhanced.py --custom
 
 ## 📐 PSD 分层规划
 
-### 标准分层结构
+### 专业版分层结构
 
-使用 `image_to_psd.py` 工具进行分层规划：
+使用 `live2d_layer_pro.py` 工具进行智能分层：
 
 ```bash
-# 创建分层规划
-python image_to_psd.py --input character.png
-
-# 直接生成PSD（可导入Live2D）
-python live2d_psd_converter.py character.png
+# 智能分层（符合Live2D官方规范）
+python live2d_layer_pro.py character.png
 ```
 
-### 推荐图层结构（从下到上）
+### 标准图层结构（从下到上）
 
 | 层级 | 图层名称 | 说明 |
 |------|----------|------|
-| 1 | ArtMesh/Body | 身体、躯干 |
-| 2 | ArtMesh/Hair_Back | 头发后部 |
-| 3 | ArtMesh/Clothes | 服装 |
-| 4 | ArtMesh/Hair_Side | 头发侧部 |
-| 5 | ArtMesh/Face | 脸部 |
-| 6 | ArtMesh/Eyes | 眼睛（左右分开） |
-| 7 | ArtMesh/Mouth | 嘴巴 |
-| 8 | ArtMesh/Hair_Front | 头发前部/刘海 |
-| 9 | ArtMesh/Hands | 手部 |
-| 10 | ArtMesh/Accessories | 配饰 |
+| 1 | Background | 背景 |
+| 2 | Body | 身体 |
+| 3 | Neck | 脖子 |
+| 4 | Clothes | 服装 |
+| 5 | Head | 头部 |
+| 6 | Face_Base | 脸部基础 |
+| 7 | Hair_Back | 头发后部 |
+| 8 | Hair_Side_L | 头发左侧 |
+| 9 | Hair_Side_R | 头发右侧 |
+| 10 | Hair_Front | 头发前部 |
+| 11 | Hair_Bangs | 刘海 |
+| 12 | Brow_L | 左眉毛 |
+| 13 | Brow_R | 右眉毛 |
+| 14 | EyeL_White | 左眼白 |
+| 15 | EyeL_Iris | 左虹膜 |
+| 16 | EyeL_Highlight | 左眼高光 |
+| 17 | EyeL_Eyelid_Upper | 左上眼睑 |
+| 18 | EyeL_Eyelid_Lower | 左下眼睑 |
+| 19 | EyeR_White | 右眼白 |
+| 20 | EyeR_Iris | 右虹膜 |
+| 21 | EyeR_Highlight | 右眼高光 |
+| 22 | EyeR_Eyelid_Upper | 右上眼睑 |
+| 23 | EyeR_Eyelid_Lower | 右下眼睑 |
+| 24 | Mouth_Outer | 嘴巴外形 |
+| 25 | Mouth_A/I/U/E/O | 5种口型 |
+| 26 | Accessories | 配饰 |
 
 ### 生成的PSD文件特点
 
 | 特性 | 说明 |
 |------|------|
-| **11个图层** | 参考层 + 10个ArtMesh标准图层 |
+| **25+个图层** | 符合Live2D官方规范 |
 | **标准命名** | 英文命名，符合Live2D规范 |
 | **直接导入** | 可直接导入Live2D Cubism |
-| **参考图层** | 包含原图作为参考便于对齐 |
+| **眼部细分** | 白目/虹膜/高光/眼睑 |
+| **口型支持** | 5种发音口型（A/I/U/E/O） |
 
 ## 📚 Rigging 指南
 
@@ -391,20 +321,18 @@ python live2d_psd_converter.py character.png
 5. 动画制作
 6. 导出优化
 
-### 推荐学习资源
-- 📖 Live2D Cubism 官方文档
-- 🎬 YouTube 教程频道
-- 👥 社区 Discord 服务器
-
 ## 🗂️ 工具文件清单
 
 ### 核心工具
 
 | 文件 | 说明 | 版本 |
 |------|------|------|
-| **master_tool.py** | 一站式工具箱 | v3.1 |
+| **master_tool.py** | 一站式工具箱（集成多服务降级） | v5.0 |
+| **live2d_layer_pro.py** | 专业版AI智能分层工具 | v5.0 |
 | **high_quality_image_generator.py** | 高质量图片生成器 | v2.0 |
 | **live2d_psd_converter.py** | PSD文件转换器 | v1.0 |
+| **live2d_image_generator.py** | 多样化图片生成器 | v3.0 |
+| **multi_service_generator.py** | 多服务自动降级生成器 | v1.0 |
 | **free_generator.py** | 免费图像生成器 | v3.1 |
 | **quick_gen.py** | 快速生成工具 | v3.2 |
 
@@ -416,6 +344,8 @@ python live2d_psd_converter.py character.png
 | **install_comfyui.py** | ComfyUI安装脚本 |
 | **comfyui_integration.py** | ComfyUI集成 |
 | **local_generator.py** | 本地生成器 |
+| **live2d_autolayer.py** | AI分层工具 |
+| **live2d_layer_tool.py** | 分层工具 |
 
 ### 脚本目录
 
@@ -431,6 +361,7 @@ python live2d_psd_converter.py character.png
 | **docs/RIGGING_GUIDE.md** | Rigging指南 |
 | **FREE_SOLUTIONS.md** | 免费方案文档 |
 | **HIGH_QUALITY_GENERATOR_GUIDE.md** | 高质量生成器指南 |
+| **AI_LAYERING_GUIDE.md** | AI分层指南 |
 
 ## 📝 使用示例
 
@@ -441,60 +372,64 @@ python live2d_psd_converter.py character.png
 python master_tool.py "cute anime girl, pink hair, blue eyes"
 
 # 输出:
+# ✅ 随机特征: hairstyle, hair_color, eye_color...
 # ✅ 图片生成成功
 # ✅ PSD文件生成 (可直接导入Live2D)
+# ✅ AI智能分层完成
 ```
 
-### 示例2：使用已有图片
+### 示例2：生成多个多样化角色
 
 ```bash
-# 将图片放到 output/ 目录后
+# 生成5个不同的角色
+python master_tool.py -n 5 "anime girl"
+
+# 输出:
+# 每个角色具有不同的发型、发色、服装组合
+```
+
+### 示例3：使用已有图片
+
+```bash
 python master_tool.py --skip-generate
-
-# 输出:
-# ✅ 使用已有图片
-# ✅ PSD文件生成
 ```
 
-### 示例3：直接转换PSD
+### 示例4：专业版分层
 
 ```bash
-# 直接转换图片为可导入Live2D的PSD
-python live2d_psd_converter.py character.png
+python live2d_layer_pro.py character.png
 
 # 输出:
-# ✅ PSD文件已创建: character_live2d.psd
-# ✅ 图层数量: 11
-```
-
-### 示例4：高质量生成
-
-```bash
-# 指定更高分辨率
-python high_quality_image_generator.py "beautiful anime girl" --width 1024 --height 1024 --seed 12345
+# ✅ 生成25个标准图层
+# ✅ 眼部细分完成
+# ✅ 口型变化生成
 ```
 
 ## 📊 版本更新记录
 
-### v4.0 (最新)
+### v5.0 (最新)
+- ✅ 新增多服务自动降级机制
+- ✅ 新增多样化特征系统（避免撞衫）
+- ✅ 新增专业版分层工具 v5.0
+- ✅ 新增随机种子生成
+- ✅ 新增批量生成功能
+- ✅ 完善备选方案提示
+- ✅ 代码精简约50%
+
+### v4.0
 - ✅ 新增高质量图片生成器 v2.0
 - ✅ 新增PSD直接转换器
-- ✅ 代码精简约50%
 - ✅ 网络稳定性增强
 - ✅ 自动重试机制
-- ✅ 优雅降级方案
 
 ### v3.8
 - ✅ 免费图像生成功能完善
 - ✅ Pollinations.ai 集成
-- ✅ 自动检测最佳方案
-- ✅ 备选方案提示
 
 ### v3.0
 - ✅ 一站式工具箱
 - ✅ 参数设计器
 - ✅ 质量检查引擎
-- ✅ Rigging 指南
 
 ## 🔒 安全声明
 
@@ -513,4 +448,4 @@ MIT License
 
 ---
 
-**Live2D Master Agent v4.0** - 让Live2D制作更简单！
+**Live2D Master Agent v5.0** - 让Live2D制作更简单！
