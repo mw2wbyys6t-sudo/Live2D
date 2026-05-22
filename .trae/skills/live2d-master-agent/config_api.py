@@ -99,13 +99,13 @@ def configure_api_key():
         print()
         print("现在你可以选择使用：")
         print("  1. Seedream（更高质量）: python scripts/seedream_image_generate.py --prompt \"描述\"")
-        print("  2. 免费方案（默认）: python quick_gen.py \"描述\"")
+        print("  2. 免费方案（默认）: python master_tool.py \"描述\"")
     else:
         print()
         print("⏭️  跳过 API 配置")
         print()
         print("继续使用免费方案:")
-        print("  python quick_gen.py \"你的描述\"")
+        print("  python master_tool.py \"你的描述\"")
 
 def main():
     """主函数"""
