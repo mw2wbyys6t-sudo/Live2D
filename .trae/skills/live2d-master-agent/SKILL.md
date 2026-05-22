@@ -323,29 +323,21 @@ python live2d_layer_pro.py character.png
 
 ## 🗂️ 工具文件清单
 
-### 核心工具
+### 核心工具（推荐使用）
 
 | 文件 | 说明 | 版本 |
 |------|------|------|
-| **master_tool.py** | 一站式工具箱（集成多服务降级） | v5.0 |
+| **master_tool.py** | 一站式工具箱（集成多服务降级、多样化生成） | v5.0 |
 | **live2d_layer_pro.py** | 专业版AI智能分层工具 | v5.0 |
-| **high_quality_image_generator.py** | 高质量图片生成器 | v2.0 |
-| **live2d_psd_converter.py** | PSD文件转换器 | v1.0 |
-| **live2d_image_generator.py** | 多样化图片生成器 | v3.0 |
-| **multi_service_generator.py** | 多服务自动降级生成器 | v1.0 |
-| **free_generator.py** | 免费图像生成器 | v3.1 |
-| **quick_gen.py** | 快速生成工具 | v3.2 |
 
 ### 辅助工具
 
 | 文件 | 说明 |
 |------|------|
 | **config_api.py** | API配置工具 |
+| **install_ai_models.py** | AI模型安装脚本 |
 | **install_comfyui.py** | ComfyUI安装脚本 |
 | **comfyui_integration.py** | ComfyUI集成 |
-| **local_generator.py** | 本地生成器 |
-| **live2d_autolayer.py** | AI分层工具 |
-| **live2d_layer_tool.py** | 分层工具 |
 
 ### 脚本目录
 
@@ -353,15 +345,19 @@ python live2d_layer_pro.py character.png
 |------|------|
 | **scripts/qa_engine_enhanced.py** | 增强质量检查 |
 | **scripts/parameter_designer_enhanced.py** | 参数设计器 |
+| **scripts/physics_helper.py** | 物理设置助手 |
+| **scripts/layer_checker.py** | 图层检查工具 |
+| **scripts/auto_naming.py** | 自动命名工具 |
+| **scripts/seedream_image_generate.py** | Seedream图像生成（需API） |
 
 ### 文档
 
 | 文件 | 说明 |
 |------|------|
 | **docs/RIGGING_GUIDE.md** | Rigging指南 |
-| **FREE_SOLUTIONS.md** | 免费方案文档 |
-| **HIGH_QUALITY_GENERATOR_GUIDE.md** | 高质量生成器指南 |
 | **AI_LAYERING_GUIDE.md** | AI分层指南 |
+| **CHANGELOG.md** | 版本更新记录 |
+| **security_best_practices_report.md** | 安全审计报告 |
 
 ## 📝 使用示例
 
