@@ -74,6 +74,9 @@ python master_tool.py "cute anime girl, pink hair"
 ### 💡 最佳实践
 💡 [BEST_PRACTICES.md](BEST_PRACTICES.md) - 专业技巧
 
+### ⚠️ 已知限制
+⚠️ [LIMITATIONS.md](LIMITATIONS.md) - 项目缺陷与改进方向
+
 ---
 
 ## 🎯 适用场景
