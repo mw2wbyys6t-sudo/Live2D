@@ -9,16 +9,16 @@ import sys
 import subprocess
 from pathlib import Path
 
-def run_command(cmd, description):
-    """运行命令并显示结果"""
+def run_command(cmd_args, description):
+    """运行命令并显示结果（安全版本）"""
     print(f"\n{'='*60}")
     print(f"📦 {description}")
     print(f"{'='*60}")
     
     try:
         result = subprocess.run(
-            cmd, 
-            shell=True, 
+            cmd_args, 
+            shell=False, 
             check=True,
             capture_output=True,
             text=True
@@ -34,11 +34,11 @@ def run_command(cmd, description):
         return False
 
 def check_installed(package):
-    """检查包是否已安装"""
+    """检查包是否已安装（安全版本）"""
     try:
         result = subprocess.run(
-            f"python3 -c 'import {package}'",
-            shell=True,
+            [sys.executable, "-c", f"import {package}"],
+            shell=False,
             capture_output=True
         )
         return result.returncode == 0
@@ -82,7 +82,7 @@ def main():
             print(f"✅ {name} 已安装")
         else:
             print(f"⏳ 安装 {name}...")
-            run_command(f"pip3 install {name.lower()}", f"安装 {name}")
+            run_command([sys.executable, "-m", "pip", "install", name.lower()], f"安装 {name}")
     
     # 安装rembg
     print("\n" + "="*60)
@@ -93,7 +93,7 @@ def main():
         print("✅ rembg 已安装")
     else:
         print("\n⏳ 安装 rembg...")
-        run_command("pip3 install rembg", "安装 rembg")
+        run_command([sys.executable, "-m", "pip", "install", "rembg"], "安装 rembg")
     
     # 安装SAM
     print("\n" + "="*60)
@@ -104,7 +104,7 @@ def main():
         print("✅ SAM 已安装")
     else:
         print("\n⏳ 安装 SAM...")
-        run_command("pip3 install segment-anything", "安装 SAM")
+        run_command([sys.executable, "-m", "pip", "install", "segment-anything"], "安装 SAM")
         
         # SAM模型下载提示
         model_dir = Path.home() / ".sam"
@@ -128,7 +128,7 @@ def main():
         print("\n⏳ 安装 Qwen-Image-Layered...")
         print("   这是目前最先进的图像分层模型")
         if run_command(
-            "pip3 install qwen-image-layered",
+            [sys.executable, "-m", "pip", "install", "qwen-image-layered"],
             "安装 Qwen-Image-Layered"
         ):
             print("\n✅ Qwen-Image-Layered 安装成功!")
