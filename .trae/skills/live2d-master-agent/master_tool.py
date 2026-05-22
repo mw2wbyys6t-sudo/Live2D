@@ -101,46 +101,94 @@ def get_latest_image(output_dir):
     png_files = sorted(output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     return str(png_files[0]) if png_files else None
 
-def download_image(url, output_path):
-    """下载图片"""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-        'Referer': 'https://pollinations.ai/'
-    }
-    
+def download_with_service(url, headers, output_path):
+    """使用指定服务下载图片"""
     try:
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             data = response.read()
             if len(data) < 1000:
-                return False
+                return False, "图片数据太小"
             with open(output_path, 'wb') as f:
                 f.write(data)
-        return True
+        return True, None
     except Exception as e:
-        print(f"⚠️ 下载失败: {e}")
-        return False
+        return False, str(e)
 
 def generate_image(prompt, output_dir, seed=None):
-    """生成图片"""
+    """生成图片（多服务自动降级）"""
     print(f"\n✅ 正在生成图片...")
     print(f"📝 提示词: {prompt[:80]}...")
     
-    encoded = urllib.parse.quote(prompt)
     if seed is None:
         seed = random.randint(0, 999999999)
     
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}"
-    output_file = output_dir / f"live2d_{int(time.time())}.png"
+    encoded = urllib.parse.quote(prompt)
     
-    if download_image(url, output_file):
-        print(f"✅ 图片生成成功: {output_file.name}")
-        print(f"🔢 种子: {seed}")
-        return str(output_file), seed
-    else:
-        print("❌ 图片生成失败")
-        return None, seed
+    # 服务列表（按优先级排序）
+    services = [
+        {
+            'name': 'Pollinations.ai',
+            'url': f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}",
+            'headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Referer': 'https://pollinations.ai/'
+            }
+        },
+        {
+            'name': 'Pollinations (备用)',
+            'url': f"https://pollinations.ai/api/text2image?prompt={encoded}&width=768&height=768&seed={seed}",
+            'headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/*'
+            }
+        }
+    ]
+    
+    # 尝试各个服务
+    for i, service in enumerate(services):
+        print(f"\n🔄 尝试服务 {i+1}/{len(services)}: {service['name']}")
+        
+        output_file = output_dir / f"live2d_{int(time.time())}.png"
+        success, error = download_with_service(service['url'], service['headers'], output_file)
+        
+        if success:
+            print(f"✅ 成功! 使用 {service['name']}")
+            print(f"📁 文件: {output_file.name}")
+            print(f"🔢 种子: {seed}")
+            return str(output_file), seed
+        else:
+            print(f"❌ {service['name']} 失败: {error}")
+    
+    print("❌ 所有在线服务暂时不可用")
+    return None, seed
+
+def show_alternatives():
+    """显示备选方案"""
+    print("""
+
+💡 备选方案:
+
+1. 🌐 在线工具:
+   • https://pollinations.ai (主要推荐)
+   • https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell
+   • https://puter.com/ai/image-generator
+   • https://www.playground.com/
+   • https://leonardo.ai/
+
+2. 💻 本地安装:
+   • ComfyUI + Stable Diffusion
+     运行: python install_comfyui.py
+
+3. 📁 使用已有图片:
+   将图片放到 output/ 目录后运行:
+   python master_tool.py --skip-generate
+
+4. 🔑 配置API:
+   运行: python config_api.py
+   配置火山引擎Seedream API Key
+    """)
 
 def create_psd_plan(image_path, output_dir):
     """创建PSD分层规划"""
@@ -312,10 +360,7 @@ def main():
             
             image_path, seed = generate_image(prompt, output_dir)
             if not image_path:
-                print("\n💡 备选方案:")
-                print("1. 访问 https://pollinations.ai 在线生成")
-                print("2. 将图片放到 output/ 目录后运行: python master_tool.py --skip-generate")
-                print("3. 安装ComfyUI: python install_comfyui.py")
+                show_alternatives()
                 return
         
         # 创建PSD规划
