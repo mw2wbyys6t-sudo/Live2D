@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -210,7 +211,7 @@ func (h *Handler) ServeOutput(c *gin.Context) {
 	c.File(filepath)
 }
 
-// isPathSafe 检查路径是否在允许的目录内
+// isPathSafe 检查路径是否在允许的目录内（使用 filepath.Rel 进行更严格的检查）
 func isPathSafe(path, baseDir string) bool {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -220,7 +221,15 @@ func isPathSafe(path, baseDir string) bool {
 	if err != nil {
 		return false
 	}
-	return len(absPath) >= len(absBase) && absPath[:len(absBase)] == absBase
+
+	// 使用 filepath.Rel 进行更严格的检查，防止符号链接绕过
+	rel, err := filepath.Rel(absBase, absPath)
+	if err != nil {
+		return false
+	}
+
+	// 确保相对路径不包含 ..，防止目录遍历
+	return !strings.HasPrefix(rel, "..") && rel != ".."
 }
 
 // GetAPIInfo 获取 API 信息

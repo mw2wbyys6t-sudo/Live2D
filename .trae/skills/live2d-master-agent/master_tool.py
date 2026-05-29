@@ -18,6 +18,7 @@ import os
 import sys
 import time
 import random
+import re
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -401,8 +402,27 @@ def convert_to_psd(image_path):
         return image_path
 
 
+def validate_image_path(image_path):
+    """验证图片路径安全，防止命令注入"""
+    if not image_path or not isinstance(image_path, str):
+        return False, "路径不能为空"
+    # 检查非法字符
+    if re.search(r'[;&|`$\x00]', image_path):
+        return False, "路径包含非法字符"
+    # 检查文件名是否以 - 开头
+    if os.path.basename(image_path).startswith('-'):
+        return False, "文件名不能以 - 开头"
+    return True, None
+
+
 def run_ai_layer_tool(image_path):
     """运行AI分层工具"""
+    # 验证路径安全
+    is_valid, error_msg = validate_image_path(image_path)
+    if not is_valid:
+        print(f"⚠️ 路径验证失败: {error_msg}")
+        return False
+
     try:
         import subprocess
         result = subprocess.run(

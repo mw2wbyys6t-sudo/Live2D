@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,6 +19,22 @@ type PythonBridge struct {
 
 func NewPythonBridge(cfg *config.Config) *PythonBridge {
 	return &PythonBridge{cfg: cfg}
+}
+
+// validatePath 验证路径安全，防止命令注入和路径遍历
+func validatePath(path string) error {
+	if path == "" {
+		return fmt.Errorf("路径不能为空")
+	}
+	// 检查非法字符，防止命令注入
+	if matched, _ := regexp.MatchString(`[;&|*$\x00]`, path); matched {
+		return fmt.Errorf("路径包含非法字符")
+	}
+	// 检查文件名是否以 - 开头，防止被解析为命令行选项
+	if strings.HasPrefix(filepath.Base(path), "-") {
+		return fmt.Errorf("文件名不能以 - 开头")
+	}
+	return nil
 }
 
 // GenerateImageViaPython 通过 Python 脚本生成图片
@@ -63,8 +80,13 @@ func (pb *PythonBridge) GenerateImageViaPython(prompt string, width, height, see
 
 // CreatePSDPlan 通过 Python 创建 PSD 分层规划
 func (pb *PythonBridge) CreatePSDPlan(imagePath string) (*models.PSDLayerResponse, error) {
+	// 验证路径安全
+	if err := validatePath(imagePath); err != nil {
+		return nil, fmt.Errorf("路径验证失败: %v", err)
+	}
+
 	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "live2d_layer_pro.py")
-	
+
 	// 如果 live2d_layer_pro.py 不存在，尝试 v6
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		scriptPath = filepath.Join(pb.cfg.Python.ScriptsDir, "live2d_layer_v6.py")

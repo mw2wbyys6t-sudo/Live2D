@@ -148,8 +148,16 @@ func (g *ImageGenerator) generateWithPollinations(req models.GenerateImageReques
 		encodedPrompt, req.Width, req.Height, req.Seed,
 	)
 
-	// 下载图片
-	httpClient := &http.Client{Timeout: 200 * time.Second}
+	// 下载图片（限制重定向次数，防止 SSRF）
+	httpClient := &http.Client{
+		Timeout: 200 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many redirects")
+			}
+			return nil
+		},
+	}
 	resp, err := httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Pollinations 请求失败: %v", err)
