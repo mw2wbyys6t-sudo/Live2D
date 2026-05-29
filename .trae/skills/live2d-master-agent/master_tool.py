@@ -94,6 +94,31 @@ LIVE2D_POSES = [
     'arms at sides', 'straight-on view'
 ]
 
+# Live2D 专用提示词模板
+LIVE2D_PROMPT_TEMPLATE = """masterpiece, best quality, anime style, 1girl, solo, full body, standing, looking at viewer,
+{hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
+perfect for Live2D rigging, clean lineart, clear edges, sharp outlines,
+flat colors, minimal shading, cel shading, distinct color separation,
+simple background, white background, isolated character,
+clear silhouette, symmetrical eyes, simple hair strands,
+visible neck and shoulders, visible arms and hands, visible legs and feet,
+closed mouth, neutral expression, front view, straight-on view,
+highly detailed face, detailed eyes, beautiful face"""
+
+# Live2D 反向提示词
+LIVE2D_NEGATIVE_PROMPT = """blurry, low quality, low resolution, pixelated, noisy, grainy,
+distorted, deformed, bad anatomy, bad hands, bad face, bad eyes,
+extra fingers, missing fingers, fused fingers, too many fingers,
+bad proportions, extra limbs, long neck, bad feet, bad ears,
+ugly, disgusting, horror, watermark, text, signature, logo,
+complex background, messy hair, messy clothes,
+photorealistic, realistic, 3d, ugly eyes, deformed eyes, closed eyes,
+depth of field, blurry background, multiple girls, multiple people,
+profile view, side view, back view, turned away,
+open mouth, talking, shouting, laughing, crying,
+dynamic pose, action pose, jumping, running, sitting, lying down,
+partial body, cropped, off-screen, out of frame"""
+
 
 def generate_random_features():
     """生成随机特征组合，避免撞衫"""
@@ -119,49 +144,36 @@ def build_prompt(custom_prompt="", live2d_optimized=True):
     """
     features = generate_random_features()
 
-    prompt_parts = []
-
-    if custom_prompt:
-        prompt_parts.append(custom_prompt)
-
-    # 使用 Live2D 优化的特征
     if live2d_optimized:
-        prompt_parts.append("1girl, solo, full body")
-        prompt_parts.append(random.choice(LIVE2D_HAIRSTYLES))
-        prompt_parts.append(random.choice(LIVE2D_POSES))
+        # 使用 Live2D 专用模板
+        hairstyle = random.choice(LIVE2D_HAIRSTYLES)
+        prompt = LIVE2D_PROMPT_TEMPLATE.format(
+            hairstyle=hairstyle,
+            hair_color=features['hair_color'],
+            eye_color=features['eye_color'],
+            clothing=features['clothing'],
+            accessory=features['accessory'],
+            expression=features['expression']
+        )
+        # 清理多余空白
+        prompt = ' '.join(prompt.split())
+        return prompt, features
     else:
+        # 自由模式
+        prompt_parts = []
+        if custom_prompt:
+            prompt_parts.append(custom_prompt)
         prompt_parts.append("1girl, solo, portrait")
+        prompt_parts.append(features['style'])
         prompt_parts.append(features['hairstyle'])
+        prompt_parts.append(features['hair_color'])
+        prompt_parts.append(features['eye_color'])
+        prompt_parts.append(features['clothing'])
+        prompt_parts.append(features['accessory'])
+        prompt_parts.append(features['expression'])
         prompt_parts.append(features['pose'])
-
-    prompt_parts.append(features['style'])
-    prompt_parts.append(features['hair_color'])
-    prompt_parts.append(features['eye_color'])
-    prompt_parts.append(features['clothing'])
-    prompt_parts.append(features['accessory'])
-    prompt_parts.append(features['expression'])
-
-    # 添加质量关键词
-    prompt_parts.extend(random.sample(QUALITY_TAGS, 6))
-
-    # Live2D优化提示词 - 改进版
-    prompt_parts.append("perfect for Live2D rigging")
-    prompt_parts.append("clean lines, clear edges")
-    prompt_parts.append("isolated character on simple background")
-    prompt_parts.append("white background")
-    prompt_parts.append("sharp clean lineart")
-    prompt_parts.append("distinct color separation")
-    
-    # 新增：Live2D 关键优化词
-    if live2d_optimized:
-        prompt_parts.append("flat colors, minimal shading")
-        prompt_parts.append("clear silhouette")
-        prompt_parts.append("symmetrical eyes")
-        prompt_parts.append("simple hair strands")
-        prompt_parts.append("visible neck and shoulders")
-        prompt_parts.append("closed mouth, neutral expression")
-
-    return " ".join(prompt_parts), features
+        prompt_parts.extend(random.sample(QUALITY_TAGS, 6))
+        return " ".join(prompt_parts), features
 
 
 def get_latest_image(output_dir):
@@ -578,6 +590,14 @@ def main():
         '--full-body', action='store_true',
         help='生成全身图片（推荐用于 Live2D）'
     )
+    parser.add_argument(
+        '--optimize', action='store_true',
+        help='生成后自动优化图片（轮廓增强、背景处理）'
+    )
+    parser.add_argument(
+        '--check', action='store_true',
+        help='检查已有图片的 Live2D 兼容性'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -591,6 +611,19 @@ def main():
     # 显示See-through指南
     if args.see_through:
         show_see_through_guide()
+        return
+
+    # 检查已有图片的 Live2D 兼容性
+    if args.check:
+        image_path = get_latest_image(output_dir)
+        if image_path:
+            try:
+                from live2d_image_processor import check_live2d_compatibility
+                check_live2d_compatibility(image_path)
+            except ImportError:
+                print("⚠️ 请先安装 Pillow: pip install Pillow")
+        else:
+            print("❌ output/ 目录中没有图片")
         return
 
     # 生成多个多样化角色
@@ -641,6 +674,18 @@ def main():
             if not image_path:
                 show_alternatives()
                 return
+
+        # 自动优化图片（如果启用）
+        if args.optimize:
+            try:
+                from live2d_image_processor import auto_optimize_for_live2d
+                optimized_path = auto_optimize_for_live2d(image_path, output_dir)
+                image_path = optimized_path
+                print(f"\n✅ 已使用优化后的图片: {Path(image_path).name}")
+            except ImportError:
+                print("⚠️ 自动优化需要 Pillow，请安装: pip install Pillow")
+            except Exception as e:
+                print(f"⚠️ 自动优化失败: {e}")
 
         # 创建PSD规划
         create_psd_plan(image_path, output_dir)
