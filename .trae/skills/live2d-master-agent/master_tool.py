@@ -94,16 +94,38 @@ LIVE2D_POSES = [
     'arms at sides', 'straight-on view'
 ]
 
-# Live2D 专用提示词模板
-LIVE2D_PROMPT_TEMPLATE = """masterpiece, best quality, anime style, 1girl, solo, full body, standing, looking at viewer,
+# 高质量动漫风格提示词模板（匹配参考图质量）
+HIGH_QUALITY_PROMPT_TEMPLATE = """masterpiece, best quality, ultra detailed, highres, 8k uhd,
+anime style, illustration, pixiv, artstation,
+1girl, solo, {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
+beautiful detailed face, beautiful detailed eyes, detailed skin texture, soft lighting,
+pastel colors, soft color palette, dreamy atmosphere, ethereal,
+frills, lace, ribbons, bows, jewelry, elegant outfit,
+idol costume, stage dress, sparkling, glitter,
+perfect anatomy, correct proportions, delicate hands,
+white background, simple background, clean background"""
+
+# Live2D 专用提示词模板（在高质量基础上添加 Live2D 优化）
+LIVE2D_PROMPT_TEMPLATE = """masterpiece, best quality, ultra detailed, highres,
+anime style, illustration, 1girl, solo, full body, standing, looking at viewer,
 {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
+beautiful detailed face, beautiful detailed eyes, detailed skin texture, soft lighting,
 perfect for Live2D rigging, clean lineart, clear edges, sharp outlines,
 flat colors, minimal shading, cel shading, distinct color separation,
 simple background, white background, isolated character,
 clear silhouette, symmetrical eyes, simple hair strands,
 visible neck and shoulders, visible arms and hands, visible legs and feet,
 closed mouth, neutral expression, front view, straight-on view,
-highly detailed face, detailed eyes, beautiful face"""
+perfect anatomy, correct proportions, delicate hands"""
+
+# 高质量反向提示词
+HIGH_QUALITY_NEGATIVE_PROMPT = """lowres, bad anatomy, bad hands, text, error, missing fingers,
+extra digit, fewer digits, cropped, worst quality, low quality,
+normal quality, jpeg artifacts, signature, watermark, username, blurry,
+artist name, bad proportions, extra limbs, cloned face, disfigured,
+gross proportions, malformed limbs, missing arms, missing legs,
+extra arms, extra legs, fused fingers, too many fingers, long neck,
+photorealistic, realistic, 3d, western, sketch, rough, draft"""
 
 # Live2D 反向提示词
 LIVE2D_NEGATIVE_PROMPT = """blurry, low quality, low resolution, pixelated, noisy, grainy,
@@ -135,17 +157,18 @@ def generate_random_features():
     return features
 
 
-def build_prompt(custom_prompt="", live2d_optimized=True):
+def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
     """构建优化的多样化提示词
     
     Args:
         custom_prompt: 用户自定义提示词
         live2d_optimized: 是否使用 Live2D 优化模式
+        high_quality: 是否使用高质量提示词（参考图风格）
     """
     features = generate_random_features()
 
     if live2d_optimized:
-        # 使用 Live2D 专用模板
+        # 使用 Live2D 专用模板（包含高质量关键词）
         hairstyle = random.choice(LIVE2D_HAIRSTYLES)
         prompt = LIVE2D_PROMPT_TEMPLATE.format(
             hairstyle=hairstyle,
@@ -156,6 +179,21 @@ def build_prompt(custom_prompt="", live2d_optimized=True):
             expression=features['expression']
         )
         # 清理多余空白
+        prompt = ' '.join(prompt.split())
+        return prompt, features
+    elif high_quality:
+        # 高质量模式（匹配参考图风格）
+        prompt = HIGH_QUALITY_PROMPT_TEMPLATE.format(
+            hairstyle=features['hairstyle'],
+            hair_color=features['hair_color'],
+            eye_color=features['eye_color'],
+            clothing=features['clothing'],
+            accessory=features['accessory'],
+            expression=features['expression']
+        )
+        # 添加用户自定义提示词
+        if custom_prompt:
+            prompt = custom_prompt + ", " + prompt
         prompt = ' '.join(prompt.split())
         return prompt, features
     else:
@@ -598,6 +636,14 @@ def main():
         '--check', action='store_true',
         help='检查已有图片的 Live2D 兼容性'
     )
+    parser.add_argument(
+        '--high-quality', action='store_true',
+        help='高质量模式（匹配参考图风格，推荐）'
+    )
+    parser.add_argument(
+        '--no-hq', action='store_true',
+        help='禁用高质量模式（使用普通质量）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -648,20 +694,28 @@ def main():
             
             # 根据参数选择模式
             live2d_opt = not args.no_live2d_opt
+            high_quality = not args.no_hq  # 默认启用高质量
+            if args.high_quality:
+                high_quality = True
+                live2d_opt = False  # 高质量模式下禁用 Live2D 优化
+            
             if args.full_body:
                 custom_prompt += ", full body, standing"
             
-            prompt, features = build_prompt(custom_prompt, live2d_optimized=live2d_opt)
+            prompt, features = build_prompt(custom_prompt, live2d_optimized=live2d_opt, high_quality=high_quality)
 
             print(f"\n🔖 随机特征:")
             for key, value in features.items():
                 print(f"   • {key}: {value}")
             
-            if live2d_opt:
+            if high_quality:
+                print(f"\n✨ 高质量模式: 已启用")
+                print(f"   特点: 精细细节、柔和光影、梦幻风格")
+            elif live2d_opt:
                 print(f"\n✨ Live2D 优化模式: 已启用")
                 print(f"   特点: 全身可见、简单发型、清晰轮廓")
             else:
-                print(f"\n⚠️ Live2D 优化模式: 已禁用")
+                print(f"\n⚠️ 优化模式: 已禁用")
 
             image_path, seed = generate_image(
                 prompt,
