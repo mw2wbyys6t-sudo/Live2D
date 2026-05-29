@@ -5,12 +5,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
+[![Version](https://img.shields.io/badge/version-v6.1-green.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--05--29-orange.svg)]()
 
 ---
 
 ## ✨ 一句话介绍
 
 **3分钟创建专业Live2D角色！** 无需付费，一键生成，立即使用。
+
+集成 [See-through](https://github.com/shitagaki-lab/see-through) (SIGGRAPH 2026) 专业级AI分层工具，提供从图像生成到PSD分层的完整工作流。
 
 ---
 
@@ -30,7 +34,17 @@ pip install -r requirements.txt
 python master_tool.py "cute anime girl, pink hair"
 ```
 
-### 第三步：完成！
+### 第三步：专业分层（推荐）
+
+```bash
+# 安装 See-through（一次性）
+python install_comfyui_advanced.py
+
+# 查看 See-through 使用指南
+python master_tool.py --see-through
+```
+
+### 第四步：完成！
 
 系统会自动：
 - ✅ 生成高质量角色立绘
@@ -47,6 +61,7 @@ python master_tool.py "cute anime girl, pink hair"
 - 完全免费，无需API密钥
 - 一键生成高质量角色立绘
 - 94种特征组合，避免撞衫
+- 多服务自动降级机制
 
 ### 📐 专业分层（See-through - SIGGRAPH 2026）
 
@@ -68,25 +83,20 @@ python master_tool.py "cute anime girl, pink hair"
 
 ---
 
-## 📚 新手入门
+## 📚 文档导航
 
-### 🎯 快速入门（3分钟）
-📖 [QUICKSTART.md](QUICKSTART.md) - 最快上手指南
-
-### 📖 完整教程
-📖 [USER_GUIDE.md](USER_GUIDE.md) - 详细使用教程
-
-### 📐 See-through集成指南
-📖 [SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) - **SIGGRAPH 2026级分层工具使用教程**
-
-### ❓ 常见问题
-❓ [FAQ.md](FAQ.md) - 解答疑惑
-
-### 💡 最佳实践
-💡 [BEST_PRACTICES.md](BEST_PRACTICES.md) - 专业技巧
-
-### ⚠️ 已知限制
-⚠️ [LIMITATIONS.md](LIMITATIONS.md) - 项目缺陷与改进方向
+| 文档 | 说明 | 优先级 |
+|------|------|--------|
+| [📖 README.md](README.md) | 项目主文档 | ⭐⭐⭐⭐⭐ |
+| [🚀 QUICKSTART.md](QUICKSTART.md) | 3分钟快速入门 | ⭐⭐⭐⭐⭐ |
+| [📖 USER_GUIDE.md](USER_GUIDE.md) | 完整使用教程 | ⭐⭐⭐⭐ |
+| [📐 SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) | See-through集成指南 | ⭐⭐⭐⭐⭐ |
+| [📁 PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构说明 | ⭐⭐⭐ |
+| [❓ FAQ.md](FAQ.md) | 常见问题解答 | ⭐⭐⭐⭐ |
+| [💡 BEST_PRACTICES.md](BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
+| [⚠️ LIMITATIONS.md](LIMITATIONS.md) | 已知限制 | ⭐⭐⭐ |
+| [📋 CHANGELOG.md](CHANGELOG.md) | 更新日志 | ⭐⭐ |
+| [🔬 GITHUB_RESEARCH.md](GITHUB_RESEARCH.md) | GitHub研究报告 | ⭐⭐ |
 
 ---
 
@@ -106,12 +116,13 @@ python master_tool.py "cute anime girl, pink hair"
 ### 核心工具
 
 | 工具 | 说明 | 推荐度 |
-|------|------|--------|
+|------|------|------|
 | [master_tool.py](master_tool.py) | 一站式工具箱 | ⭐⭐⭐⭐⭐ |
 | [install_comfyui_advanced.py](install_comfyui_advanced.py) | **See-through一键安装** | ⭐⭐⭐⭐⭐ |
 | [live2d_layer_v6.py](live2d_layer_v6.py) | K-means分层工具 | ⭐⭐⭐⭐ |
 | [live2d_layer_pro.py](live2d_layer_pro.py) | 颜色检测分层 | ⭐⭐⭐ |
 | [config_api.py](config_api.py) | API配置 | ⭐⭐⭐⭐ |
+| [create_test_image.py](create_test_image.py) | 测试图像生成 | ⭐⭐⭐ |
 
 ### 辅助脚本
 
@@ -188,6 +199,9 @@ python master_tool.py -n 5 "anime girl"
 
 # 使用已有图片
 python master_tool.py --skip-generate
+
+# 查看 See-through 指南
+python master_tool.py --see-through
 ```
 
 ### 🏆 See-through 专业分层
@@ -196,18 +210,24 @@ python master_tool.py --skip-generate
 # 1. 安装（首次使用）
 python install_comfyui_advanced.py
 
-# 2. 在 ComfyUI 中使用 See-through
-# 3. 自动分层并导出PSD
+# 2. 启动 ComfyUI
+cd comfyui
+python main.py
+
+# 3. 浏览器访问 http://127.0.0.1:8188
+# 4. 加载 See-through 工作流
+# 5. 输入图片，自动分层
 ```
 
 ### 内置分层工具（备选）
 
 ```bash
 # v6.0 K-means分层
-python live2d_layer_v6.py character.png output.psd
+python live2d_layer_v6.py character.png output_dir
 
-# v5.0 颜色检测分层
-python live2d_layer_pro.py character.png output.psd
+# 测试工具
+python create_test_image.py
+python live2d_layer_v6.py test_character.png test_output
 ```
 
 ### 配置API（可选）
@@ -224,6 +244,11 @@ python config_api.py
 - 网络连接
 - 可选：火山引擎API密钥（更高质量）
 - 可选：See-through（ComfyUI集成，需要更多资源）
+
+**See-through 推荐配置**：
+- NVIDIA GPU（可选，加速推理）
+- 8GB+ 内存
+- 20GB+ 磁盘空间（模型）
 
 ---
 
@@ -248,7 +273,16 @@ python install_comfyui_advanced.py
 
 ## 🤝 贡献
 
-欢迎提交Issue和Pull Request！
+欢迎贡献！请参考以下方式：
+
+1. 🐛 报告问题：[GitHub Issues](https://github.com/mw2wbyys6t-sudo/Live2D/issues)
+2. 💡 提出建议：[GitHub Discussions](https://github.com/mw2wbyys6t-sudo/Live2D/discussions)
+3. 🔧 提交代码：Pull Request
+
+贡献指南：
+- 请确保代码经过测试
+- 遵循项目的代码风格
+- 更新相关文档
 
 ---
 
@@ -266,6 +300,7 @@ MIT License - 详见 [LICENSE](LICENSE)
 - [See-through (Shitagaki Lab)](https://github.com/shitagaki-lab/see-through) - **SIGGRAPH 2026 AI分层技术**
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) - 节点式工作流工具
 - [LayerDiffusion](https://github.com/layerdiffusion/) - 透明图像生成
+- 所有贡献者和支持者！
 
 ---
 
@@ -286,7 +321,20 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 ---
 
+## 📋 快速链接
+
+| 功能 | 链接 |
+|------|------|
+| 快速入门 | [QUICKSTART.md](QUICKSTART.md) |
+| See-through指南 | [SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) |
+| 常见问题 | [FAQ.md](FAQ.md) |
+| 项目结构 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) |
+| 更新日志 | [CHANGELOG.md](CHANGELOG.md) |
+| 已知限制 | [LIMITATIONS.md](LIMITATIONS.md) |
+
+---
+
 **让Live2D制作更简单！** 🎨
 
-*版本: v6.0（集成See-through）*
+*版本: v6.1（See-through集成+代码质量优化）*
 *最后更新: 2026-05-29*
