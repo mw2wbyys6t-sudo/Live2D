@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v6.3 - SD WebUI 集成版
-功能: 多源图片生成 + See-through专业分层 + PSD转换
+Live2D Master Agent v6.4 - 自研本地生成版
+功能: 本地图片生成 + See-through专业分层 + PSD转换
 
-集成：
-- 🔴 Stable Diffusion WebUI (推荐，最高质量)
-- 🟡 Pollinations.ai (备用，无网络依赖)
+核心：
+- 🎯 自研本地 Stable Diffusion 生成器（基于 diffusers）
 - 🟢 See-through (SIGGRAPH 2026分层技术)
 
-改进:
-- 多源智能选择（SD WebUI > Pollinations）
-- Live2D优化提示词
-- 更好的错误处理
+特点:
+- 完全本地运行，无需网络
+- 支持 CPU/GPU 推理
+- 针对动漫风格优化
+- 自动下载和管理模型
 """
 
 import os
@@ -19,21 +19,8 @@ import sys
 import time
 import random
 import re
-import urllib.request
-import urllib.parse
 from pathlib import Path
 import argparse
-
-# 尝试导入 SD WebUI 集成
-try:
-    from sd_webui_integration import (
-        StableDiffusionWebUIClient,
-        optimize_prompt_for_live2d
-    )
-    HAS_SD_WEBUI = True
-except ImportError:
-    HAS_SD_WEBUI = False
-    print("⚠️ SD WebUI 集成模块不可用")
 
 # 多样化特征库 - 避免撞衫
 FEATURES = {
@@ -168,7 +155,7 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
     features = generate_random_features()
 
     if live2d_optimized:
-        # 使用 Live2D 专用模板（包含高质量关键词）
+        # 使用 Live2D 专用模板
         hairstyle = random.choice(LIVE2D_HAIRSTYLES)
         prompt = LIVE2D_PROMPT_TEMPLATE.format(
             hairstyle=hairstyle,
@@ -220,119 +207,9 @@ def get_latest_image(output_dir):
     return str(png_files[0]) if png_files else None
 
 
-def download_with_service(url, headers, output_path, timeout=180):
-    """使用指定服务下载图片（改进版）"""
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            data = response.read()
-            if len(data) < 1000:
-                return False, "图片数据太小"
-            with open(output_path, 'wb') as f:
-                f.write(data)
-        return True, None
-    except urllib.error.URLError as e:
-        return False, f"网络错误: {e}"
-    except urllib.error.HTTPError as e:
-        return False, f"HTTP错误: {e.code} {e.reason}"
-    except TimeoutError:
-        return False, "下载超时"
-    except Exception as e:
-        return False, f"下载失败: {e}"
-
-
-def generate_image_pollinations(prompt, output_dir, seed=None, width=768, height=768):
-    """使用 Pollinations.ai 生成图片（降级方案）"""
-    print("\n📡 使用 Pollinations.ai (降级方案)...")
-
-    if seed is None:
-        seed = random.randint(0, 999999999)
-
-    encoded = urllib.parse.quote(prompt)
-
-    services = [
-        {
-            'name': 'Pollinations.ai (主要)',
-            'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux",
-            'timeout': 200
-        },
-        {
-            'name': 'Pollinations.ai (标准)',
-            'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true",
-            'timeout': 180
-        }
-    ]
-
-    max_attempts = 2
-    for attempt in range(max_attempts):
-        for service in services:
-            if attempt > 0:
-                current_seed = random.randint(0, 999999999)
-                service['url'] = service['url'].replace(f"seed={seed}", f"seed={current_seed}")
-                seed = current_seed
-
-            print(f"\n🔄 尝试 {service['name']} ({attempt+1}/{max_attempts})")
-
-            output_file = output_dir / f"live2d_poll_{int(time.time())}_{seed}.png"
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
-            }
-
-            success, error = download_with_service(
-                service['url'], headers, output_file, timeout=service['timeout']
-            )
-
-            if success:
-                print(f"✅ 成功！使用 {service['name']}")
-                print(f"📁 文件: {output_file.name}")
-                print(f"🔢 种子: {seed}")
-                return str(output_file), seed
-            else:
-                print(f"❌ {service['name']} 失败: {error}")
-
-        if attempt < max_attempts - 1:
-            print("\n⏳ 等待3秒后重试...")
-            time.sleep(3)
-
-    return None, seed
-
-
-def generate_image_local(prompt, output_dir, seed=None, width=512, height=768, steps=25):
+def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None):
     """
-    使用本地 Stable Diffusion 生成图片（自研工具）
-    """
-    print("\n🎯 尝试本地 Stable Diffusion 生成...")
-
-    try:
-        from local_image_generator import LocalImageGenerator, get_default_negative_prompt
-
-        generator = LocalImageGenerator()
-        success, output_path = generator.generate(
-            prompt=prompt,
-            negative_prompt=get_default_negative_prompt(),
-            width=width,
-            height=height,
-            steps=steps,
-            seed=seed,
-        )
-
-        if success and output_path:
-            print("\n✅ 成功！使用本地 Stable Diffusion")
-            return output_path, seed or int(time.time()) % 1000000
-
-    except ImportError:
-        print("⚠️ 本地生成器未安装，跳过...")
-    except Exception as e:
-        print(f"⚠️ 本地生成失败: {e}")
-
-    return None, seed
-
-
-def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webui_url=None, use_local=False):
-    """
-    生成图片（多源智能选择）
-    优先级：本地 SD > SD WebUI API > Pollinations
+    生成图片（使用自研本地生成器）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -341,62 +218,52 @@ def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webu
     if seed is None:
         seed = random.randint(0, 999999999)
 
-    # 源1：本地 Stable Diffusion（自研工具）
-    if use_local:
-        result, seed = generate_image_local(prompt, output_dir, seed, width, height)
-        if result:
-            return result, seed
+    try:
+        from local_image_generator import LocalImageGenerator, get_default_negative_prompt, get_live2d_negative_prompt
 
-    # 源2：Stable Diffusion WebUI API
-    if HAS_SD_WEBUI:
-        print("\n🔴 尝试 Stable Diffusion WebUI (本地API)...")
-        sd_url = sd_webui_url or "http://127.0.0.1:7860"
-        sd_client = StableDiffusionWebUIClient(sd_url)
+        generator = LocalImageGenerator(model_id=model_id or "Linaqruf/anything-v3.0")
+        
+        # 根据提示词判断使用哪种反向提示词
+        negative_prompt = get_live2d_negative_prompt() if "Live2D" in prompt else get_default_negative_prompt()
+        
+        success, output_path = generator.generate(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            steps=steps,
+            seed=seed,
+        )
 
-        if sd_client.is_available():
-            optimized_prompt = optimize_prompt_for_live2d(prompt)
-            result = sd_client.generate_image(
-                optimized_prompt,
-                width=width,
-                height=height,
-                seed=seed,
-                steps=30
-            )
+        if success and output_path:
+            print("\n✅ 成功！使用本地 Stable Diffusion")
+            return output_path, seed
 
-            if result["status"] == "success":
-                output_file = output_dir / f"live2d_sd_{int(time.time())}_{seed}.png"
-                if sd_client.save_image_from_base64(result["images"][0], output_file):
-                    print("\n✅ 成功！使用 Stable Diffusion WebUI")
-                    return str(output_file), seed
-            else:
-                print(f"⚠️ SD WebUI 生成失败: {result.get('message', 'Unknown error')}")
+    except ImportError as e:
+        print(f"❌ 缺少依赖: {e}")
+        print(f"\n💡 请安装 diffusers:")
+        print(f"   pip install diffusers transformers torch accelerate")
+    except Exception as e:
+        print(f"❌ 生成失败: {e}")
 
-    # 源3：降级到 Pollinations.ai
-    print("\n📡 降级到 Pollinations.ai...")
-    return generate_image_pollinations(prompt, output_dir, seed, width, height)
+    return None, seed
 
 
-def show_alternatives():
-    """显示备选方案"""
+def show_help():
+    """显示帮助信息"""
     print("""
-💡 备选方案:
+💡 使用说明:
 
-1. 🟢 Stable Diffusion WebUI (推荐，最高质量):
-   • 本地部署，完全免费
-   • 支持海量模型和扩展
-   • 一键启动: python launch.py --api --listen
-   • 地址: https://github.com/AUTOMATIC1111/stable-diffusion-webui
+1. 🎯 自研本地生成器（推荐）:
+   • 完全本地运行，无需网络
+   • 支持 CPU/GPU 推理
+   • 首次使用自动下载模型（约 4GB）
 
-2. 🌐 在线工具:
-   • https://pollinations.ai (主要推荐)
-   • https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell
-   • https://puter.com/ai/image-generator
-
-3. 💻 See-through 专业分层（SIGGRAPH 2026）:
+2. 💻 See-through 专业分层（SIGGRAPH 2026）:
    • 运行: python install_comfyui_advanced.py
    • 详细文档: SEE_THROUGH_INTEGRATION.md
 
-4. 📁 使用已有图片:
+3. 📁 使用已有图片:
    将图片放到 output/ 目录后运行:
    python master_tool.py --skip-generate
 """)
@@ -441,7 +308,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v6.3\n")
+            f.write("Live2D PSD 分层指南 v6.4\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -613,16 +480,16 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v6.3 - SD WebUI 集成版',
+        description='Live2D Master Agent v6.4 - 自研本地生成版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
   python master_tool.py "cute anime girl"
   python master_tool.py -n 3 "beautiful character"
-  python master_tool.py --width 1024 --height 1024
+  python master_tool.py --width 512 --height 768
   python master_tool.py --skip-generate
   python master_tool.py --see-through
-  python master_tool.py --sd-webui-url http://192.168.1.100:7860
+  python master_tool.py --model "gsdf/Counterfeit-V3.0"
 """
     )
     parser.add_argument(
@@ -646,16 +513,20 @@ def main():
         help='ComfyUI安装目录路径'
     )
     parser.add_argument(
-        '--width', type=int, default=768,
-        help='图片宽度（默认768）'
+        '--width', type=int, default=512,
+        help='图片宽度（默认512）'
     )
     parser.add_argument(
         '--height', type=int, default=768,
         help='图片高度（默认768）'
     )
     parser.add_argument(
-        '--sd-webui-url', type=str, default=None,
-        help='Stable Diffusion WebUI 地址（默认 http://127.0.0.1:7860）'
+        '--steps', type=int, default=25,
+        help='推理步数（默认25）'
+    )
+    parser.add_argument(
+        '--model', type=str, default=None,
+        help='使用的模型 ID（如 "Linaqruf/anything-v3.0"）'
     )
     parser.add_argument(
         '--no-live2d-opt', action='store_true',
@@ -681,14 +552,6 @@ def main():
         '--no-hq', action='store_true',
         help='禁用高质量模式（使用普通质量）'
     )
-    parser.add_argument(
-        '--local', action='store_true',
-        help='使用本地 Stable Diffusion 生成（自研工具，需安装 diffusers）'
-    )
-    parser.add_argument(
-        '--model', type=str, default=None,
-        help='本地生成使用的模型 ID（如 "Linaqruf/anything-v3.0"）'
-    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -696,7 +559,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v6.3 - SD WebUI 集成版")
+    print("🎨 Live2D Master Agent v6.4 - 自研本地生成版")
     print("="*80)
 
     # 显示See-through指南
@@ -767,12 +630,12 @@ def main():
                 output_dir,
                 width=args.width,
                 height=args.height,
-                sd_webui_url=args.sd_webui_url,
-                use_local=args.local
+                steps=args.steps,
+                model_id=args.model
             )
 
             if not image_path:
-                show_alternatives()
+                show_help()
                 return
 
         # 自动优化图片（如果启用）
