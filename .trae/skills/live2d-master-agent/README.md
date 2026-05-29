@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
-[![Version](https://img.shields.io/badge/version-v6.1-green.svg)]()
+[![Version](https://img.shields.io/badge/version-v6.2-green.svg)]()
 [![Last Update](https://img.shields.io/badge/last%20update-2026--05--29-orange.svg)]()
 
 ---
@@ -62,6 +62,10 @@ python master_tool.py --see-through
 - 一键生成高质量角色立绘
 - 94种特征组合，避免撞衫
 - 多服务自动降级机制
+- **v6.2新增：** 智能重试机制，大幅提升成功率
+- **v6.2新增：** 可自定义图片分辨率（--width, --height）
+- **v6.2新增：** 优化的提示词，更适合Live2D制作
+- **v6.2新增：** 支持Flux模型，图片质量更好
 
 ### 📐 专业分层（See-through - SIGGRAPH 2026）
 
@@ -191,11 +195,14 @@ ComfyUI本地 ✅
 ### 基本生成
 
 ```bash
-# 生成角色
+# 生成角色（默认768x768）
 python master_tool.py "beautiful anime girl"
 
 # 生成5个不同角色
 python master_tool.py -n 5 "anime girl"
+
+# 自定义分辨率（v6.2新功能）
+python master_tool.py --width 1024 --height 1024 "anime girl"
 
 # 使用已有图片
 python master_tool.py --skip-generate
@@ -336,5 +343,5 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v6.1（See-through集成+代码质量优化）*
+*版本: v6.2（See-through集成+图片生成优化）*
 *最后更新: 2026-05-29*

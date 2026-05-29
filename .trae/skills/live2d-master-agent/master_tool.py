@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v6.1 - See-through集成版
+Live2D Master Agent v6.2 - 优化版
 功能: 图片生成 + See-through专业分层 + PSD转换
 集成SIGGRAPH 2026级别See-through分层工具，避免撞衫现象
 
 改进:
+- 优化图片生成服务，提高成功率
+- 改进提示词质量
+- 更好的重试机制
+- 添加多种分辨率选项
 - 更好的错误处理
-- 改进的日志记录
-- 优化的工作流程
-- 更好的用户提示
 """
 
 import os
@@ -57,7 +58,13 @@ FEATURES = {
 
 QUALITY_TAGS = [
     'masterpiece', 'best quality', 'ultra detailed', 'high resolution',
-    '8K', 'HD', 'perfect anatomy', 'beautiful face', 'detailed eyes'
+    '8K', 'HD', 'perfect anatomy', 'beautiful face', 'detailed eyes',
+    'vibrant colors', 'crisp lineart'
+]
+
+STYLES = [
+    'anime style', 'manga style', 'cartoon style', 'studio ghibli style',
+    'digital illustration', 'cel shading', 'soft shading'
 ]
 
 def generate_random_features():
@@ -69,12 +76,13 @@ def generate_random_features():
         'clothing': random.choice(FEATURES['clothing']),
         'accessory': random.choice(FEATURES['accessories']),
         'expression': random.choice(FEATURES['expression']),
-        'pose': random.choice(FEATURES['pose'])
+        'pose': random.choice(FEATURES['pose']),
+        'style': random.choice(STYLES)
     }
     return features
 
 def build_prompt(custom_prompt=""):
-    """构建多样化提示词"""
+    """构建优化的多样化提示词"""
     features = generate_random_features()
 
     prompt_parts = []
@@ -82,7 +90,8 @@ def build_prompt(custom_prompt=""):
     if custom_prompt:
         prompt_parts.append(custom_prompt)
 
-    prompt_parts.append("1girl, solo")
+    prompt_parts.append("1girl, solo, portrait")
+    prompt_parts.append(features['style'])
     prompt_parts.append(features['hairstyle'])
     prompt_parts.append(features['hair_color'])
     prompt_parts.append(features['eye_color'])
@@ -92,14 +101,15 @@ def build_prompt(custom_prompt=""):
     prompt_parts.append(features['pose'])
 
     # 添加质量关键词
-    prompt_parts.extend(random.sample(QUALITY_TAGS, 5))
+    prompt_parts.extend(random.sample(QUALITY_TAGS, 6))
 
-    # Live2D优化提示词
+    # Live2D优化提示词 - 改进版
     prompt_parts.append("perfect for Live2D rigging")
-    prompt_parts.append("clean layer separation")
-    prompt_parts.append("isolated character")
+    prompt_parts.append("clean lines, clear edges")
+    prompt_parts.append("isolated character on simple background")
     prompt_parts.append("white background")
-    prompt_parts.append("sharp clean lines")
+    prompt_parts.append("sharp clean lineart")
+    prompt_parts.append("distinct color separation")
 
     return " ".join(prompt_parts), features
 
@@ -108,8 +118,8 @@ def get_latest_image(output_dir):
     png_files = sorted(output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     return str(png_files[0]) if png_files else None
 
-def download_with_service(url, headers, output_path, timeout=120):
-    """使用指定服务下载图片"""
+def download_with_service(url, headers, output_path, timeout=180):
+    """使用指定服务下载图片（改进版）"""
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as response:
@@ -128,53 +138,86 @@ def download_with_service(url, headers, output_path, timeout=120):
     except Exception as e:
         return False, f"下载失败: {e}"
 
-def generate_image(prompt, output_dir, seed=None):
-    """生成图片（多服务自动降级）"""
-    print(f"\n✅ 正在生成图片...")
-    print(f"📝 提示词: {prompt[:80]}...")
+def generate_image(prompt, output_dir, seed=None, width=768, height=768):
+    """生成图片（优化版 - 多服务自动降级）"""
+    print(f"\n🎨 正在生成图片...")
+    print(f"📝 提示词: {prompt[:100]}...")
+    print(f"📐 尺寸: {width}x{height}")
 
     if seed is None:
         seed = random.randint(0, 999999999)
 
     encoded = urllib.parse.quote(prompt)
 
-    # 服务列表（按优先级排序）
+    # 优化的服务列表（按成功率排序）
     services = [
         {
-            'name': 'Pollinations.ai',
-            'url': f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}&nologo=true",
+            'name': 'Pollinations.ai (主要)',
+            'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux",
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
                 'Referer': 'https://pollinations.ai/'
-            }
+            },
+            'timeout': 200
+        },
+        {
+            'name': 'Pollinations.ai (标准)',
+            'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true",
+            'headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Referer': 'https://pollinations.ai/'
+            },
+            'timeout': 180
         },
         {
             'name': 'Pollinations (备用)',
-            'url': f"https://pollinations.ai/api/text2image?prompt={encoded}&width=768&height=768&seed={seed}",
+            'url': f"https://pollinations.ai/api/text2image?prompt={encoded}&width={width}&height={height}&seed={seed}",
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'image/*'
-            }
+            },
+            'timeout': 150
         }
     ]
 
-    # 尝试各个服务
-    for i, service in enumerate(services):
-        print(f"\n🔄 尝试服务 {i+1}/{len(services)}: {service['name']}")
+    # 尝试各个服务，增加重试机制
+    max_attempts = 2
+    for attempt in range(max_attempts):
+        for i, service in enumerate(services):
+            if attempt > 0:
+                # 重试时使用新的seed
+                current_seed = random.randint(0, 999999999)
+                service['url'] = service['url'].replace(f"seed={seed}", f"seed={current_seed}")
+                seed = current_seed
 
-        output_file = output_dir / f"live2d_{int(time.time())}.png"
-        success, error = download_with_service(service['url'], service['headers'], output_file)
+            print(f"\n🔄 尝试服务 {i+1}/{len(services)} ({attempt+1}/{max_attempts}次): {service['name']}")
 
-        if success:
-            print(f"✅ 成功！使用 {service['name']}")
-            print(f"📁 文件: {output_file.name}")
-            print(f"🔢 种子: {seed}")
-            return str(output_file), seed
-        else:
-            print(f"❌ {service['name']} 失败: {error}")
+            output_file = output_dir / f"live2d_{int(time.time())}_{seed}.png"
+            success, error = download_with_service(
+                service['url'],
+                service['headers'],
+                output_file,
+                timeout=service.get('timeout', 180)
+            )
 
-    print("❌ 所有在线服务暂时不可用")
+            if success:
+                print(f"✅ 成功！使用 {service['name']}")
+                print(f"📁 文件: {output_file.name}")
+                print(f"🔢 种子: {seed}")
+                return str(output_file), seed
+            else:
+                print(f"❌ {service['name']} 失败: {error}")
+                # 失败时等待一下再试
+                if i < len(services) - 1:
+                    time.sleep(2)
+
+        if attempt < max_attempts - 1:
+            print(f"\n⏳ 所有服务失败，等待3秒后重试...")
+            time.sleep(3)
+
+    print("\n❌ 所有在线服务暂时不可用")
     return None, seed
 
 def show_alternatives():
@@ -244,7 +287,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v6.0\n")
+            f.write("Live2D PSD 分层指南 v6.2\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]} x {img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -393,12 +436,13 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent - 从概念到完整模型',
+        description='Live2D Master Agent - 从概念到完整模型 (v6.2优化版)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
   python master_tool.py "cute anime girl"
   python master_tool.py -n 3 "beautiful character"
+  python master_tool.py --width 1024 --height 1024
   python master_tool.py --skip-generate
   python master_tool.py --see-through
 """
@@ -423,6 +467,14 @@ def main():
         '--comfyui-dir', type=str, default=None,
         help='ComfyUI安装目录路径'
     )
+    parser.add_argument(
+        '--width', type=int, default=768,
+        help='图片宽度（默认768）'
+    )
+    parser.add_argument(
+        '--height', type=int, default=768,
+        help='图片高度（默认768）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -430,7 +482,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v6.1 - See-through集成版")
+    print("🎨 Live2D Master Agent v6.2 - 优化版")
     print("="*80)
 
     # 显示See-through指南
@@ -461,7 +513,7 @@ def main():
             for key, value in features.items():
                 print(f"   • {key}: {value}")
 
-            image_path, seed = generate_image(prompt, output_dir)
+            image_path, seed = generate_image(prompt, output_dir, width=args.width, height=args.height)
             if not image_path:
                 show_alternatives()
                 return
