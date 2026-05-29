@@ -4,6 +4,44 @@
 
 ---
 
+## v6.3 (2026-05-29)
+
+### ✨ 重大新功能：Stable Diffusion WebUI 集成
+
+- **创建 sd_webui_integration.py**
+  - 🎯 完整的 Stable Diffusion WebUI API 客户端
+  - 🎯 自动检测服务可用性
+  - 🎯 内置 Live2D 优化提示词和反向提示词
+  - 🎯 支持自定义采样器、步数、CFG 等参数
+  - 🎯 智能错误处理和重试机制
+
+- **更新 master_tool.py** (v6.3)
+  - 🎯 多源智能选择：SD WebUI > Pollinations
+  - 🎯 新增 `--sd-webui-url` 参数
+  - 🎯 自动降级到 Pollinations（当 SD WebUI 不可用时）
+  - 🎯 更好的用户提示和使用指南
+  - 🎯 所有现有功能保留，向后兼容
+
+- **创建 OPENSOURCE_INTEGRATION.md**
+  - 🎯 完整的开源项目研究报告
+  - 🎯 SD WebUI 集成详细文档
+  - 🎯 ComfyUI API 集成方案
+  - 🎯 推荐模型和配置指南
+
+### 🎯 核心架构改进
+
+- 多引擎设计：支持本地和云端生成
+- 灵活降级：本地不可用时自动使用在线服务
+- 前后连接通：API 级别的完整集成
+
+### 📚 文档更新
+
+- 创建 [OPENSOURCE_INTEGRATION.md](OPENSOURCE_INTEGRATION.md)
+- 更新 [README.md](README.md)
+- 更新 [CHANGELOG.md](CHANGELOG.md)
+
+---
+
 ## v6.2 (2026-05-29)
 
 ### ✨ 核心优化：图片生成工具

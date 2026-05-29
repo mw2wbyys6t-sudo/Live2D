@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v6.2 - 优化版
-功能: 图片生成 + See-through专业分层 + PSD转换
-集成SIGGRAPH 2026级别See-through分层工具，避免撞衫现象
+Live2D Master Agent v6.3 - SD WebUI 集成版
+功能: 多源图片生成 + See-through专业分层 + PSD转换
+
+集成：
+- 🔴 Stable Diffusion WebUI (推荐，最高质量)
+- 🟡 Pollinations.ai (备用，无网络依赖)
+- 🟢 See-through (SIGGRAPH 2026分层技术)
 
 改进:
-- 优化图片生成服务，提高成功率
-- 改进提示词质量
-- 更好的重试机制
-- 添加多种分辨率选项
+- 多源智能选择（SD WebUI > Pollinations）
+- Live2D优化提示词
 - 更好的错误处理
 """
 
@@ -20,6 +22,17 @@ import urllib.request
 import urllib.parse
 from pathlib import Path
 import argparse
+
+# 尝试导入 SD WebUI 集成
+try:
+    from sd_webui_integration import (
+        StableDiffusionWebUIClient,
+        optimize_prompt_for_live2d
+    )
+    HAS_SD_WEBUI = True
+except ImportError:
+    HAS_SD_WEBUI = False
+    print("⚠️ SD WebUI 集成模块不可用")
 
 # 多样化特征库 - 避免撞衫
 FEATURES = {
@@ -67,6 +80,7 @@ STYLES = [
     'digital illustration', 'cel shading', 'soft shading'
 ]
 
+
 def generate_random_features():
     """生成随机特征组合，避免撞衫"""
     features = {
@@ -80,6 +94,7 @@ def generate_random_features():
         'style': random.choice(STYLES)
     }
     return features
+
 
 def build_prompt(custom_prompt=""):
     """构建优化的多样化提示词"""
@@ -113,10 +128,12 @@ def build_prompt(custom_prompt=""):
 
     return " ".join(prompt_parts), features
 
+
 def get_latest_image(output_dir):
     """获取最新图片"""
     png_files = sorted(output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     return str(png_files[0]) if png_files else None
+
 
 def download_with_service(url, headers, output_path, timeout=180):
     """使用指定服务下载图片（改进版）"""
@@ -138,68 +155,47 @@ def download_with_service(url, headers, output_path, timeout=180):
     except Exception as e:
         return False, f"下载失败: {e}"
 
-def generate_image(prompt, output_dir, seed=None, width=768, height=768):
-    """生成图片（优化版 - 多服务自动降级）"""
-    print(f"\n🎨 正在生成图片...")
-    print(f"📝 提示词: {prompt[:100]}...")
-    print(f"📐 尺寸: {width}x{height}")
+
+def generate_image_pollinations(prompt, output_dir, seed=None, width=768, height=768):
+    """使用 Pollinations.ai 生成图片（降级方案）"""
+    print("\n📡 使用 Pollinations.ai (降级方案)...")
 
     if seed is None:
         seed = random.randint(0, 999999999)
 
     encoded = urllib.parse.quote(prompt)
 
-    # 优化的服务列表（按成功率排序）
     services = [
         {
             'name': 'Pollinations.ai (主要)',
             'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model=flux",
-            'headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-                'Referer': 'https://pollinations.ai/'
-            },
             'timeout': 200
         },
         {
             'name': 'Pollinations.ai (标准)',
             'url': f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&seed={seed}&nologo=true",
-            'headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-                'Referer': 'https://pollinations.ai/'
-            },
             'timeout': 180
-        },
-        {
-            'name': 'Pollinations (备用)',
-            'url': f"https://pollinations.ai/api/text2image?prompt={encoded}&width={width}&height={height}&seed={seed}",
-            'headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'image/*'
-            },
-            'timeout': 150
         }
     ]
 
-    # 尝试各个服务，增加重试机制
     max_attempts = 2
     for attempt in range(max_attempts):
-        for i, service in enumerate(services):
+        for service in services:
             if attempt > 0:
-                # 重试时使用新的seed
                 current_seed = random.randint(0, 999999999)
                 service['url'] = service['url'].replace(f"seed={seed}", f"seed={current_seed}")
                 seed = current_seed
 
-            print(f"\n🔄 尝试服务 {i+1}/{len(services)} ({attempt+1}/{max_attempts}次): {service['name']}")
+            print(f"\n🔄 尝试 {service['name']} ({attempt+1}/{max_attempts})")
 
-            output_file = output_dir / f"live2d_{int(time.time())}_{seed}.png"
+            output_file = output_dir / f"live2d_poll_{int(time.time())}_{seed}.png"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+            }
+
             success, error = download_with_service(
-                service['url'],
-                service['headers'],
-                output_file,
-                timeout=service.get('timeout', 180)
+                service['url'], headers, output_file, timeout=service['timeout']
             )
 
             if success:
@@ -209,43 +205,80 @@ def generate_image(prompt, output_dir, seed=None, width=768, height=768):
                 return str(output_file), seed
             else:
                 print(f"❌ {service['name']} 失败: {error}")
-                # 失败时等待一下再试
-                if i < len(services) - 1:
-                    time.sleep(2)
 
         if attempt < max_attempts - 1:
-            print(f"\n⏳ 所有服务失败，等待3秒后重试...")
+            print("\n⏳ 等待3秒后重试...")
             time.sleep(3)
 
-    print("\n❌ 所有在线服务暂时不可用")
     return None, seed
+
+
+def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webui_url=None):
+    """
+    生成图片（多源智能选择）
+    优先级：SD WebUI > Pollinations
+    """
+    print(f"\n🎨 正在生成图片...")
+    print(f"📝 提示词: {prompt[:100]}...")
+    print(f"📐 尺寸: {width}x{height}")
+
+    if seed is None:
+        seed = random.randint(0, 999999999)
+
+    # 源1：尝试 Stable Diffusion WebUI
+    if HAS_SD_WEBUI:
+        print("\n🔴 尝试 Stable Diffusion WebUI (本地)...")
+        sd_url = sd_webui_url or "http://127.0.0.1:7860"
+        sd_client = StableDiffusionWebUIClient(sd_url)
+
+        if sd_client.is_available():
+            optimized_prompt = optimize_prompt_for_live2d(prompt)
+            result = sd_client.generate_image(
+                optimized_prompt,
+                width=width,
+                height=height,
+                seed=seed,
+                steps=30
+            )
+
+            if result["status"] == "success":
+                output_file = output_dir / f"live2d_sd_{int(time.time())}_{seed}.png"
+                if sd_client.save_image_from_base64(result["images"][0], output_file):
+                    print("\n✅ 成功！使用 Stable Diffusion WebUI")
+                    return str(output_file), seed
+            else:
+                print(f"⚠️ SD WebUI 生成失败: {result.get('message', 'Unknown error')}")
+
+    # 源2：降级到 Pollinations.ai
+    print("\n📡 降级到 Pollinations.ai...")
+    return generate_image_pollinations(prompt, output_dir, seed, width, height)
+
 
 def show_alternatives():
     """显示备选方案"""
     print("""
 💡 备选方案:
 
-1. 🌐 在线工具:
+1. 🟢 Stable Diffusion WebUI (推荐，最高质量):
+   • 本地部署，完全免费
+   • 支持海量模型和扩展
+   • 一键启动: python launch.py --api --listen
+   • 地址: https://github.com/AUTOMATIC1111/stable-diffusion-webui
+
+2. 🌐 在线工具:
    • https://pollinations.ai (主要推荐)
    • https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell
    • https://puter.com/ai/image-generator
-   • https://www.playground.com/
-   • https://leonardo.ai/
 
-2. 💻 本地安装 - See-through（SIGGRAPH 2026级别分层）:
+3. 💻 See-through 专业分层（SIGGRAPH 2026）:
    • 运行: python install_comfyui_advanced.py
-   • 这将安装 ComfyUI + See-through 插件
-   • See-through使用LayerDiff 3D + Marigold Depth技术
    • 详细文档: SEE_THROUGH_INTEGRATION.md
 
-3. 📁 使用已有图片:
+4. 📁 使用已有图片:
    将图片放到 output/ 目录后运行:
    python master_tool.py --skip-generate
-
-4. 🔑 配置API:
-   运行: python config_api.py
-   配置火山引擎Seedream API Key
 """)
+
 
 def create_psd_plan(image_path, output_dir):
     """创建PSD分层规划"""
@@ -256,7 +289,6 @@ def create_psd_plan(image_path, output_dir):
         plan_dir.mkdir(exist_ok=True)
         img.save(plan_dir / "reference.png")
 
-        # Live2D标准图层结构
         layers = [
             "Background - 背景",
             "ArtMesh/Body - 身体",
@@ -287,9 +319,9 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v6.2\n")
+            f.write("Live2D PSD 分层指南 v6.3\n")
             f.write("="*50 + "\n")
-            f.write(f"图片尺寸: {img.size[0]} x {img.size[1]}\n")
+            f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             f.write("图层顺序（从后到前）:\n")
             f.write("-"*50 + "\n")
@@ -310,20 +342,19 @@ def create_psd_plan(image_path, output_dir):
         print(f"⚠️ 创建分层规划失败: {e}")
         return None
 
+
 def convert_to_psd(image_path):
     """转换为PSD"""
     try:
         from PIL import Image
         img = Image.open(image_path)
 
-        # 创建优化的PNG
         png_path = str(image_path).replace('.png', '_live2d_ready.png')
         try:
             img.save(png_path, optimize=True)
             print(f"✅ 优化PNG文件已创建: {Path(png_path).name}")
             return png_path
         except:
-            # 如果优化失败，创建普通PNG
             img.save(png_path)
             print(f"✅ PNG文件已创建: {Path(png_path).name}")
             print("💡 提示: 使用Photoshop打开后另存为PSD格式")
@@ -334,6 +365,7 @@ def convert_to_psd(image_path):
     except Exception as e:
         print(f"⚠️ 图片转换失败: {e}")
         return image_path
+
 
 def run_ai_layer_tool(image_path):
     """运行AI分层工具"""
@@ -355,6 +387,7 @@ def run_ai_layer_tool(image_path):
         print(f"⚠️ 无法运行AI分层工具: {e}")
         return False
 
+
 def check_see_through_installed(comfyui_dir=None):
     """检查See-through是否已安装"""
     if comfyui_dir is None:
@@ -364,12 +397,13 @@ def check_see_through_installed(comfyui_dir=None):
     see_through_dir = comfyui_dir / 'custom_nodes' / 'ComfyUI-See-through'
     return see_through_dir.exists()
 
+
 def show_see_through_guide():
     """显示See-through使用指南"""
     print("""
 🏆 See-through 专业分层指南（SIGGRAPH 2026）
 
-See-through 是目前最先进的AI分层工具，集成到本项目中！
+See-through 是目前最先进的AI分层工具，已集成到本项目中！
 
 优势:
   • SIGGRAPH 2026 级别研究技术
@@ -400,6 +434,7 @@ See-through 是目前最先进的AI分层工具，集成到本项目中！
 
 详细文档: SEE_THROUGH_INTEGRATION.md
 """)
+
 
 def run_see_through_suggestion(image_path, comfyui_dir=None):
     """建议使用See-through"""
@@ -433,10 +468,11 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 使用 See-through 处理: {Path(image_path).name}
 """)
 
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent - 从概念到完整模型 (v6.2优化版)',
+        description='Live2D Master Agent v6.3 - SD WebUI 集成版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -445,6 +481,7 @@ def main():
   python master_tool.py --width 1024 --height 1024
   python master_tool.py --skip-generate
   python master_tool.py --see-through
+  python master_tool.py --sd-webui-url http://192.168.1.100:7860
 """
     )
     parser.add_argument(
@@ -475,6 +512,10 @@ def main():
         '--height', type=int, default=768,
         help='图片高度（默认768）'
     )
+    parser.add_argument(
+        '--sd-webui-url', type=str, default=None,
+        help='Stable Diffusion WebUI 地址（默认 http://127.0.0.1:7860）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -482,7 +523,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v6.2 - 优化版")
+    print("🎨 Live2D Master Agent v6.3 - SD WebUI 集成版")
     print("="*80)
 
     # 显示See-through指南
@@ -492,7 +533,9 @@ def main():
 
     # 生成多个多样化角色
     for n in range(args.number):
-        print(f"\n--- 角色 {n+1}/{args.number} ---")
+        print(f"\n{'='*80}")
+        print(f"🎯 角色 {n+1}/{args.number}")
+        print(f"{'='*80}")
 
         # 获取图片
         image_path = None
@@ -503,17 +546,24 @@ def main():
                 print(f"📁 使用已有图片: {Path(image_path).name}")
             else:
                 print("❌ output/ 目录中没有图片")
-                print("💡 请先将图片放入 output/ 目录，或使用默认生成模式")
+                print("💡 请先将图片放到 output/ 目录，或使用默认生成模式")
                 return
         else:
-            # 构建多样化提示词
             custom_prompt = ' '.join(args.prompt) if args.prompt else ''
             prompt, features = build_prompt(custom_prompt)
+
             print(f"\n🔖 随机特征:")
             for key, value in features.items():
                 print(f"   • {key}: {value}")
 
-            image_path, seed = generate_image(prompt, output_dir, width=args.width, height=args.height)
+            image_path, seed = generate_image(
+                prompt,
+                output_dir,
+                width=args.width,
+                height=args.height,
+                sd_webui_url=args.sd_webui_url
+            )
+
             if not image_path:
                 show_alternatives()
                 return
@@ -544,6 +594,7 @@ def main():
     print(f"  2. 打开 Live2D Cubism Editor")
     print(f"  3. File → Import PSD")
     print(f"  4. 开始制作你的Live2D模型！")
+
 
 if __name__ == "__main__":
     main()
