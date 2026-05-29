@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v7.0 - 全面升级版
+Live2D Master Agent v7.1 - 全面升级版
 功能: 本地图片生成 + AI智能分层 + PSD转换
 
 核心：
-- 🎯 自研本地 Stable Diffusion 生成器 v3.0（基于 diffusers）
+- 🎯 自研本地 Stable Diffusion 生成器 v4.0（基于 diffusers）
 - 🟢 内置AI分层工具（基于色彩聚类 + 区域检测）
 - 🔗 生成与分层无缝连接（一键工作流）
 
@@ -83,58 +83,59 @@ LIVE2D_POSES = [
     'arms at sides', 'straight-on view'
 ]
 
-# 高质量动漫风格提示词模板（匹配参考图质量）
-HIGH_QUALITY_PROMPT_TEMPLATE = """masterpiece, best quality, ultra detailed, highres, 8k uhd,
-anime style, illustration, pixiv, artstation,
-1girl, solo, {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
-beautiful detailed face, beautiful detailed eyes, detailed skin texture, soft lighting,
-pastel colors, soft color palette, dreamy atmosphere, ethereal,
-frills, lace, ribbons, bows, jewelry, elegant outfit,
-idol costume, stage dress, sparkling, glitter,
-perfect anatomy, correct proportions, delicate hands,
-white background, simple background, clean background"""
+# 专业级提示词模板（匹配参考图质量）
+# 使用权重控制语法 (keyword:1.3) 提升关键元素质量
+PROFESSIONAL_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2), (8k uhd:1.1),
+(anime style:1.3), (illustration:1.2), (official art:1.2), (pixiv:1.1), (artstation:1.1),
+1girl, solo, {pose}, {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
+(beautiful detailed face:1.3), (beautiful detailed eyes:1.3), (detailed skin texture:1.1), (soft lighting:1.2),
+(pastel colors:1.2), (soft color palette:1.2), (dreamy atmosphere:1.1), (ethereal:1.1),
+(frills:1.1), (lace:1.1), (ribbons:1.1), (bows:1.1), (jewelry:1.1), (elegant outfit:1.2),
+(perfect anatomy:1.2), (correct proportions:1.2), (delicate hands:1.2),
+(white background:1.2), (simple background:1.2), (clean background:1.2),
+(sharp focus:1.2), (vibrant colors:1.1), (clear lineart:1.3), (smooth shading:1.1)"""
 
 # Live2D 专用提示词模板（基于业界最佳实践）
-# 关键词: flat color, cel shading, sharp lines, clean outlines, minimal gradients
-LIVE2D_PROMPT_TEMPLATE = """masterpiece, best quality, ultra detailed, highres,
-anime style, illustration, 1girl, solo, full body, standing, looking at viewer,
+LIVE2D_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2),
+(anime style:1.3), (illustration:1.2), 1girl, solo, (full body:1.2), (standing:1.1), (looking at viewer:1.2),
 {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
-beautiful detailed face, beautiful detailed eyes, detailed skin texture, soft lighting,
-perfect for Live2D rigging, clean lineart, clear edges, sharp outlines,
-flat colors, minimal shading, cel shading, distinct color separation,
-anime coloring, sharp lines, clean outlines, minimal gradients,
-simple background, white background, isolated character,
-clear silhouette, symmetrical eyes, simple hair strands,
-visible neck and shoulders, visible arms and hands, visible legs and feet,
-closed mouth, neutral expression, front view, straight-on view,
-perfect anatomy, correct proportions, delicate hands,
-sharp focus, vibrant colors"""
+(beautiful detailed face:1.3), (beautiful detailed eyes:1.3), (detailed skin texture:1.1), (soft lighting:1.2),
+(perfect for Live2D rigging:1.2), (clean lineart:1.3), (clear edges:1.3), (sharp outlines:1.3),
+(flat colors:1.2), (minimal shading:1.2), (cel shading:1.2), (distinct color separation:1.2),
+(anime coloring:1.2), (sharp lines:1.3), (clean outlines:1.3), (minimal gradients:1.2),
+(simple background:1.2), (white background:1.2), (isolated character:1.2),
+(clear silhouette:1.2), (symmetrical eyes:1.2), (simple hair strands:1.1),
+(visible neck and shoulders:1.2), (visible arms and hands:1.2), (visible legs and feet:1.2),
+(closed mouth:1.1), (neutral expression:1.1), (front view:1.2), (straight-on view:1.2),
+(perfect anatomy:1.2), (correct proportions:1.2), (delicate hands:1.2),
+(sharp focus:1.2), (vibrant colors:1.1)"""
 
-# 高质量反向提示词
-HIGH_QUALITY_NEGATIVE_PROMPT = """lowres, bad anatomy, bad hands, text, error, missing fingers,
-extra digit, fewer digits, cropped, worst quality, low quality,
-normal quality, jpeg artifacts, signature, watermark, username, blurry,
-artist name, bad proportions, extra limbs, cloned face, disfigured,
-gross proportions, malformed limbs, missing arms, missing legs,
-extra arms, extra legs, fused fingers, too many fingers, long neck,
-photorealistic, realistic, 3d, western, sketch, rough, draft,
-complex background, messy hair, messy clothes"""
+# 高质量反向提示词（基于搜索研究优化）
+HIGH_QUALITY_NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3), (error:1.3), (missing fingers:1.3),
+(extra digit:1.3), (fewer digits:1.3), (cropped:1.2), (worst quality:1.3), (low quality:1.3),
+(normal quality:1.2), (jpeg artifacts:1.2), (signature:1.2), (watermark:1.2), (username:1.2), (blurry:1.3),
+(artist name:1.2), (bad proportions:1.3), (extra limbs:1.3), (cloned face:1.2), (disfigured:1.3),
+(gross proportions:1.3), (malformed limbs:1.3), (missing arms:1.2), (missing legs:1.2),
+(extra arms:1.2), (extra legs:1.2), (fused fingers:1.2), (too many fingers:1.2), (long neck:1.2),
+(photorealistic:1.2), (realistic:1.2), (3d:1.2), (western:1.2), (sketch:1.1), (rough:1.1), (draft:1.1),
+(complex background:1.2), (messy hair:1.2), (messy clothes:1.2),
+(depth of field:1.1), (blurry background:1.2), (multiple girls:1.3), (multiple people:1.3)"""
 
-# Live2D 反向提示词（更严格，基于业界最佳实践）
-LIVE2D_NEGATIVE_PROMPT = """blurry, low quality, low resolution, pixelated, noisy, grainy,
-distorted, deformed, bad anatomy, bad hands, bad face, bad eyes,
-extra fingers, missing fingers, fused fingers, too many fingers,
-bad proportions, extra limbs, long neck, bad feet, bad ears,
-ugly, disgusting, horror, watermark, text, signature, logo,
-complex background, messy hair, messy clothes,
-photorealistic, realistic, 3d, ugly eyes, deformed eyes, closed eyes,
-depth of field, blurry background, multiple girls, multiple people,
-profile view, side view, back view, turned away,
-open mouth, talking, shouting, laughing, crying,
-dynamic pose, action pose, jumping, running, sitting, lying down,
-partial body, cropped, off-screen, out of frame,
-gradient shading, soft shading, painterly, watercolor,
-noise, grainy, pixelated, compression artifacts"""
+# Live2D 反向提示词（更严格）
+LIVE2D_NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3), (error:1.3), (missing fingers:1.3),
+(extra digit:1.3), (fewer digits:1.3), (cropped:1.2), (worst quality:1.3), (low quality:1.3),
+(normal quality:1.2), (jpeg artifacts:1.2), (signature:1.2), (watermark:1.2), (username:1.2), (blurry:1.3),
+(artist name:1.2), (bad proportions:1.3), (extra limbs:1.3), (cloned face:1.2), (disfigured:1.3),
+(gross proportions:1.3), (malformed limbs:1.3), (missing arms:1.2), (missing legs:1.2),
+(extra arms:1.2), (extra legs:1.2), (fused fingers:1.2), (too many fingers:1.2), (long neck:1.2),
+(photorealistic:1.2), (realistic:1.2), (3d:1.2), (western:1.2), (sketch:1.1), (rough:1.1), (draft:1.1),
+(complex background:1.2), (messy hair:1.2), (messy clothes:1.2),
+(profile view:1.2), (side view:1.2), (back view:1.2), (turned away:1.2),
+(open mouth:1.2), (talking:1.2), (shouting:1.2), (laughing:1.2), (crying:1.2),
+(dynamic pose:1.2), (action pose:1.2), (jumping:1.2), (running:1.2), (sitting:1.2), (lying down:1.2),
+(partial body:1.2), (cropped:1.2), (off-screen:1.2), (out of frame:1.2),
+(gradient shading:1.2), (soft shading:1.2), (painterly:1.2), (watercolor:1.2),
+(noise:1.2), (grainy:1.2), (pixelated:1.2), (compression artifacts:1.2)"""
 
 
 def generate_random_features():
@@ -175,7 +176,8 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
         prompt = ' '.join(prompt.split())
         return prompt, features
     elif high_quality:
-        prompt = HIGH_QUALITY_PROMPT_TEMPLATE.format(
+        prompt = PROFESSIONAL_PROMPT_TEMPLATE.format(
+            pose=features['pose'],
             hairstyle=features['hairstyle'],
             hair_color=features['hair_color'],
             eye_color=features['eye_color'],
@@ -212,7 +214,7 @@ def get_latest_image(output_dir):
 
 def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True):
     """
-    生成图片（使用自研本地生成器 v3.0）
+    生成图片（使用自研本地生成器 v4.0）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -240,7 +242,7 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
         )
 
         if success and output_path:
-            print("\n✅ 成功！使用本地 Stable Diffusion v3.0")
+            print("\n✅ 成功！使用本地 Stable Diffusion v4.0")
             return output_path, seed
 
     except ImportError as e:
@@ -349,7 +351,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v7.0\n")
+            f.write("Live2D PSD 分层指南 v7.1\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -517,7 +519,7 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v7.0 - 全面升级版',
+        description='Live2D Master Agent v7.1 - 全面升级版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -612,10 +614,10 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v7.0 - 全面升级版")
+    print("🎨 Live2D Master Agent v7.1 - 全面升级版")
     print("="*80)
     print("\n核心功能:")
-    print("  🎯 自研本地生成器 v3.0")
+    print("  🎯 自研本地生成器 v4.0")
     print("  🎨 内置AI分层工具")
     print("  🔗 生成与分层无缝连接")
 
