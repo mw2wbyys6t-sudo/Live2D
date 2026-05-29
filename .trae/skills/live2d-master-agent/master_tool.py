@@ -298,10 +298,41 @@ def generate_image_pollinations(prompt, output_dir, seed=None, width=768, height
     return None, seed
 
 
-def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webui_url=None):
+def generate_image_local(prompt, output_dir, seed=None, width=512, height=768, steps=25):
+    """
+    使用本地 Stable Diffusion 生成图片（自研工具）
+    """
+    print("\n🎯 尝试本地 Stable Diffusion 生成...")
+
+    try:
+        from local_image_generator import LocalImageGenerator, get_default_negative_prompt
+
+        generator = LocalImageGenerator()
+        success, output_path = generator.generate(
+            prompt=prompt,
+            negative_prompt=get_default_negative_prompt(),
+            width=width,
+            height=height,
+            steps=steps,
+            seed=seed,
+        )
+
+        if success and output_path:
+            print("\n✅ 成功！使用本地 Stable Diffusion")
+            return output_path, seed or int(time.time()) % 1000000
+
+    except ImportError:
+        print("⚠️ 本地生成器未安装，跳过...")
+    except Exception as e:
+        print(f"⚠️ 本地生成失败: {e}")
+
+    return None, seed
+
+
+def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webui_url=None, use_local=False):
     """
     生成图片（多源智能选择）
-    优先级：SD WebUI > Pollinations
+    优先级：本地 SD > SD WebUI API > Pollinations
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -310,9 +341,15 @@ def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webu
     if seed is None:
         seed = random.randint(0, 999999999)
 
-    # 源1：尝试 Stable Diffusion WebUI
+    # 源1：本地 Stable Diffusion（自研工具）
+    if use_local:
+        result, seed = generate_image_local(prompt, output_dir, seed, width, height)
+        if result:
+            return result, seed
+
+    # 源2：Stable Diffusion WebUI API
     if HAS_SD_WEBUI:
-        print("\n🔴 尝试 Stable Diffusion WebUI (本地)...")
+        print("\n🔴 尝试 Stable Diffusion WebUI (本地API)...")
         sd_url = sd_webui_url or "http://127.0.0.1:7860"
         sd_client = StableDiffusionWebUIClient(sd_url)
 
@@ -334,7 +371,7 @@ def generate_image(prompt, output_dir, seed=None, width=768, height=768, sd_webu
             else:
                 print(f"⚠️ SD WebUI 生成失败: {result.get('message', 'Unknown error')}")
 
-    # 源2：降级到 Pollinations.ai
+    # 源3：降级到 Pollinations.ai
     print("\n📡 降级到 Pollinations.ai...")
     return generate_image_pollinations(prompt, output_dir, seed, width, height)
 
@@ -644,6 +681,14 @@ def main():
         '--no-hq', action='store_true',
         help='禁用高质量模式（使用普通质量）'
     )
+    parser.add_argument(
+        '--local', action='store_true',
+        help='使用本地 Stable Diffusion 生成（自研工具，需安装 diffusers）'
+    )
+    parser.add_argument(
+        '--model', type=str, default=None,
+        help='本地生成使用的模型 ID（如 "Linaqruf/anything-v3.0"）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -722,7 +767,8 @@ def main():
                 output_dir,
                 width=args.width,
                 height=args.height,
-                sd_webui_url=args.sd_webui_url
+                sd_webui_url=args.sd_webui_url,
+                use_local=args.local
             )
 
             if not image_path:
