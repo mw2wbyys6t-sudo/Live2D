@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v6.0 - See-through集成版
+Live2D Master Agent v6.1 - See-through集成版
 功能: 图片生成 + See-through专业分层 + PSD转换
-集成SIGGRAPH 2026级See-through分层工具，避免撞衫现象
+集成SIGGRAPH 2026级别See-through分层工具，避免撞衫现象
+
+改进:
+- 更好的错误处理
+- 改进的日志记录
+- 优化的工作流程
+- 更好的用户提示
 """
 
 import os
@@ -12,6 +18,7 @@ import random
 import urllib.request
 import urllib.parse
 from pathlib import Path
+import argparse
 
 # 多样化特征库 - 避免撞衫
 FEATURES = {
@@ -69,12 +76,12 @@ def generate_random_features():
 def build_prompt(custom_prompt=""):
     """构建多样化提示词"""
     features = generate_random_features()
-    
+
     prompt_parts = []
-    
+
     if custom_prompt:
         prompt_parts.append(custom_prompt)
-    
+
     prompt_parts.append("1girl, solo")
     prompt_parts.append(features['hairstyle'])
     prompt_parts.append(features['hair_color'])
@@ -83,17 +90,17 @@ def build_prompt(custom_prompt=""):
     prompt_parts.append(features['accessory'])
     prompt_parts.append(features['expression'])
     prompt_parts.append(features['pose'])
-    
+
     # 添加质量关键词
     prompt_parts.extend(random.sample(QUALITY_TAGS, 5))
-    
+
     # Live2D优化提示词
     prompt_parts.append("perfect for Live2D rigging")
     prompt_parts.append("clean layer separation")
     prompt_parts.append("isolated character")
     prompt_parts.append("white background")
     prompt_parts.append("sharp clean lines")
-    
+
     return " ".join(prompt_parts), features
 
 def get_latest_image(output_dir):
@@ -101,35 +108,41 @@ def get_latest_image(output_dir):
     png_files = sorted(output_dir.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     return str(png_files[0]) if png_files else None
 
-def download_with_service(url, headers, output_path):
+def download_with_service(url, headers, output_path, timeout=120):
     """使用指定服务下载图片"""
     try:
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=60) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             data = response.read()
             if len(data) < 1000:
                 return False, "图片数据太小"
             with open(output_path, 'wb') as f:
                 f.write(data)
         return True, None
+    except urllib.error.URLError as e:
+        return False, f"网络错误: {e}"
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP错误: {e.code} {e.reason}"
+    except TimeoutError:
+        return False, "下载超时"
     except Exception as e:
-        return False, str(e)
+        return False, f"下载失败: {e}"
 
 def generate_image(prompt, output_dir, seed=None):
     """生成图片（多服务自动降级）"""
     print(f"\n✅ 正在生成图片...")
     print(f"📝 提示词: {prompt[:80]}...")
-    
+
     if seed is None:
         seed = random.randint(0, 999999999)
-    
+
     encoded = urllib.parse.quote(prompt)
-    
+
     # 服务列表（按优先级排序）
     services = [
         {
             'name': 'Pollinations.ai',
-            'url': f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}",
+            'url': f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=768&seed={seed}&nologo=true",
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
@@ -145,29 +158,28 @@ def generate_image(prompt, output_dir, seed=None):
             }
         }
     ]
-    
+
     # 尝试各个服务
     for i, service in enumerate(services):
         print(f"\n🔄 尝试服务 {i+1}/{len(services)}: {service['name']}")
-        
+
         output_file = output_dir / f"live2d_{int(time.time())}.png"
         success, error = download_with_service(service['url'], service['headers'], output_file)
-        
+
         if success:
-            print(f"✅ 成功! 使用 {service['name']}")
+            print(f"✅ 成功！使用 {service['name']}")
             print(f"📁 文件: {output_file.name}")
             print(f"🔢 种子: {seed}")
             return str(output_file), seed
         else:
             print(f"❌ {service['name']} 失败: {error}")
-    
+
     print("❌ 所有在线服务暂时不可用")
     return None, seed
 
 def show_alternatives():
     """显示备选方案"""
     print("""
-
 💡 备选方案:
 
 1. 🌐 在线工具:
@@ -177,7 +189,7 @@ def show_alternatives():
    • https://www.playground.com/
    • https://leonardo.ai/
 
-2. 💻 本地安装 - See-through（SIGGRAPH 2026级分层）:
+2. 💻 本地安装 - See-through（SIGGRAPH 2026级别分层）:
    • 运行: python install_comfyui_advanced.py
    • 这将安装 ComfyUI + See-through 插件
    • See-through使用LayerDiff 3D + Marigold Depth技术
@@ -190,7 +202,7 @@ def show_alternatives():
 4. 🔑 配置API:
    运行: python config_api.py
    配置火山引擎Seedream API Key
-    """)
+""")
 
 def create_psd_plan(image_path, output_dir):
     """创建PSD分层规划"""
@@ -200,7 +212,7 @@ def create_psd_plan(image_path, output_dir):
         plan_dir = output_dir / f"psd_plan_{int(time.time())}"
         plan_dir.mkdir(exist_ok=True)
         img.save(plan_dir / "reference.png")
-        
+
         # Live2D标准图层结构
         layers = [
             "Background - 背景",
@@ -230,9 +242,9 @@ def create_psd_plan(image_path, output_dir):
             "ArtMesh/Mouth_O - 口型O",
             "ArtMesh/Accessories - 配饰"
         ]
-        
+
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v5.0\n")
+            f.write("Live2D PSD 分层指南 v6.0\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]} x {img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -245,9 +257,12 @@ def create_psd_plan(image_path, output_dir):
             f.write("2. 勾选 Create ArtMeshes\n")
             f.write("3. 点击 OK\n")
             f.write("4. 创建部件并设置参数\n")
-        
+
         print(f"✅ 分层规划已创建")
         return str(plan_dir)
+    except ImportError:
+        print(f"⚠️ PIL未安装，跳过创建分层规划")
+        return None
     except Exception as e:
         print(f"⚠️ 创建分层规划失败: {e}")
         return None
@@ -257,23 +272,25 @@ def convert_to_psd(image_path):
     try:
         from PIL import Image
         img = Image.open(image_path)
-        
-        # 尝试PSD导出
-        psd_path = str(image_path).replace('.png', '_live2d.psd')
+
+        # 创建优化的PNG
+        png_path = str(image_path).replace('.png', '_live2d_ready.png')
         try:
-            img.save(psd_path)
-            print(f"✅ PSD文件已创建: {Path(psd_path).name}")
-            return psd_path
+            img.save(png_path, optimize=True)
+            print(f"✅ 优化PNG文件已创建: {Path(png_path).name}")
+            return png_path
         except:
-            # 如果PSD失败，创建优化后的PNG
-            png_path = str(image_path).replace('.png', '_live2d_ready.png')
+            # 如果优化失败，创建普通PNG
             img.save(png_path)
             print(f"✅ PNG文件已创建: {Path(png_path).name}")
             print("💡 提示: 使用Photoshop打开后另存为PSD格式")
             return png_path
+    except ImportError:
+        print(f"⚠️ PIL未安装，跳过PSD转换")
+        return image_path
     except Exception as e:
-        print(f"⚠️ PSD转换失败: {e}")
-        return None
+        print(f"⚠️ 图片转换失败: {e}")
+        return image_path
 
 def run_ai_layer_tool(image_path):
     """运行AI分层工具"""
@@ -295,13 +312,14 @@ def run_ai_layer_tool(image_path):
         print(f"⚠️ 无法运行AI分层工具: {e}")
         return False
 
-def check_see_through_installed():
+def check_see_through_installed(comfyui_dir=None):
     """检查See-through是否已安装"""
-    comfyui_path = Path.home() / "ComfyUI"
-    if not comfyui_path.exists():
+    if comfyui_dir is None:
+        comfyui_dir = Path(__file__).parent / "comfyui"
+    if not comfyui_dir.exists():
         return False
-    see_through_path = comfyui_path / "custom_nodes" / "ComfyUI-See-through"
-    return see_through_path.exists()
+    see_through_dir = comfyui_dir / 'custom_nodes' / 'ComfyUI-See-through'
+    return see_through_dir.exists()
 
 def show_see_through_guide():
     """显示See-through使用指南"""
@@ -322,7 +340,7 @@ See-through 是目前最先进的AI分层工具，集成到本项目中！
    python install_comfyui_advanced.py
 
 2. 启动 ComfyUI:
-   cd ~/ComfyUI
+   cd comfyui
    python main.py
 
 3. 在浏览器中打开 ComfyUI:
@@ -335,21 +353,24 @@ See-through 是目前最先进的AI分层工具，集成到本项目中！
 5. 使用工作流:
    • 加载你的角色图片
    • 点击 "Queue Prompt" 运行
-   • 下载分层结果
+   • 保存分层结果
 
 详细文档: SEE_THROUGH_INTEGRATION.md
 """)
 
-def run_see_through_suggestion(image_path):
+def run_see_through_suggestion(image_path, comfyui_dir=None):
     """建议使用See-through"""
-    if check_see_through_installed():
+    if comfyui_dir is None:
+        comfyui_dir = Path(__file__).parent / "comfyui"
+
+    if check_see_through_installed(comfyui_dir):
         print(f"""
 💡 推荐使用 See-through 进行专业分层！
 
 已检测到 See-through 已安装。
 
 运行 ComfyUI:
-  cd ~/ComfyUI && python main.py
+  cd {comfyui_dir} && python main.py
 
 然后在浏览器中:
   http://127.0.0.1:8188
@@ -364,120 +385,113 @@ def run_see_through_suggestion(image_path):
   python install_comfyui_advanced.py
 
 然后运行 ComfyUI:
-  cd ~/ComfyUI && python main.py
+  cd comfyui && python main.py
 
 使用 See-through 处理: {Path(image_path).name}
 """)
 
 def main():
     """主函数"""
+    parser = argparse.ArgumentParser(
+        description='Live2D Master Agent - 从概念到完整模型',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  python master_tool.py "cute anime girl"
+  python master_tool.py -n 3 "beautiful character"
+  python master_tool.py --skip-generate
+  python master_tool.py --see-through
+"""
+    )
+    parser.add_argument(
+        'prompt', nargs='*',
+        help='自定义提示词（可选）'
+    )
+    parser.add_argument(
+        '-n', '--number', type=int, default=1,
+        help='生成角色数量（默认1）'
+    )
+    parser.add_argument(
+        '--skip-generate', action='store_true',
+        help='使用已有图片，跳过生成'
+    )
+    parser.add_argument(
+        '--see-through', action='store_true',
+        help='显示See-through使用指南'
+    )
+    parser.add_argument(
+        '--comfyui-dir', type=str, default=None,
+        help='ComfyUI安装目录路径'
+    )
+    args = parser.parse_args()
+
     base_dir = Path(__file__).parent
     output_dir = base_dir / "output"
     output_dir.mkdir(exist_ok=True)
-    
-    print("\n" + "=" * 70)
-    print("🎨 Live2D Master Agent v6.0 - See-through集成版")
-    print("=" * 70)
-    
-    # 参数处理
-    skip_generate = False
-    custom_prompt = ""
-    count = 1
-    show_see_through = False
-    
-    if len(sys.argv) > 1:
-        args = sys.argv[1:]
-        i = 0
-        while i < len(args):
-            if args[i] == '--skip-generate':
-                skip_generate = True
-            elif args[i] == '-n':
-                i += 1
-                count = int(args[i])
-            elif args[i] == '--see-through':
-                show_see_through = True
-            elif args[i] in ['-h', '--help']:
-                print("""
-使用方法:
-  python master_tool.py                    # 默认生成1个随机角色
-  python master_tool.py "提示词"           # 自定义提示词
-  python master_tool.py -n 5              # 生成5个多样化角色
-  python master_tool.py --skip-generate    # 使用已有图片
-  python master_tool.py --see-through     # 查看See-through使用指南
 
-特性:
-  • 多样化特征组合（避免撞衫）
-  • 随机种子生成
-  • 与Live2D分层工具完美兼容
-  • See-through集成（SIGGRAPH 2026级分层）
-  • 标准图层命名规范
-                """)
-                return
-            else:
-                custom_prompt = " ".join(args[i:])
-                break
-            i += 1
-    
+    print("\n" + "="*80)
+    print("🎨 Live2D Master Agent v6.1 - See-through集成版")
+    print("="*80)
+
     # 显示See-through指南
-    if show_see_through:
+    if args.see_through:
         show_see_through_guide()
         return
-    
+
     # 生成多个多样化角色
-    for n in range(count):
-        print(f"\n--- 角色 {n+1}/{count} ---")
-        
+    for n in range(args.number):
+        print(f"\n--- 角色 {n+1}/{args.number} ---")
+
         # 获取图片
         image_path = None
-        
-        if skip_generate:
+
+        if args.skip_generate:
             image_path = get_latest_image(output_dir)
             if image_path:
                 print(f"📁 使用已有图片: {Path(image_path).name}")
             else:
                 print("❌ output/ 目录中没有图片")
+                print("💡 请先将图片放入 output/ 目录，或使用默认生成模式")
                 return
         else:
             # 构建多样化提示词
+            custom_prompt = ' '.join(args.prompt) if args.prompt else ''
             prompt, features = build_prompt(custom_prompt)
             print(f"\n🔖 随机特征:")
             for key, value in features.items():
                 print(f"   • {key}: {value}")
-            
+
             image_path, seed = generate_image(prompt, output_dir)
             if not image_path:
                 show_alternatives()
                 return
-        
+
         # 创建PSD规划
         create_psd_plan(image_path, output_dir)
-        
+
         # 转换为PSD
         convert_to_psd(image_path)
-        
+
         # 运行AI分层工具
         run_ai_layer_tool(image_path)
-        
+
         # 建议使用See-through
-        run_see_through_suggestion(image_path)
-    
-    print("\n" + "=" * 70)
-    print("🎉 完成!")
-    print("=" * 70)
-    print("\n📁 输出文件:")
-    print("  • live2d_*.png (原始图片)")
-    print("  • live2d_*_live2d.psd (PSD文件)")
-    print("  • live2d_*_live2d_pro/ (AI分层结果)")
-    print("  • psd_plan_*/ (分层规划指南)")
-    print("\n🏆 推荐分层工具:")
-    print("  • See-through (SIGGRAPH 2026) - 专业级分层")
-    print("    运行: python master_tool.py --see-through")
-    print("  • 内置分层工具 - 快速预览")
-    print("\n💡 下一步:")
-    print("  1. 使用 See-through 进行专业分层")
-    print("  2. 打开 Live2D Cubism Editor")
-    print("  3. File → Import PSD")
-    print("  4. 开始制作你的Live2D模型!")
+        comfyui_dir = Path(args.comfyui_dir) if args.comfyui_dir else None
+        run_see_through_suggestion(image_path, comfyui_dir)
+
+    print("\n" + "="*80)
+    print("🎉 完成！")
+    print("="*80)
+    print(f"\n📁 输出目录: {output_dir}")
+    print(f"\n🏆 推荐分层工具:")
+    print(f"  • See-through (SIGGRAPH 2026) - 专业级分层")
+    print(f"    运行: python master_tool.py --see-through")
+    print(f"  • 内置分层工具 - 快速预览")
+    print(f"\n💡 下一步:")
+    print(f"  1. 使用 See-through 进行专业分层")
+    print(f"  2. 打开 Live2D Cubism Editor")
+    print(f"  3. File → Import PSD")
+    print(f"  4. 开始制作你的Live2D模型！")
 
 if __name__ == "__main__":
     main()
