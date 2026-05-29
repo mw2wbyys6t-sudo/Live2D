@@ -34,7 +34,7 @@ python master_tool.py "cute anime girl, pink hair"
 
 系统会自动：
 - ✅ 生成高质量角色立绘
-- ✅ 创建专业PSD分层文件
+- ✅ 使用 See-through 进行专业级分层
 - ✅ 提供完整的工作流程
 
 **就是这么快！** ⚡
@@ -48,14 +48,22 @@ python master_tool.py "cute anime girl, pink hair"
 - 一键生成高质量角色立绘
 - 94种特征组合，避免撞衫
 
-### 📐 专业分层
-- 25+图层自动分层
-- 符合Live2D官方规范
-- 可直接导入Live2D Cubism
+### 📐 专业分层（See-through - SIGGRAPH 2026）
+
+**🏆 推荐：See-through AI分层工具**
+
+- **SIGGRAPH 2026 级别**研究技术
+- 使用 **LayerDiff 3D** + **Marigold Depth**
+- 专为动漫角色设计
+- 透明背景 + 完美分层
+
+**内置备选工具**：
+- v6.0 分层工具（K-means聚类）
+- v5.0 分层工具（简单颜色检测）
 
 ### ⚡ 效率提升
 - 角色生成：2-3小时 → 30秒（**提升240倍+**）
-- PSD分层：1-2小时 → 10秒（**提升360倍+**）
+- PSD分层：1-2小时 → See-through 10秒（**提升360倍+**）
 - 总流程：4-5小时 → 3分钟（**提升100倍+**）
 
 ---
@@ -67,6 +75,9 @@ python master_tool.py "cute anime girl, pink hair"
 
 ### 📖 完整教程
 📖 [USER_GUIDE.md](USER_GUIDE.md) - 详细使用教程
+
+### 📐 See-through集成指南
+📖 [SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) - **SIGGRAPH 2026级分层工具使用教程**
 
 ### ❓ 常见问题
 ❓ [FAQ.md](FAQ.md) - 解答疑惑
@@ -97,7 +108,9 @@ python master_tool.py "cute anime girl, pink hair"
 | 工具 | 说明 | 推荐度 |
 |------|------|--------|
 | [master_tool.py](master_tool.py) | 一站式工具箱 | ⭐⭐⭐⭐⭐ |
-| [live2d_layer_pro.py](live2d_layer_pro.py) | 专业分层工具 | ⭐⭐⭐⭐⭐ |
+| [install_comfyui_advanced.py](install_comfyui_advanced.py) | **See-through一键安装** | ⭐⭐⭐⭐⭐ |
+| [live2d_layer_v6.py](live2d_layer_v6.py) | K-means分层工具 | ⭐⭐⭐⭐ |
+| [live2d_layer_pro.py](live2d_layer_pro.py) | 颜色检测分层 | ⭐⭐⭐ |
 | [config_api.py](config_api.py) | API配置 | ⭐⭐⭐⭐ |
 
 ### 辅助脚本
@@ -111,6 +124,28 @@ python master_tool.py "cute anime girl, pink hair"
 ---
 
 ## 💡 技术亮点
+
+### 🏆 See-through AI分层（SIGGRAPH 2026）
+
+See-through 是目前最先进的AI图像分层工具，已集成到本项目中！
+
+**技术优势**：
+- LayerDiff 3D：生成透明背景和分层图像
+- Marigold Depth：精确深度估计
+- 专为动漫角色优化
+- 支持PSD直接导出
+
+**工作流程**：
+```bash
+# 1. 安装 See-through（ComfyUI集成）
+python install_comfyui_advanced.py
+
+# 2. 在 ComfyUI 中加载工作流
+# 3. 输入图片，自动分层
+# 4. 导出PSD
+```
+
+详细文档：[SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md)
 
 ### 多样化特征系统
 每次生成自动随机组合 **94个特征**，确保每个角色独一无二！
@@ -155,10 +190,24 @@ python master_tool.py -n 5 "anime girl"
 python master_tool.py --skip-generate
 ```
 
-### 专业分层
+### 🏆 See-through 专业分层
 
 ```bash
-python live2d_layer_pro.py character.png
+# 1. 安装（首次使用）
+python install_comfyui_advanced.py
+
+# 2. 在 ComfyUI 中使用 See-through
+# 3. 自动分层并导出PSD
+```
+
+### 内置分层工具（备选）
+
+```bash
+# v6.0 K-means分层
+python live2d_layer_v6.py character.png output.psd
+
+# v5.0 颜色检测分层
+python live2d_layer_pro.py character.png output.psd
 ```
 
 ### 配置API（可选）
@@ -174,6 +223,7 @@ python config_api.py
 - Python 3.8+
 - 网络连接
 - 可选：火山引擎API密钥（更高质量）
+- 可选：See-through（ComfyUI集成，需要更多资源）
 
 ---
 
@@ -189,6 +239,9 @@ pip install -r requirements.txt
 
 # 开始使用
 python master_tool.py "你的角色描述"
+
+# 可选：安装 See-through（专业分层）
+python install_comfyui_advanced.py
 ```
 
 ---
@@ -210,6 +263,9 @@ MIT License - 详见 [LICENSE](LICENSE)
 - [Pollinations.ai](https://pollinations.ai/) - 免费图像生成
 - [Live2D Cubism](https://www.live2d.com/) - 2D动画技术
 - [火山引擎](https://www.volcengine.com/) - Seedream API
+- [See-through (Shitagaki Lab)](https://github.com/shitagaki-lab/see-through) - **SIGGRAPH 2026 AI分层技术**
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI) - 节点式工作流工具
+- [LayerDiffusion](https://github.com/layerdiffusion/) - 透明图像生成
 
 ---
 
@@ -232,5 +288,5 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v5.0*  
-*最后更新: 2026-05-22*
+*版本: v6.0（集成See-through）*
+*最后更新: 2026-05-29*

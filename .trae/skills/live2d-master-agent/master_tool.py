@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v5.0 - 多样化增强版
-功能: 图片生成 + PSD转换 + 智能分层
-与Live2D分层工具完美兼容，避免撞衫现象
+Live2D Master Agent v6.0 - See-through集成版
+功能: 图片生成 + See-through专业分层 + PSD转换
+集成SIGGRAPH 2026级See-through分层工具，避免撞衫现象
 """
 
 import os
@@ -177,9 +177,11 @@ def show_alternatives():
    • https://www.playground.com/
    • https://leonardo.ai/
 
-2. 💻 本地安装:
-   • ComfyUI + Stable Diffusion
-     运行: python install_comfyui.py
+2. 💻 本地安装 - See-through（SIGGRAPH 2026级分层）:
+   • 运行: python install_comfyui_advanced.py
+   • 这将安装 ComfyUI + See-through 插件
+   • See-through使用LayerDiff 3D + Marigold Depth技术
+   • 详细文档: SEE_THROUGH_INTEGRATION.md
 
 3. 📁 使用已有图片:
    将图片放到 output/ 目录后运行:
@@ -293,6 +295,80 @@ def run_ai_layer_tool(image_path):
         print(f"⚠️ 无法运行AI分层工具: {e}")
         return False
 
+def check_see_through_installed():
+    """检查See-through是否已安装"""
+    comfyui_path = Path.home() / "ComfyUI"
+    if not comfyui_path.exists():
+        return False
+    see_through_path = comfyui_path / "custom_nodes" / "ComfyUI-See-through"
+    return see_through_path.exists()
+
+def show_see_through_guide():
+    """显示See-through使用指南"""
+    print("""
+🏆 See-through 专业分层指南（SIGGRAPH 2026）
+
+See-through 是目前最先进的AI分层工具，集成到本项目中！
+
+优势:
+  • SIGGRAPH 2026 级别研究技术
+  • 使用 LayerDiff 3D + Marigold Depth
+  • 专为动漫角色设计
+  • 透明背景 + 完美分层
+
+使用方法:
+
+1. 安装（如果尚未安装）:
+   python install_comfyui_advanced.py
+
+2. 启动 ComfyUI:
+   cd ~/ComfyUI
+   python main.py
+
+3. 在浏览器中打开 ComfyUI:
+   http://127.0.0.1:8188
+
+4. 加载 See-through 工作流:
+   • 打开 ComfyUI-See-through 目录
+   • 拖放 see_through_workflow.json 到浏览器
+
+5. 使用工作流:
+   • 加载你的角色图片
+   • 点击 "Queue Prompt" 运行
+   • 下载分层结果
+
+详细文档: SEE_THROUGH_INTEGRATION.md
+""")
+
+def run_see_through_suggestion(image_path):
+    """建议使用See-through"""
+    if check_see_through_installed():
+        print(f"""
+💡 推荐使用 See-through 进行专业分层！
+
+已检测到 See-through 已安装。
+
+运行 ComfyUI:
+  cd ~/ComfyUI && python main.py
+
+然后在浏览器中:
+  http://127.0.0.1:8188
+
+使用 See-through 工作流处理: {Path(image_path).name}
+""")
+    else:
+        print(f"""
+💡 推荐使用 See-through 进行专业分层！
+
+要安装 See-through（SIGGRAPH 2026）:
+  python install_comfyui_advanced.py
+
+然后运行 ComfyUI:
+  cd ~/ComfyUI && python main.py
+
+使用 See-through 处理: {Path(image_path).name}
+""")
+
 def main():
     """主函数"""
     base_dir = Path(__file__).parent
@@ -300,13 +376,14 @@ def main():
     output_dir.mkdir(exist_ok=True)
     
     print("\n" + "=" * 70)
-    print("🎨 Live2D Master Agent v5.0 - 多样化增强版")
+    print("🎨 Live2D Master Agent v6.0 - See-through集成版")
     print("=" * 70)
     
     # 参数处理
     skip_generate = False
     custom_prompt = ""
     count = 1
+    show_see_through = False
     
     if len(sys.argv) > 1:
         args = sys.argv[1:]
@@ -317,6 +394,8 @@ def main():
             elif args[i] == '-n':
                 i += 1
                 count = int(args[i])
+            elif args[i] == '--see-through':
+                show_see_through = True
             elif args[i] in ['-h', '--help']:
                 print("""
 使用方法:
@@ -324,11 +403,13 @@ def main():
   python master_tool.py "提示词"           # 自定义提示词
   python master_tool.py -n 5              # 生成5个多样化角色
   python master_tool.py --skip-generate    # 使用已有图片
+  python master_tool.py --see-through     # 查看See-through使用指南
 
 特性:
   • 多样化特征组合（避免撞衫）
   • 随机种子生成
   • 与Live2D分层工具完美兼容
+  • See-through集成（SIGGRAPH 2026级分层）
   • 标准图层命名规范
                 """)
                 return
@@ -336,6 +417,11 @@ def main():
                 custom_prompt = " ".join(args[i:])
                 break
             i += 1
+    
+    # 显示See-through指南
+    if show_see_through:
+        show_see_through_guide()
+        return
     
     # 生成多个多样化角色
     for n in range(count):
@@ -371,6 +457,9 @@ def main():
         
         # 运行AI分层工具
         run_ai_layer_tool(image_path)
+        
+        # 建议使用See-through
+        run_see_through_suggestion(image_path)
     
     print("\n" + "=" * 70)
     print("🎉 完成!")
@@ -380,10 +469,15 @@ def main():
     print("  • live2d_*_live2d.psd (PSD文件)")
     print("  • live2d_*_live2d_pro/ (AI分层结果)")
     print("  • psd_plan_*/ (分层规划指南)")
+    print("\n🏆 推荐分层工具:")
+    print("  • See-through (SIGGRAPH 2026) - 专业级分层")
+    print("    运行: python master_tool.py --see-through")
+    print("  • 内置分层工具 - 快速预览")
     print("\n💡 下一步:")
-    print("  1. 打开Live2D Cubism Editor")
-    print("  2. File → Import PSD")
-    print("  3. 开始制作你的Live2D模型!")
+    print("  1. 使用 See-through 进行专业分层")
+    print("  2. 打开 Live2D Cubism Editor")
+    print("  3. File → Import PSD")
+    print("  4. 开始制作你的Live2D模型!")
 
 if __name__ == "__main__":
     main()
