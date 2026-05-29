@@ -80,6 +80,19 @@ STYLES = [
     'digital illustration', 'cel shading', 'soft shading'
 ]
 
+# Live2D 优化的发型 - 避免过于复杂的卷发
+LIVE2D_HAIRSTYLES = [
+    'straight hair', 'long straight hair', 'short straight hair',
+    'medium hair', 'ponytail', 'twintails', 'side ponytail',
+    'bob cut', 'hime cut', 'bangs', 'blunt bangs'
+]
+
+# Live2D 优化的姿势 - 确保完整身体可见
+LIVE2D_POSES = [
+    'standing', 'full body', 'looking at viewer',
+    'arms at sides', 'straight-on view'
+]
+
 
 def generate_random_features():
     """生成随机特征组合，避免撞衫"""
@@ -96,8 +109,13 @@ def generate_random_features():
     return features
 
 
-def build_prompt(custom_prompt=""):
-    """构建优化的多样化提示词"""
+def build_prompt(custom_prompt="", live2d_optimized=True):
+    """构建优化的多样化提示词
+    
+    Args:
+        custom_prompt: 用户自定义提示词
+        live2d_optimized: 是否使用 Live2D 优化模式
+    """
     features = generate_random_features()
 
     prompt_parts = []
@@ -105,15 +123,22 @@ def build_prompt(custom_prompt=""):
     if custom_prompt:
         prompt_parts.append(custom_prompt)
 
-    prompt_parts.append("1girl, solo, portrait")
+    # 使用 Live2D 优化的特征
+    if live2d_optimized:
+        prompt_parts.append("1girl, solo, full body")
+        prompt_parts.append(random.choice(LIVE2D_HAIRSTYLES))
+        prompt_parts.append(random.choice(LIVE2D_POSES))
+    else:
+        prompt_parts.append("1girl, solo, portrait")
+        prompt_parts.append(features['hairstyle'])
+        prompt_parts.append(features['pose'])
+
     prompt_parts.append(features['style'])
-    prompt_parts.append(features['hairstyle'])
     prompt_parts.append(features['hair_color'])
     prompt_parts.append(features['eye_color'])
     prompt_parts.append(features['clothing'])
     prompt_parts.append(features['accessory'])
     prompt_parts.append(features['expression'])
-    prompt_parts.append(features['pose'])
 
     # 添加质量关键词
     prompt_parts.extend(random.sample(QUALITY_TAGS, 6))
@@ -125,6 +150,15 @@ def build_prompt(custom_prompt=""):
     prompt_parts.append("white background")
     prompt_parts.append("sharp clean lineart")
     prompt_parts.append("distinct color separation")
+    
+    # 新增：Live2D 关键优化词
+    if live2d_optimized:
+        prompt_parts.append("flat colors, minimal shading")
+        prompt_parts.append("clear silhouette")
+        prompt_parts.append("symmetrical eyes")
+        prompt_parts.append("simple hair strands")
+        prompt_parts.append("visible neck and shoulders")
+        prompt_parts.append("closed mouth, neutral expression")
 
     return " ".join(prompt_parts), features
 
@@ -516,6 +550,14 @@ def main():
         '--sd-webui-url', type=str, default=None,
         help='Stable Diffusion WebUI 地址（默认 http://127.0.0.1:7860）'
     )
+    parser.add_argument(
+        '--no-live2d-opt', action='store_true',
+        help='禁用 Live2D 优化模式（生成更自由的风格）'
+    )
+    parser.add_argument(
+        '--full-body', action='store_true',
+        help='生成全身图片（推荐用于 Live2D）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -550,11 +592,23 @@ def main():
                 return
         else:
             custom_prompt = ' '.join(args.prompt) if args.prompt else ''
-            prompt, features = build_prompt(custom_prompt)
+            
+            # 根据参数选择模式
+            live2d_opt = not args.no_live2d_opt
+            if args.full_body:
+                custom_prompt += ", full body, standing"
+            
+            prompt, features = build_prompt(custom_prompt, live2d_optimized=live2d_opt)
 
             print(f"\n🔖 随机特征:")
             for key, value in features.items():
                 print(f"   • {key}: {value}")
+            
+            if live2d_opt:
+                print(f"\n✨ Live2D 优化模式: 已启用")
+                print(f"   特点: 全身可见、简单发型、清晰轮廓")
+            else:
+                print(f"\n⚠️ Live2D 优化模式: 已禁用")
 
             image_path, seed = generate_image(
                 prompt,
