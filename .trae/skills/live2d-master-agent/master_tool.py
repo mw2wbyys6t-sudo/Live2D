@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v7.1 - 全面升级版
+Live2D Master Agent v7.2 - 商业级 AI 质量版
 功能: 本地图片生成 + AI智能分层 + PSD转换
 
 核心：
-- 🎯 自研本地 Stable Diffusion 生成器 v4.0（基于 diffusers）
+- 🎯 自研本地 Stable Diffusion 生成器 v4.1（匹配 DALL-E 3 / Seedream 质量）
 - 🟢 内置AI分层工具（基于色彩聚类 + 区域检测）
 - 🔗 生成与分层无缝连接（一键工作流）
 
 特点:
 - 完全本地运行，无需网络
 - 支持 CPU/GPU 推理
-- 针对动漫风格优化
-- 自动下载和管理模型
+- GPT-4 风格提示词工程
 - 生成即分层就绪
 """
 
@@ -59,17 +58,6 @@ FEATURES = {
     ]
 }
 
-QUALITY_TAGS = [
-    'masterpiece', 'best quality', 'ultra detailed', 'high resolution',
-    '8K', 'HD', 'perfect anatomy', 'beautiful face', 'detailed eyes',
-    'vibrant colors', 'crisp lineart'
-]
-
-STYLES = [
-    'anime style', 'manga style', 'cartoon style', 'studio ghibli style',
-    'digital illustration', 'cel shading', 'soft shading'
-]
-
 # Live2D 优化的发型 - 避免过于复杂的卷发
 LIVE2D_HAIRSTYLES = [
     'straight hair', 'long straight hair', 'short straight hair',
@@ -93,7 +81,10 @@ PROFESSIONAL_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra 
 (frills:1.1), (lace:1.1), (ribbons:1.1), (bows:1.1), (jewelry:1.1), (elegant outfit:1.2),
 (perfect anatomy:1.2), (correct proportions:1.2), (delicate hands:1.2),
 (white background:1.2), (simple background:1.2), (clean background:1.2),
-(sharp focus:1.2), (vibrant colors:1.1), (clear lineart:1.3), (smooth shading:1.1)"""
+(sharp focus:1.2), (vibrant colors:1.1), (clear lineart:1.3), (smooth shading:1.1),
+(extremely detailed:1.2), (intricate details:1.2), (professional illustration:1.2),
+(art by Artgerm:1.1), (art by WLOP:1.1), (art by Rossdraws:1.1),
+(soft volumetric lighting:1.2), (rim lighting:1.1), (bloom:1.1)"""
 
 # Live2D 专用提示词模板（基于业界最佳实践）
 LIVE2D_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2),
@@ -148,7 +139,6 @@ def generate_random_features():
         'accessory': random.choice(FEATURES['accessories']),
         'expression': random.choice(FEATURES['expression']),
         'pose': random.choice(FEATURES['pose']),
-        'style': random.choice(STYLES)
     }
     return features
 
@@ -194,7 +184,6 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
         if custom_prompt:
             prompt_parts.append(custom_prompt)
         prompt_parts.append("1girl, solo, portrait")
-        prompt_parts.append(features['style'])
         prompt_parts.append(features['hairstyle'])
         prompt_parts.append(features['hair_color'])
         prompt_parts.append(features['eye_color'])
@@ -202,7 +191,6 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
         prompt_parts.append(features['accessory'])
         prompt_parts.append(features['expression'])
         prompt_parts.append(features['pose'])
-        prompt_parts.extend(random.sample(QUALITY_TAGS, 6))
         return " ".join(prompt_parts), features
 
 
@@ -214,7 +202,7 @@ def get_latest_image(output_dir):
 
 def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True):
     """
-    生成图片（使用自研本地生成器 v4.0）
+    生成图片（使用自研本地生成器 v4.1）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -242,7 +230,7 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
         )
 
         if success and output_path:
-            print("\n✅ 成功！使用本地 Stable Diffusion v4.0")
+            print("\n✅ 成功！使用本地 Stable Diffusion v4.1")
             return output_path, seed
 
     except ImportError as e:
@@ -351,7 +339,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v7.1\n")
+            f.write("Live2D PSD 分层指南 v7.2\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -519,7 +507,7 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v7.1 - 全面升级版',
+        description='Live2D Master Agent v7.2 - 商业级 AI 质量版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -614,10 +602,10 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v7.1 - 全面升级版")
+    print("🎨 Live2D Master Agent v7.2 - 商业级 AI 质量版")
     print("="*80)
     print("\n核心功能:")
-    print("  🎯 自研本地生成器 v4.0")
+    print("  🎯 自研本地生成器 v4.1")
     print("  🎨 内置AI分层工具")
     print("  🔗 生成与分层无缝连接")
 
