@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v6.4 - 自研本地生成版
-功能: 本地图片生成 + See-through专业分层 + PSD转换
+Live2D Master Agent v7.0 - 全面升级版
+功能: 本地图片生成 + AI智能分层 + PSD转换
 
 核心：
-- 🎯 自研本地 Stable Diffusion 生成器（基于 diffusers）
-- 🟢 See-through (SIGGRAPH 2026分层技术)
+- 🎯 自研本地 Stable Diffusion 生成器 v3.0（基于 diffusers）
+- 🟢 内置AI分层工具（基于色彩聚类 + 区域检测）
+- 🔗 生成与分层无缝连接（一键工作流）
 
 特点:
 - 完全本地运行，无需网络
 - 支持 CPU/GPU 推理
 - 针对动漫风格优化
 - 自动下载和管理模型
+- 生成即分层就绪
 """
 
 import os
@@ -92,18 +94,21 @@ idol costume, stage dress, sparkling, glitter,
 perfect anatomy, correct proportions, delicate hands,
 white background, simple background, clean background"""
 
-# Live2D 专用提示词模板（在高质量基础上添加 Live2D 优化）
+# Live2D 专用提示词模板（基于业界最佳实践）
+# 关键词: flat color, cel shading, sharp lines, clean outlines, minimal gradients
 LIVE2D_PROMPT_TEMPLATE = """masterpiece, best quality, ultra detailed, highres,
 anime style, illustration, 1girl, solo, full body, standing, looking at viewer,
 {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
 beautiful detailed face, beautiful detailed eyes, detailed skin texture, soft lighting,
 perfect for Live2D rigging, clean lineart, clear edges, sharp outlines,
 flat colors, minimal shading, cel shading, distinct color separation,
+anime coloring, sharp lines, clean outlines, minimal gradients,
 simple background, white background, isolated character,
 clear silhouette, symmetrical eyes, simple hair strands,
 visible neck and shoulders, visible arms and hands, visible legs and feet,
 closed mouth, neutral expression, front view, straight-on view,
-perfect anatomy, correct proportions, delicate hands"""
+perfect anatomy, correct proportions, delicate hands,
+sharp focus, vibrant colors"""
 
 # 高质量反向提示词
 HIGH_QUALITY_NEGATIVE_PROMPT = """lowres, bad anatomy, bad hands, text, error, missing fingers,
@@ -112,9 +117,10 @@ normal quality, jpeg artifacts, signature, watermark, username, blurry,
 artist name, bad proportions, extra limbs, cloned face, disfigured,
 gross proportions, malformed limbs, missing arms, missing legs,
 extra arms, extra legs, fused fingers, too many fingers, long neck,
-photorealistic, realistic, 3d, western, sketch, rough, draft"""
+photorealistic, realistic, 3d, western, sketch, rough, draft,
+complex background, messy hair, messy clothes"""
 
-# Live2D 反向提示词
+# Live2D 反向提示词（更严格，基于业界最佳实践）
 LIVE2D_NEGATIVE_PROMPT = """blurry, low quality, low resolution, pixelated, noisy, grainy,
 distorted, deformed, bad anatomy, bad hands, bad face, bad eyes,
 extra fingers, missing fingers, fused fingers, too many fingers,
@@ -126,7 +132,9 @@ depth of field, blurry background, multiple girls, multiple people,
 profile view, side view, back view, turned away,
 open mouth, talking, shouting, laughing, crying,
 dynamic pose, action pose, jumping, running, sitting, lying down,
-partial body, cropped, off-screen, out of frame"""
+partial body, cropped, off-screen, out of frame,
+gradient shading, soft shading, painterly, watercolor,
+noise, grainy, pixelated, compression artifacts"""
 
 
 def generate_random_features():
@@ -146,7 +154,7 @@ def generate_random_features():
 
 def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
     """构建优化的多样化提示词
-    
+
     Args:
         custom_prompt: 用户自定义提示词
         live2d_optimized: 是否使用 Live2D 优化模式
@@ -155,7 +163,6 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
     features = generate_random_features()
 
     if live2d_optimized:
-        # 使用 Live2D 专用模板
         hairstyle = random.choice(LIVE2D_HAIRSTYLES)
         prompt = LIVE2D_PROMPT_TEMPLATE.format(
             hairstyle=hairstyle,
@@ -165,11 +172,9 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
             accessory=features['accessory'],
             expression=features['expression']
         )
-        # 清理多余空白
         prompt = ' '.join(prompt.split())
         return prompt, features
     elif high_quality:
-        # 高质量模式（匹配参考图风格）
         prompt = HIGH_QUALITY_PROMPT_TEMPLATE.format(
             hairstyle=features['hairstyle'],
             hair_color=features['hair_color'],
@@ -178,13 +183,11 @@ def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
             accessory=features['accessory'],
             expression=features['expression']
         )
-        # 添加用户自定义提示词
         if custom_prompt:
             prompt = custom_prompt + ", " + prompt
         prompt = ' '.join(prompt.split())
         return prompt, features
     else:
-        # 自由模式
         prompt_parts = []
         if custom_prompt:
             prompt_parts.append(custom_prompt)
@@ -207,9 +210,9 @@ def get_latest_image(output_dir):
     return str(png_files[0]) if png_files else None
 
 
-def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None):
+def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True):
     """
-    生成图片（使用自研本地生成器）
+    生成图片（使用自研本地生成器 v3.0）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -219,13 +222,13 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
         seed = random.randint(0, 999999999)
 
     try:
-        from local_image_generator import LocalImageGenerator, get_default_negative_prompt, get_live2d_negative_prompt
+        from local_image_generator import Live2DOptimizedGenerator, get_live2d_negative_prompt, get_default_negative_prompt
 
-        generator = LocalImageGenerator(model_id=model_id or "Linaqruf/anything-v3.0")
-        
-        # 根据提示词判断使用哪种反向提示词
-        negative_prompt = get_live2d_negative_prompt() if "Live2D" in prompt else get_default_negative_prompt()
-        
+        generator = Live2DOptimizedGenerator(model_id=model_id or "Linaqruf/anything-v3.0")
+
+        # 根据模式选择反向提示词
+        negative_prompt = get_live2d_negative_prompt() if live2d_mode else get_default_negative_prompt()
+
         success, output_path = generator.generate(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -233,10 +236,11 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
             height=height,
             steps=steps,
             seed=seed,
+            live2d_optimized=live2d_mode,
         )
 
         if success and output_path:
-            print("\n✅ 成功！使用本地 Stable Diffusion")
+            print("\n✅ 成功！使用本地 Stable Diffusion v3.0")
             return output_path, seed
 
     except ImportError as e:
@@ -249,24 +253,61 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
     return None, seed
 
 
-def show_help():
-    """显示帮助信息"""
-    print("""
-💡 使用说明:
+def run_layering_pipeline(image_path, output_dir):
+    """
+    运行完整的分层管道
+    1. 内置AI分层
+    2. 生成PSD规划
+    3. 建议See-through专业分层
+    """
+    print(f"\n{'='*80}")
+    print("🎨 启动分层管道")
+    print(f"{'='*80}")
 
-1. 🎯 自研本地生成器（推荐）:
-   • 完全本地运行，无需网络
-   • 支持 CPU/GPU 推理
-   • 首次使用自动下载模型（约 4GB）
+    results = {}
 
-2. 💻 See-through 专业分层（SIGGRAPH 2026）:
-   • 运行: python install_comfyui_advanced.py
-   • 详细文档: SEE_THROUGH_INTEGRATION.md
+    # 1. 运行内置AI分层工具
+    print("\n📋 步骤 1/3: 内置AI分层")
+    layer_result = run_ai_layer_tool(image_path)
+    results['built_in'] = layer_result
 
-3. 📁 使用已有图片:
-   将图片放到 output/ 目录后运行:
-   python master_tool.py --skip-generate
-""")
+    # 2. 创建PSD规划
+    print("\n📋 步骤 2/3: 创建PSD规划")
+    plan_dir = create_psd_plan(image_path, output_dir)
+    results['psd_plan'] = plan_dir
+
+    # 3. 转换为基础PSD
+    print("\n📋 步骤 3/3: 基础PSD转换")
+    psd_path = convert_to_psd(image_path)
+    results['psd'] = psd_path
+
+    return results
+
+
+def run_ai_layer_tool(image_path):
+    """运行AI分层工具"""
+    is_valid, error_msg = validate_image_path(image_path)
+    if not is_valid:
+        print(f"⚠️ 路径验证失败: {error_msg}")
+        return None
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, 'live2d_layer_pro.py', image_path],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        if result.returncode == 0:
+            print("✅ AI智能分层完成")
+            return True
+        else:
+            print(f"⚠️ AI分层工具运行失败: {result.stderr}")
+            return False
+    except Exception as e:
+        print(f"⚠️ 无法运行AI分层工具: {e}")
+        return False
 
 
 def create_psd_plan(image_path, output_dir):
@@ -308,7 +349,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v6.4\n")
+            f.write("Live2D PSD 分层指南 v7.0\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -322,7 +363,7 @@ def create_psd_plan(image_path, output_dir):
             f.write("3. 点击 OK\n")
             f.write("4. 创建部件并设置参数\n")
 
-        print(f"✅ 分层规划已创建")
+        print(f"✅ 分层规划已创建: {plan_dir}")
         return str(plan_dir)
     except ImportError:
         print(f"⚠️ PIL未安装，跳过创建分层规划")
@@ -360,40 +401,36 @@ def validate_image_path(image_path):
     """验证图片路径安全，防止命令注入"""
     if not image_path or not isinstance(image_path, str):
         return False, "路径不能为空"
-    # 检查非法字符
     if re.search(r'[;&|`$\x00]', image_path):
         return False, "路径包含非法字符"
-    # 检查文件名是否以 - 开头
     if os.path.basename(image_path).startswith('-'):
         return False, "文件名不能以 - 开头"
     return True, None
 
 
-def run_ai_layer_tool(image_path):
-    """运行AI分层工具"""
-    # 验证路径安全
-    is_valid, error_msg = validate_image_path(image_path)
-    if not is_valid:
-        print(f"⚠️ 路径验证失败: {error_msg}")
-        return False
+def show_help():
+    """显示帮助信息"""
+    print("""
+💡 使用说明:
 
-    try:
-        import subprocess
-        result = subprocess.run(
-            [sys.executable, 'live2d_layer_pro.py', image_path],
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        if result.returncode == 0:
-            print("✅ AI智能分层完成")
-            return True
-        else:
-            print(f"⚠️ AI分层工具运行失败: {result.stderr}")
-            return False
-    except Exception as e:
-        print(f"⚠️ 无法运行AI分层工具: {e}")
-        return False
+1. 🎯 自研本地生成器（推荐）:
+   • 完全本地运行，无需网络
+   • 支持 CPU/GPU 推理
+   • 首次使用自动下载模型（约 4GB）
+
+2. 🎨 内置AI分层:
+   • 自动色彩聚类分层
+   • 符合Live2D标准图层结构
+   • 生成PSD规划指南
+
+3. 🏆 See-through 专业分层（SIGGRAPH 2026）:
+   • 运行: python install_comfyui_advanced.py
+   • 详细文档: SEE_THROUGH_INTEGRATION.md
+
+4. 📁 使用已有图片:
+   将图片放到 output/ 目录后运行:
+   python master_tool.py --skip-generate
+""")
 
 
 def check_see_through_installed(comfyui_dir=None):
@@ -480,16 +517,24 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v6.4 - 自研本地生成版',
+        description='Live2D Master Agent v7.0 - 全面升级版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  # 完整工作流：生成 + 分层
   python master_tool.py "cute anime girl"
+
+  # 生成多个角色
   python master_tool.py -n 3 "beautiful character"
-  python master_tool.py --width 512 --height 768
+
+  # 使用已有图片进行分层
   python master_tool.py --skip-generate
-  python master_tool.py --see-through
+
+  # 指定模型
   python master_tool.py --model "gsdf/Counterfeit-V3.0"
+
+  # 查看See-through指南
+  python master_tool.py --see-through
 """
     )
     parser.add_argument(
@@ -552,6 +597,14 @@ def main():
         '--no-hq', action='store_true',
         help='禁用高质量模式（使用普通质量）'
     )
+    parser.add_argument(
+        '--post-process', action='store_true',
+        help='启用专业后处理管道'
+    )
+    parser.add_argument(
+        '--layer-only', action='store_true',
+        help='仅运行分层，跳过生成'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -559,8 +612,12 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v6.4 - 自研本地生成版")
+    print("🎨 Live2D Master Agent v7.0 - 全面升级版")
     print("="*80)
+    print("\n核心功能:")
+    print("  🎯 自研本地生成器 v3.0")
+    print("  🎨 内置AI分层工具")
+    print("  🔗 生成与分层无缝连接")
 
     # 显示See-through指南
     if args.see_through:
@@ -576,6 +633,16 @@ def main():
                 check_live2d_compatibility(image_path)
             except ImportError:
                 print("⚠️ 请先安装 Pillow: pip install Pillow")
+        else:
+            print("❌ output/ 目录中没有图片")
+        return
+
+    # 仅运行分层
+    if args.layer_only:
+        image_path = get_latest_image(output_dir)
+        if image_path:
+            print(f"\n📁 使用已有图片: {Path(image_path).name}")
+            run_layering_pipeline(image_path, output_dir)
         else:
             print("❌ output/ 目录中没有图片")
         return
@@ -599,29 +666,29 @@ def main():
                 return
         else:
             custom_prompt = ' '.join(args.prompt) if args.prompt else ''
-            
+
             # 根据参数选择模式
             live2d_opt = not args.no_live2d_opt
-            high_quality = not args.no_hq  # 默认启用高质量
+            high_quality = not args.no_hq
             if args.high_quality:
                 high_quality = True
-                live2d_opt = False  # 高质量模式下禁用 Live2D 优化
-            
+                live2d_opt = False
+
             if args.full_body:
                 custom_prompt += ", full body, standing"
-            
+
             prompt, features = build_prompt(custom_prompt, live2d_optimized=live2d_opt, high_quality=high_quality)
 
             print(f"\n🔖 随机特征:")
             for key, value in features.items():
                 print(f"   • {key}: {value}")
-            
+
             if high_quality:
                 print(f"\n✨ 高质量模式: 已启用")
                 print(f"   特点: 精细细节、柔和光影、梦幻风格")
             elif live2d_opt:
                 print(f"\n✨ Live2D 优化模式: 已启用")
-                print(f"   特点: 全身可见、简单发型、清晰轮廓")
+                print(f"   特点: 全身可见、简单发型、清晰轮廓、分层就绪")
             else:
                 print(f"\n⚠️ 优化模式: 已禁用")
 
@@ -631,7 +698,8 @@ def main():
                 width=args.width,
                 height=args.height,
                 steps=args.steps,
-                model_id=args.model
+                model_id=args.model,
+                live2d_mode=live2d_opt
             )
 
             if not image_path:
@@ -650,16 +718,21 @@ def main():
             except Exception as e:
                 print(f"⚠️ 自动优化失败: {e}")
 
-        # 创建PSD规划
-        create_psd_plan(image_path, output_dir)
+        # 后处理管道（如果启用）
+        if args.post_process:
+            try:
+                from local_image_generator import Live2DOptimizedGenerator
+                generator = Live2DOptimizedGenerator()
+                processed_path = generator.post_process_pipeline(image_path)
+                image_path = processed_path
+                print(f"\n✅ 已使用后处理图片: {Path(image_path).name}")
+            except Exception as e:
+                print(f"⚠️ 后处理失败: {e}")
 
-        # 转换为PSD
-        convert_to_psd(image_path)
+        # 运行分层管道
+        run_layering_pipeline(image_path, output_dir)
 
-        # 运行AI分层工具
-        run_ai_layer_tool(image_path)
-
-        # 建议使用See-through
+        # 建议See-through
         comfyui_dir = Path(args.comfyui_dir) if args.comfyui_dir else None
         run_see_through_suggestion(image_path, comfyui_dir)
 

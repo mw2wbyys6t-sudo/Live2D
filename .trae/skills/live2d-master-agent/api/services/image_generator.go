@@ -1,14 +1,10 @@
 package services
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,24 +14,20 @@ import (
 )
 
 type ImageGenerator struct {
-	cfg        *config.Config
-	httpClient *http.Client
+	cfg *config.Config
 }
 
 func NewImageGenerator(cfg *config.Config) *ImageGenerator {
 	return &ImageGenerator{
 		cfg: cfg,
-		httpClient: &http.Client{
-			Timeout: time.Duration(cfg.SDWebUI.Timeout) * time.Second,
-		},
 	}
 }
 
-// GenerateImage 生成图片，智能选择来源
+// GenerateImage 生成图片，使用自研本地生成器
 func (g *ImageGenerator) GenerateImage(req models.GenerateImageRequest) (*models.GenerateImageResponse, error) {
 	// 设置默认值
 	if req.Width <= 0 {
-		req.Width = 768
+		req.Width = 512
 	}
 	if req.Height <= 0 {
 		req.Height = 768
@@ -44,144 +36,67 @@ func (g *ImageGenerator) GenerateImage(req models.GenerateImageRequest) (*models
 		req.Seed = rand.Intn(999999999)
 	}
 
-	// 尝试 SD WebUI（如果启用且用户未明确禁用）
-	if g.cfg.SDWebUI.Enabled && (req.UseSDWebUI == nil || *req.UseSDWebUI) {
-		result, err := g.generateWithSDWebUI(req)
-		if err == nil {
-			return result, nil
-		}
-		// SD WebUI 失败，降级到 Pollinations
-		fmt.Printf("SD WebUI 失败，降级到 Pollinations: %v\n", err)
-	}
-
-	// 使用 Pollinations.ai
-	return g.generateWithPollinations(req)
+	// 使用自研本地生成器
+	return g.generateWithLocalGenerator(req)
 }
 
-// generateWithSDWebUI 使用 Stable Diffusion WebUI 生成图片
-func (g *ImageGenerator) generateWithSDWebUI(req models.GenerateImageRequest) (*models.GenerateImageResponse, error) {
-	baseURL := g.cfg.SDWebUI.BaseURL
-	if req.SDWebUIURL != "" {
-		baseURL = req.SDWebUIURL
+// generateWithLocalGenerator 使用自研本地生成器生成图片
+func (g *ImageGenerator) generateWithLocalGenerator(req models.GenerateImageRequest) (*models.GenerateImageResponse, error) {
+	scriptPath := filepath.Join(g.cfg.Python.ScriptsDir, "local_image_generator.py")
+
+	// 检查脚本是否存在
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("本地生成器脚本不存在: %s", scriptPath)
 	}
 
-	// 检查服务可用性
-	healthURL := strings.TrimRight(baseURL, "/") + "/sdapi/v1/health"
-	resp, err := g.httpClient.Get(healthURL)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("SD WebUI 服务不可用")
+	// 构建命令参数
+	args := []string{
+		scriptPath,
+		"--width", fmt.Sprintf("%d", req.Width),
+		"--height", fmt.Sprintf("%d", req.Height),
+		"--steps", "25",
+		"--seed", fmt.Sprintf("%d", req.Seed),
+		"--quality", "standard",
 	}
 
-	// 构建请求
-	payload := map[string]interface{}{
-		"prompt":           optimizePromptForLive2D(req.Prompt),
-		"negative_prompt":  getNegativePromptForLive2D(),
-		"width":            req.Width,
-		"height":           req.Height,
-		"steps":            30,
-		"sampler_name":     "DPM++ 2M Karras",
-		"cfg_scale":        7.5,
-		"seed":             req.Seed,
-		"batch_size":       1,
-		"n_iter":           1,
-		"send_images":      true,
-		"save_images":      false,
+	// 如果指定了模型
+	if req.ModelID != "" {
+		args = append(args, "--model", req.ModelID)
 	}
 
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
+	// 启用Live2D优化模式（默认）
+	if !req.NoLive2DOpt {
+		// 默认启用Live2D优化
 	}
 
-	// 发送请求
-	txt2imgURL := strings.TrimRight(baseURL, "/") + "/sdapi/v1/txt2img"
-	resp, err = g.httpClient.Post(txt2imgURL, "application/json", bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("SD WebUI API 错误: %s", string(body))
+	// 添加提示词
+	if req.Prompt != "" {
+		args = append(args, req.Prompt)
 	}
 
-	// 解析响应
-	var result struct {
-		Images     []string `json:"images"`
-		Parameters map[string]interface{} `json:"parameters"`
-		Info       string   `json:"info"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	if len(result.Images) == 0 {
-		return nil, fmt.Errorf("SD WebUI 未返回图片")
-	}
-
-	// 保存图片
-	outputPath, err := g.saveBase64Image(result.Images[0], req.Seed)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.GenerateImageResponse{
-		ImagePath: outputPath,
-		ImageURL:  "/output/" + filepath.Base(outputPath),
-		Seed:      req.Seed,
-		Width:     req.Width,
-		Height:    req.Height,
-		Source:    "sd_webui",
-		CreatedAt: time.Now(),
-	}, nil
-}
-
-// generateWithPollinations 使用 Pollinations.ai 生成图片
-func (g *ImageGenerator) generateWithPollinations(req models.GenerateImageRequest) (*models.GenerateImageResponse, error) {
-	encodedPrompt := strings.ReplaceAll(req.Prompt, " ", "%20")
-	
-	// 构建 URL
-	url := fmt.Sprintf(
-		"https://image.pollinations.ai/prompt/%s?width=%d&height=%d&seed=%d&nologo=true&model=flux",
-		encodedPrompt, req.Width, req.Height, req.Seed,
+	// 执行生成命令
+	cmd := exec.Command(g.cfg.Python.PythonPath, args...)
+	cmd.Dir = g.cfg.Python.ScriptsDir
+	cmd.Env = append(os.Environ(),
+		"PYTHONIOENCODING=utf-8",
 	)
 
-	// 下载图片（限制重定向次数，防止 SSRF）
-	httpClient := &http.Client{
-		Timeout: 200 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return fmt.Errorf("too many redirects")
-			}
-			return nil
-		},
-	}
-	resp, err := httpClient.Get(url)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("Pollinations 请求失败: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Pollinations 返回状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("本地生成器执行失败: %v\n输出: %s", err, string(output))
 	}
 
-	// 保存图片
-	outputPath := filepath.Join(g.cfg.Output.BaseDir, fmt.Sprintf("live2d_poll_%d_%d.png", time.Now().Unix(), req.Seed))
-	
-	os.MkdirAll(g.cfg.Output.BaseDir, 0755)
-	
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	// 解析输出找到生成的图片路径
+	outputStr := string(output)
+	outputPath := g.parseOutputPath(outputStr)
 
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return nil, err
+	if outputPath == "" {
+		return nil, fmt.Errorf("无法从输出中解析图片路径")
+	}
+
+	// 确保路径是绝对路径
+	if !filepath.IsAbs(outputPath) {
+		outputPath = filepath.Join(g.cfg.Python.ScriptsDir, outputPath)
 	}
 
 	return &models.GenerateImageResponse{
@@ -190,85 +105,125 @@ func (g *ImageGenerator) generateWithPollinations(req models.GenerateImageReques
 		Seed:      req.Seed,
 		Width:     req.Width,
 		Height:    req.Height,
-		Source:    "pollinations",
+		Source:    "local_generator_v3",
 		CreatedAt: time.Now(),
 	}, nil
 }
 
-// saveBase64Image 保存 Base64 编码的图片
-func (g *ImageGenerator) saveBase64Image(base64Data string, seed int) (string, error) {
-	data, err := base64.StdEncoding.DecodeString(base64Data)
+// parseOutputPath 从输出中解析图片路径
+func (g *ImageGenerator) parseOutputPath(output string) string {
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		// 查找 "文件:" 或 "图片已保存:" 行
+		if strings.Contains(line, "文件:") || strings.Contains(line, "图片已保存:") {
+			parts := strings.Fields(line)
+			for _, part := range parts {
+				if strings.HasSuffix(part, ".png") {
+					return part
+				}
+			}
+		}
+	}
+
+	// 尝试从output目录查找最新文件
+	outputDir := filepath.Join(g.cfg.Python.ScriptsDir, "output")
+	if files, err := os.ReadDir(outputDir); err == nil {
+		var latestFile os.DirEntry
+		var latestTime time.Time
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".png") {
+				if info, err := file.Info(); err == nil {
+					if info.ModTime().After(latestTime) {
+						latestTime = info.ModTime()
+						latestFile = file
+					}
+				}
+			}
+		}
+		if latestFile != nil {
+			return filepath.Join(outputDir, latestFile.Name())
+		}
+	}
+
+	return ""
+}
+
+// CheckLocalGeneratorStatus 检查本地生成器状态
+func (g *ImageGenerator) CheckLocalGeneratorStatus() (bool, string) {
+	scriptPath := filepath.Join(g.cfg.Python.ScriptsDir, "local_image_generator.py")
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return false, "本地生成器脚本不存在"
+	}
+
+	// 检查Python环境
+	cmd := exec.Command(g.cfg.Python.PythonPath, "-c", "import diffusers; import torch; import PIL")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return false, fmt.Sprintf("缺少依赖: %s", string(output))
 	}
 
-	os.MkdirAll(g.cfg.Output.BaseDir, 0755)
-	
-	outputPath := filepath.Join(g.cfg.Output.BaseDir, fmt.Sprintf("live2d_sd_%d_%d.png", time.Now().Unix(), seed))
-	
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
-		return "", err
-	}
-
-	return outputPath, nil
+	return true, "本地生成器就绪"
 }
 
-// optimizePromptForLive2D 优化提示词
-func optimizePromptForLive2D(prompt string) string {
-	prefix := "masterpiece, best quality, high quality, extremely detailed, " +
-		"anime style, anime girl, solo, 1girl, clean lineart, clear edges, " +
-		"simple background, white background, isolated character, " +
-		"perfect for Live2D rigging, distinct color separation, "
-
-	if strings.Contains(strings.ToLower(prompt), "anime") ||
-		strings.Contains(strings.ToLower(prompt), "masterpiece") {
-		return prompt + ", clean lineart, clear edges, perfect for Live2D rigging, distinct color separation"
+// GetAvailableModels 获取可用模型列表
+func (g *ImageGenerator) GetAvailableModels() []map[string]interface{} {
+	return []map[string]interface{}{
+		{
+			"id":       "Linaqruf/anything-v3.0",
+			"name":     "Anything V3",
+			"desc":     "通用动漫风格",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "standard",
+		},
+		{
+			"id":       "stablediffusionapi/anything-v5",
+			"name":     "Anything V5",
+			"desc":     "高质量动漫",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "high",
+		},
+		{
+			"id":       "gsdf/Counterfeit-V3.0",
+			"name":     "Counterfeit V3",
+			"desc":     "细腻画风",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "ultra",
+		},
+		{
+			"id":       "Meina/MeinaMix",
+			"name":     "MeinaMix",
+			"desc":     "萌系风格",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "high",
+		},
+		{
+			"id":       "andite/pastel-mix",
+			"name":     "Pastel Mix",
+			"desc":     "柔和色彩",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "high",
+		},
+		{
+			"id":       "WarriorMama777/OrangeMixs",
+			"name":     "AbyssOrangeMix",
+			"desc":     "丰富色彩",
+			"size":     "约 4GB",
+			"type":     "sd15",
+			"quality":  "high",
+		},
+		{
+			"id":       "Vsukiyaki/ShiitakeMix",
+			"name":     "Shiitake-Mix",
+			"desc":     "SDXL高质量动漫",
+			"size":     "约 7GB",
+			"type":     "sdxl",
+			"quality":  "ultra",
+		},
 	}
-
-	return prefix + prompt
-}
-
-// getNegativePromptForLive2D 获取反向提示词
-func getNegativePromptForLive2D() string {
-	return "blurry, low quality, low resolution, pixelated, noisy, grainy, " +
-		"distorted, deformed, bad anatomy, bad hands, bad face, bad eyes, " +
-		"extra fingers, missing fingers, fused fingers, too many fingers, " +
-		"bad proportions, extra limbs, long neck, bad feet, bad ears, " +
-		"ugly, disgusting, horror, watermark, text, signature, logo, " +
-		"simple background, messy hair, messy clothes, complex background, " +
-		"photorealistic, realistic, 3d, ugly eyes, deformed eyes, closed eyes, " +
-		"depth of field, blurry background, multiple girls, multiple people"
-}
-
-// CheckSDWebUIStatus 检查 SD WebUI 状态
-func (g *ImageGenerator) CheckSDWebUIStatus() (bool, string) {
-	baseURL := g.cfg.SDWebUI.BaseURL
-	healthURL := strings.TrimRight(baseURL, "/") + "/sdapi/v1/health"
-	
-	resp, err := g.httpClient.Get(healthURL)
-	if err != nil {
-		return false, err.Error()
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return true, "服务正常运行"
-	}
-	return false, fmt.Sprintf("HTTP %d", resp.StatusCode)
-}
-
-// CheckPollinationsStatus 检查 Pollinations 状态
-func (g *ImageGenerator) CheckPollinationsStatus() (bool, string) {
-	url := "https://image.pollinations.ai/prompt/test?width=64&height=64&seed=1&nologo=true"
-	
-	resp, err := g.httpClient.Get(url)
-	if err != nil {
-		return false, err.Error()
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return true, "服务正常运行"
-	}
-	return false, fmt.Sprintf("HTTP %d", resp.StatusCode)
 }

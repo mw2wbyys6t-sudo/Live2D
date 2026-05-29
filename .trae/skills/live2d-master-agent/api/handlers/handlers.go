@@ -36,7 +36,7 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 		Success: true,
 		Message: "Live2D API 服务正常运行",
 		Data: map[string]interface{}{
-			"version": "v6.3-go",
+			"version": "v7.0-go",
 			"uptime":  time.Since(h.startTime).String(),
 		},
 	})
@@ -47,29 +47,20 @@ func (h *Handler) GetSystemStatus(c *gin.Context) {
 	// 检查各个服务状态
 	var services []models.ServiceStatus
 
-	// SD WebUI 状态
-	sdAvailable, sdMsg := h.imageGenerator.CheckSDWebUIStatus()
+	// 本地生成器状态
+	localAvailable, localMsg := h.imageGenerator.CheckLocalGeneratorStatus()
 	services = append(services, models.ServiceStatus{
-		Name:        "sd_webui",
-		Available:   sdAvailable,
-		Version:     sdMsg,
-		LastChecked: time.Now(),
-	})
-
-	// Pollinations 状态
-	pollAvailable, pollMsg := h.imageGenerator.CheckPollinationsStatus()
-	services = append(services, models.ServiceStatus{
-		Name:        "pollinations",
-		Available:   pollAvailable,
-		Version:     pollMsg,
+		Name:        "local_generator",
+		Available:   localAvailable,
+		Version:     localMsg,
 		LastChecked: time.Now(),
 	})
 
 	// Python 环境
-	pyOK, _ := h.pythonBridge.CheckPythonEnvironment()
+	pyOK, pyIssues := h.pythonBridge.CheckPythonEnvironment()
 	pyStatus := "正常"
 	if !pyOK {
-		pyStatus = "异常"
+		pyStatus = "异常: " + strings.Join(pyIssues, ", ")
 	}
 	services = append(services, models.ServiceStatus{
 		Name:        "python_env",
@@ -78,11 +69,20 @@ func (h *Handler) GetSystemStatus(c *gin.Context) {
 		LastChecked: time.Now(),
 	})
 
+	// See-through 状态
+	seeThroughOK := h.pythonBridge.CheckSeeThroughInstalled()
+	services = append(services, models.ServiceStatus{
+		Name:        "see_through",
+		Available:   seeThroughOK,
+		Version:     "SIGGRAPH 2026",
+		LastChecked: time.Now(),
+	})
+
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
 		Data: models.SystemStatus{
 			Services: services,
-			Version:  "v6.3-go",
+			Version:  "v7.0-go",
 			Uptime:   time.Since(h.startTime).String(),
 		},
 	})
@@ -112,6 +112,16 @@ func (h *Handler) GenerateImage(c *gin.Context) {
 		Success: true,
 		Message: "图片生成成功",
 		Data:    result,
+	})
+}
+
+// GetModels 获取可用模型列表
+func (h *Handler) GetModels(c *gin.Context) {
+	availableModels := h.imageGenerator.GetAvailableModels()
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "获取模型列表成功",
+		Data:    availableModels,
 	})
 }
 
@@ -238,12 +248,13 @@ func (h *Handler) GetAPIInfo(c *gin.Context) {
 		Success: true,
 		Data: map[string]interface{}{
 			"name":        "Live2D Master Agent API",
-			"version":     "v6.3-go",
-			"description": "Live2D 图片生成与分层 API 服务",
+			"version":     "v7.0-go",
+			"description": "Live2D 图片生成与分层 API 服务（自研本地生成器版）",
 			"endpoints": []map[string]string{
 				{"method": "GET", "path": "/api/health", "desc": "健康检查"},
 				{"method": "GET", "path": "/api/status", "desc": "系统状态"},
 				{"method": "POST", "path": "/api/generate", "desc": "生成图片"},
+				{"method": "GET", "path": "/api/models", "desc": "获取可用模型列表"},
 				{"method": "POST", "path": "/api/psd-plan", "desc": "创建PSD分层规划"},
 				{"method": "POST", "path": "/api/see-through", "desc": "运行See-through工作流"},
 				{"method": "GET", "path": "/api/scripts", "desc": "获取Python脚本列表"},

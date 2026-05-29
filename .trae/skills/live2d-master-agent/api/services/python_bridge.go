@@ -40,20 +40,20 @@ func validatePath(path string) error {
 // GenerateImageViaPython 通过 Python 脚本生成图片
 func (pb *PythonBridge) GenerateImageViaPython(prompt string, width, height, seed int) (string, error) {
 	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "master_tool.py")
-	
+
 	args := []string{
 		scriptPath,
 		"--width", fmt.Sprintf("%d", width),
 		"--height", fmt.Sprintf("%d", height),
 	}
-	
+
 	if prompt != "" {
 		args = append(args, prompt)
 	}
 
 	cmd := exec.Command(pb.cfg.Python.PythonPath, args...)
 	cmd.Dir = pb.cfg.Python.ScriptsDir
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("Python脚本执行失败: %v\n输出: %s", err, string(output))
@@ -62,7 +62,7 @@ func (pb *PythonBridge) GenerateImageViaPython(prompt string, width, height, see
 	// 解析输出找到生成的图片路径
 	outputStr := string(output)
 	lines := strings.Split(outputStr, "\n")
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, "文件:") || strings.Contains(line, "output/") {
 			// 尝试提取路径
@@ -94,7 +94,7 @@ func (pb *PythonBridge) CreatePSDPlan(imagePath string) (*models.PSDLayerRespons
 
 	cmd := exec.Command(pb.cfg.Python.PythonPath, scriptPath, imagePath)
 	cmd.Dir = pb.cfg.Python.ScriptsDir
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("PSD分层脚本执行失败: %v\n输出: %s", err, string(output))
@@ -126,7 +126,7 @@ func (pb *PythonBridge) CreatePSDPlan(imagePath string) (*models.PSDLayerRespons
 	}
 
 	outputDir := filepath.Join(pb.cfg.Output.BaseDir, fmt.Sprintf("psd_plan_%d", time.Now().Unix()))
-	
+
 	return &models.PSDLayerResponse{
 		PlanDir:    outputDir,
 		LayerCount: len(layers),
@@ -176,7 +176,7 @@ func (pb *PythonBridge) CheckPythonEnvironment() (bool, []string) {
 	}
 
 	// 检查关键依赖
-	deps := []string{"PIL", "numpy", "requests"}
+	deps := []string{"PIL", "numpy"}
 	for _, dep := range deps {
 		cmd := exec.Command(pb.cfg.Python.PythonPath, "-c", fmt.Sprintf("import %s", dep))
 		if err := cmd.Run(); err != nil {
@@ -187,16 +187,25 @@ func (pb *PythonBridge) CheckPythonEnvironment() (bool, []string) {
 	return len(issues) == 0, issues
 }
 
+// CheckSeeThroughInstalled 检查 See-through 是否已安装
+func (pb *PythonBridge) CheckSeeThroughInstalled() bool {
+	seeThroughDir := filepath.Join(pb.cfg.ComfyUI.BaseDir, "custom_nodes", "ComfyUI-See-through")
+	if _, err := os.Stat(seeThroughDir); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 // GetPythonScripts 获取可用的 Python 脚本列表
 func (pb *PythonBridge) GetPythonScripts() []map[string]string {
 	scripts := []map[string]string{}
-	
+
 	scriptFiles := []struct {
 		Name string
 		Desc string
 	}{
-		{"master_tool.py", "主工具 - 图片生成和PSD转换"},
-		{"sd_webui_integration.py", "SD WebUI 集成模块"},
+		{"master_tool.py", "主工具 - 图片生成和PSD转换 v7.0"},
+		{"local_image_generator.py", "自研本地生成器 v3.0"},
 		{"live2d_layer_pro.py", "AI 分层工具 (Pro)"},
 		{"live2d_layer_v6.py", "AI 分层工具 (v6)"},
 		{"install_comfyui_advanced.py", "ComfyUI + See-through 安装器"},
