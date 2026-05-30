@@ -317,8 +317,17 @@ def run_ai_layer_tool(image_path):
         print(f"⚠️ 路径验证失败: {error_msg}")
         return None
 
+    # 额外验证：路径必须实际存在且为文件
+    if not os.path.isfile(image_path):
+        print(f"⚠️ 路径不存在或不是文件: {image_path}")
+        return None
+
+    # 使用绝对路径防止路径解析问题
+    image_path = os.path.abspath(image_path)
+
     try:
         import subprocess
+        import shlex
         result = subprocess.run(
             [sys.executable, 'live2d_layer_pro.py', image_path],
             capture_output=True,

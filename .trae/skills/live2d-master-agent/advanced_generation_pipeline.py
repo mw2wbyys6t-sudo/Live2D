@@ -40,7 +40,22 @@ class LoRATrainer:
         """准备训练数据集"""
         from PIL import Image
 
-        ref_path = Path(reference_dir)
+        ref_path = Path(reference_dir).resolve()
+
+        # 安全验证：限制 reference_dir 必须在当前工作目录或其子目录下
+        base_dir = Path(__file__).parent.resolve()
+        try:
+            ref_path.relative_to(base_dir)
+        except ValueError:
+            print(f"❌ 安全错误: reference_dir ({ref_path}) 必须在项目目录 ({base_dir}) 内")
+            raise ValueError("reference_dir must be within the project directory")
+
+        # 验证路径存在且是目录
+        if not ref_path.exists():
+            raise ValueError(f"reference_dir does not exist: {ref_path}")
+        if not ref_path.is_dir():
+            raise ValueError(f"reference_dir is not a directory: {ref_path}")
+
         dataset_dir = self.output_dir / "dataset"
         dataset_dir.mkdir(exist_ok=True)
 

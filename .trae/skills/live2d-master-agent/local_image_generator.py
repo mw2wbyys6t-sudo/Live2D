@@ -345,6 +345,17 @@ class MultiStagePipeline:
             from PIL import Image
             import torch
 
+            # 安全验证：确保模型ID在白名单中
+            allowed_models = set(ModelConfig.MODELS.keys())
+            model_key = None
+            for key, info in ModelConfig.MODELS.items():
+                if info["id"] == self.generator.model_id:
+                    model_key = key
+                    break
+            if model_key is None:
+                print(f"⚠️ 模型 {self.generator.model_id} 不在白名单中，使用默认模型")
+                self.generator.model_id = ModelConfig.MODELS["anything-v3"]["id"]
+
             # 加载图生图pipeline
             pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
                 self.generator.model_id,

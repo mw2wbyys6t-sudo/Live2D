@@ -13,6 +13,9 @@ import (
 	"live2d-api/models"
 )
 
+// 注意：math/rand 仅用于生成非安全敏感的图片种子
+// 如需生成安全令牌或会话ID，请使用 crypto/rand
+
 type ImageGenerator struct {
 	cfg *config.Config
 }
@@ -69,9 +72,20 @@ func (g *ImageGenerator) generateWithLocalGenerator(req models.GenerateImageRequ
 		// 默认启用Live2D优化
 	}
 
-	// 添加提示词
+	// 添加提示词（安全处理：防止被解析为命令行选项）
 	if req.Prompt != "" {
-		args = append(args, req.Prompt)
+		// 限制提示词长度，防止命令行过长
+		const maxPromptLen = 4000
+		prompt := req.Prompt
+		if len(prompt) > maxPromptLen {
+			prompt = prompt[:maxPromptLen]
+		}
+		// 如果提示词以 - 开头，添加前缀防止被解析为选项
+		if strings.HasPrefix(prompt, "-") {
+			prompt = " " + prompt
+		}
+		// 使用 -- 分隔选项和位置参数，防止提示词注入
+		args = append(args, "--", prompt)
 	}
 
 	// 执行生成命令
@@ -83,7 +97,9 @@ func (g *ImageGenerator) generateWithLocalGenerator(req models.GenerateImageRequ
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("本地生成器执行失败: %v\n输出: %s", err, string(output))
+		// 记录详细错误到日志（不暴露给客户端）
+		fmt.Fprintf(os.Stderr, "[ERROR] 本地生成器执行失败: %v\n输出: %s\n", err, string(output))
+		return nil, fmt.Errorf("本地生成器执行失败，请检查服务端日志")
 	}
 
 	// 解析输出找到生成的图片路径

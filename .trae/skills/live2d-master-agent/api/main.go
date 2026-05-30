@@ -61,6 +61,27 @@ func main() {
 		c.Next()
 	})
 
+	// CORS 中间件：默认拒绝跨域，如需跨域请配置允许的来源
+	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			// 生产环境中应使用白名单验证 origin
+			// 当前配置：仅允许同源请求（Origin 为空或等于当前 Host）
+			if origin == fmt.Sprintf("http://%s", cfg.Server.Host) ||
+				origin == fmt.Sprintf("https://%s", cfg.Server.Host) ||
+				cfg.Server.Host == "0.0.0.0" || cfg.Server.Host == "" {
+				c.Header("Access-Control-Allow-Origin", origin)
+				c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				c.Header("Access-Control-Allow-Headers", "Content-Type")
+			}
+		}
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
 	// 创建处理器
 	h := handlers.NewHandler(cfg)
 
