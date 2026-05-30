@@ -1516,6 +1516,13 @@ def get_live2d_negative_prompt() -> str:
 
 
 def main():
+    # 先加载配置（确保 .env 中的环境变量被读取）
+    try:
+        from config import config as _cfg
+        _ = _cfg.has_sensenova_key
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         description="Live2D Master Agent - 本地图像生成器 v5.0",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1797,6 +1804,32 @@ class SenseNovaProvider:
     DEFAULT_BASE_URL = "https://token.sensenova.cn/v1"
     IMAGE_MODEL = "sensenova-u1-fast"
 
+    # 商汤 API 支持的尺寸列表 (宽x高)
+    VALID_SIZES = [
+        (1664, 2496), (2496, 1664),
+        (1760, 2368), (2368, 1760),
+        (1824, 2272), (2272, 1824),
+        (2048, 2048),
+        (2752, 1536), (1536, 2752),
+        (3072, 1376), (1344, 3136),
+    ]
+
+    @classmethod
+    def get_nearest_size(cls, width: int, height: int) -> Tuple[int, int]:
+        """将任意尺寸映射到商汤 API 支持的最近尺寸"""
+        target = (width, height)
+        best = cls.VALID_SIZES[0]
+        best_dist = float("inf")
+        for w, h in cls.VALID_SIZES:
+            # 计算宽高比差异 + 面积差异
+            ratio_diff = abs((w / h) - (width / height))
+            area_diff = abs(w * h - width * height)
+            dist = ratio_diff * 10000 + area_diff / 100000
+            if dist < best_dist:
+                best_dist = dist
+                best = (w, h)
+        return best
+
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         self.api_key = api_key or os.environ.get("SENSENOVA_API_KEY")
         self.base_url = base_url or self.DEFAULT_BASE_URL
@@ -1862,25 +1895,30 @@ class SenseNovaProvider:
         if not self.api_key:
             raise ValueError("未设置 SENSENOVA_API_KEY，请设置环境变量或在初始化时传入")
 
+        # 映射到商汤支持的最近尺寸
+        actual_width, actual_height = self.get_nearest_size(width, height)
+        if (actual_width, actual_height) != (width, height):
+            print(f"   原始尺寸 {width}x{height} 映射为 {actual_width}x{actual_height}")
+
         print(f"\n🎨 调用商汤 SenseNova 生成图片...")
         print(f"   模型: {self.IMAGE_MODEL}")
-        print(f"   尺寸: {width}x{height}")
+        print(f"   尺寸: {actual_width}x{actual_height}")
 
         os.makedirs(output_dir, exist_ok=True)
 
         # 构建增强提示词
-        enhanced_prompt = self._enhance_prompt(prompt, width, height)
+        enhanced_prompt = self._enhance_prompt(prompt, actual_width, actual_height)
 
         try:
             if self.client:
                 # 使用 OpenAI SDK 调用
                 image_path = self._generate_with_sdk(
-                    enhanced_prompt, negative_prompt, width, height, seed, output_dir
+                    enhanced_prompt, negative_prompt, actual_width, actual_height, seed, output_dir
                 )
             else:
                 # 使用 requests 调用
                 image_path = self._generate_with_requests(
-                    enhanced_prompt, negative_prompt, width, height, seed, output_dir
+                    enhanced_prompt, negative_prompt, actual_width, actual_height, seed, output_dir
                 )
 
             print(f"✅ 商汤生成完成: {image_path}")
