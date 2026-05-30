@@ -1600,8 +1600,31 @@ def main():
     parser.add_argument(
         "--reference", type=str, default=None, help="参考图路径（风格迁移）"
     )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="auto",
+        choices=["auto", "local", "sensenova"],
+        help="生成 Provider (auto/local/sensenova，默认auto)",
+    )
+    parser.add_argument(
+        "--list-providers", action="store_true", help="列出可用 Provider"
+    )
 
     args = parser.parse_args()
+
+    if args.list_providers:
+        print("📚 可用 Provider 列表:")
+        print("=" * 60)
+        info = ProviderRouter.get_provider_info()
+        for name, details in info.items():
+            status = "✅" if details["available"] else "❌"
+            print(f"\n{status} {name}")
+            print(f"   描述: {details['desc']}")
+            print(f"   成本: {details['cost']}")
+            print(f"   质量: {details['quality']}")
+            print(f"   需要GPU: {'是' if details['requires_gpu'] else '否'}")
+        return
 
     if args.list_models:
         print("📚 推荐模型列表:")
@@ -1629,95 +1652,451 @@ def main():
         print("💡 使用 --help 查看帮助")
         sys.exit(1)
 
-    quality_preset = Live2DOptimizedGenerator.get_quality_presets()[args.quality]
-    steps = args.steps or quality_preset["steps"]
+    # ====== Provider 路由 ======
+    selected_provider = ProviderRouter.auto_select(args.provider)
+    print(f"\n🔧 使用 Provider: {selected_provider}")
 
-    generator = Live2DOptimizedGenerator(
-        model_id=args.model,
-        device=args.device,
-    )
+    if selected_provider == "sensenova":
+        # 使用商汤 SenseNova
+        provider = ProviderRouter.create_provider("sensenova")
 
-    prompt, negative = generator.build_prompt(
-        custom_prompt=args.prompt,
-        live2d_mode=not args.no_live2d,
-        reference_image=args.reference,
-    )
-
-    if args.negative:
-        negative = args.negative + ", " + negative
-
-    # 选择生成模式
-    if args.batch > 1:
-        # 批量生成
-        best_path, all_paths = generator.batch_generator.generate_batch(
-            prompt=prompt,
-            negative_prompt=negative,
-            batch_size=args.batch,
-            width=args.width,
-            height=args.height,
-            steps=steps,
-            guidance_scale=args.guidance,
-            use_multistage=args.multistage,
-        )
-        if best_path:
-            print(f"\n🎉 批量生成完成！")
-            print(f"📁 最优文件: {best_path}")
-            print(f"📁 所有文件: {len(all_paths)} 张")
-            output_path = best_path
+        # 结构化解析提示词
+        character = PromptEngineer.parse_character_from_text(args.prompt)
+        if any([character.get("hair_color"), character.get("features")]):
+            prompt, negative = PromptEngineer.build_prompt_from_character(
+                character, style="anime", live2d_mode=not args.no_live2d
+            )
         else:
-            print(f"\n❌ 批量生成失败")
-            sys.exit(1)
+            prompt = args.prompt
+            negative = ""
 
-    elif args.smart:
-        # 智能生成（自动重试）
-        success, output_path = generator.generate_with_retry(
+        output_path = provider.generate(
             prompt=prompt,
             negative_prompt=negative,
             width=args.width,
             height=args.height,
-            steps=steps,
-            guidance_scale=args.guidance,
-            seed=args.seed,
-            live2d_optimized=not args.no_live2d,
+            output_dir=args.output or "./outputs",
         )
-        if not success:
-            sys.exit(1)
 
-    elif args.multistage:
-        # 多阶段生成
-        output_path = generator.pipeline.run_pipeline(
-            prompt=prompt,
-            negative_prompt=negative,
-            width=args.width,
-            height=args.height,
-            seed=args.seed,
-        )
-        if not output_path:
-            sys.exit(1)
+        # 质量评估
+        scores = QualityAssessor.assess_image(output_path, live2d_mode=True)
+        print(QualityAssessor.generate_report(scores))
 
     else:
-        # 标准生成
-        success, output_path = generator.generate(
-            prompt=prompt,
-            negative_prompt=negative,
-            width=args.width,
-            height=args.height,
-            steps=steps,
-            guidance_scale=args.guidance,
-            seed=args.seed,
-            output_path=args.output,
-            live2d_optimized=not args.no_live2d,
-        )
-        if not success:
-            sys.exit(1)
+        # 使用本地 SD
+        quality_preset = Live2DOptimizedGenerator.get_quality_presets()[args.quality]
+        steps = args.steps or quality_preset["steps"]
 
-    # 后处理
-    if args.post_process:
-        processed_path = generator.post_process_pipeline(output_path)
-        print(f"📁 处理后文件: {processed_path}")
+        generator = Live2DOptimizedGenerator(
+            model_id=args.model,
+            device=args.device,
+        )
+
+        prompt, negative = generator.build_prompt(
+            custom_prompt=args.prompt,
+            live2d_mode=not args.no_live2d,
+            reference_image=args.reference,
+        )
+
+        if args.negative:
+            negative = args.negative + ", " + negative
+
+        # 选择生成模式
+        if args.batch > 1:
+            best_path, all_paths, report = generator.batch_generator.generate_batch(
+                prompt=prompt,
+                negative_prompt=negative,
+                batch_size=args.batch,
+                width=args.width,
+                height=args.height,
+                steps=steps,
+                guidance_scale=args.guidance,
+                use_multistage=args.multistage,
+                live2d_mode=True,
+            )
+            if best_path:
+                print(f"\n🎉 批量生成完成！")
+                print(report["summary"])
+                output_path = best_path
+            else:
+                print(f"\n❌ 批量生成失败")
+                sys.exit(1)
+
+        elif args.smart:
+            success, output_path = generator.generate_with_retry(
+                prompt=prompt,
+                negative_prompt=negative,
+                width=args.width,
+                height=args.height,
+                steps=steps,
+                guidance_scale=args.guidance,
+                seed=args.seed,
+                live2d_optimized=not args.no_live2d,
+            )
+            if not success:
+                sys.exit(1)
+
+        elif args.multistage:
+            output_path = generator.pipeline.run_pipeline(
+                prompt=prompt,
+                negative_prompt=negative,
+                width=args.width,
+                height=args.height,
+                seed=args.seed,
+            )
+            if not output_path:
+                sys.exit(1)
+
+        else:
+            success, output_path = generator.generate(
+                prompt=prompt,
+                negative_prompt=negative,
+                width=args.width,
+                height=args.height,
+                steps=steps,
+                guidance_scale=args.guidance,
+                seed=args.seed,
+                output_path=args.output,
+                live2d_optimized=not args.no_live2d,
+            )
+            if not success:
+                sys.exit(1)
+
+        # 后处理
+        if args.post_process:
+            processed_path = generator.post_process_pipeline(output_path)
+            print(f"📁 处理后文件: {processed_path}")
 
     print(f"\n🎉 生成成功！")
     print(f"📁 文件: {output_path}")
+
+
+class SenseNovaProvider:
+    """商汤日日新 SenseNova 文生图 Provider v6.0
+
+    接入商汤教育平台/日日新平台的秒画 SenseMirage 文生图能力。
+    支持 OpenAI 兼容接口调用。
+
+    使用方法:
+        1. 注册商汤日日新平台: https://platform.sensenova.cn
+        2. 获取 API Key
+        3. 设置环境变量: export SENSENOVA_API_KEY="sk-xxx"
+        4. 使用: python local_image_generator.py --provider sensenova "蓝发猫耳少女"
+
+    免费额度:
+        - 公测期间每模型每5小时1500次免费调用
+        - 图像生成模型: sensenova-u1-fast
+    """
+
+    DEFAULT_BASE_URL = "https://token.sensenova.cn/v1"
+    IMAGE_MODEL = "sensenova-u1-fast"
+
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("SENSENOVA_API_KEY")
+        self.base_url = base_url or self.DEFAULT_BASE_URL
+        self.client = None
+        self._init_client()
+
+    def _init_client(self):
+        """初始化 OpenAI 兼容客户端"""
+        try:
+            from openai import OpenAI
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+        except ImportError:
+            print("⚠️ 未安装 openai 库，尝试使用 requests 调用")
+            self.client = None
+
+    def is_available(self) -> bool:
+        """检查 Provider 是否可用"""
+        if not self.api_key:
+            return False
+        try:
+            if self.client:
+                # 测试连接
+                self.client.models.list()
+                return True
+            else:
+                # 使用 requests 测试
+                import requests
+                resp = requests.get(
+                    f"{self.base_url}/models",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    timeout=10
+                )
+                return resp.status_code == 200
+        except Exception:
+            return False
+
+    def generate(
+        self,
+        prompt: str,
+        negative_prompt: str = "",
+        width: int = 1024,
+        height: int = 1536,
+        seed: Optional[int] = None,
+        output_dir: str = "./outputs",
+        **kwargs
+    ) -> str:
+        """使用商汤 SenseNova 生成图片
+
+        Args:
+            prompt: 正向提示词
+            negative_prompt: 负向提示词（SenseNova部分模型支持）
+            width: 图片宽度
+            height: 图片高度
+            seed: 随机种子
+            output_dir: 输出目录
+
+        Returns:
+            生成的图片路径
+        """
+        if not self.api_key:
+            raise ValueError("未设置 SENSENOVA_API_KEY，请设置环境变量或在初始化时传入")
+
+        print(f"\n🎨 调用商汤 SenseNova 生成图片...")
+        print(f"   模型: {self.IMAGE_MODEL}")
+        print(f"   尺寸: {width}x{height}")
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 构建增强提示词
+        enhanced_prompt = self._enhance_prompt(prompt, width, height)
+
+        try:
+            if self.client:
+                # 使用 OpenAI SDK 调用
+                image_path = self._generate_with_sdk(
+                    enhanced_prompt, negative_prompt, width, height, seed, output_dir
+                )
+            else:
+                # 使用 requests 调用
+                image_path = self._generate_with_requests(
+                    enhanced_prompt, negative_prompt, width, height, seed, output_dir
+                )
+
+            print(f"✅ 商汤生成完成: {image_path}")
+            return image_path
+
+        except Exception as e:
+            print(f"❌ 商汤生成失败: {e}")
+            raise
+
+    def _enhance_prompt(self, prompt: str, width: int, height: int) -> str:
+        """增强提示词以提升生成质量"""
+        # 添加质量前缀
+        quality_prefix = "masterpiece, best quality, ultra detailed, "
+
+        # 添加Live2D优化词
+        live2d_keywords = (
+            "anime style, illustration, clean lineart, "
+            "white background, simple background, "
+            "front view, standing, perfect anatomy, "
+            "beautiful detailed face, beautiful detailed eyes"
+        )
+
+        # 组合提示词
+        enhanced = f"{quality_prefix}{prompt}, {live2d_keywords}"
+
+        # 添加尺寸提示
+        if width >= 1024 and height >= 1024:
+            enhanced += ", high resolution"
+
+        return enhanced
+
+    def _generate_with_sdk(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        width: int,
+        height: int,
+        seed: Optional[int],
+        output_dir: str
+    ) -> str:
+        """使用 OpenAI SDK 生成"""
+        import base64
+        from io import BytesIO
+
+        # 调用图像生成接口
+        response = self.client.images.generate(
+            model=self.IMAGE_MODEL,
+            prompt=prompt,
+            size=f"{width}x{height}",
+            n=1,
+            response_format="b64_json"
+        )
+
+        # 解码并保存
+        image_data = base64.b64decode(response.data[0].b64_json)
+
+        timestamp = int(time.time())
+        filename = f"sensenova_{timestamp}.png"
+        image_path = os.path.join(output_dir, filename)
+
+        with open(image_path, "wb") as f:
+            f.write(image_data)
+
+        return image_path
+
+    def _generate_with_requests(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        width: int,
+        height: int,
+        seed: Optional[int],
+        output_dir: str
+    ) -> str:
+        """使用 requests 直接调用 API"""
+        import requests
+        import base64
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.IMAGE_MODEL,
+            "prompt": prompt,
+            "size": f"{width}x{height}",
+            "n": 1,
+            "response_format": "b64_json"
+        }
+
+        resp = requests.post(
+            f"{self.base_url}/images/generations",
+            headers=headers,
+            json=payload,
+            timeout=120
+        )
+        resp.raise_for_status()
+
+        data = resp.json()
+        image_data = base64.b64decode(data["data"][0]["b64_json"])
+
+        timestamp = int(time.time())
+        filename = f"sensenova_{timestamp}.png"
+        image_path = os.path.join(output_dir, filename)
+
+        with open(image_path, "wb") as f:
+            f.write(image_data)
+
+        return image_path
+
+    @staticmethod
+    def get_setup_guide() -> str:
+        """获取设置指南"""
+        return """
+📖 商汤 SenseNova 设置指南:
+
+1. 注册账号:
+   访问 https://platform.sensenova.cn 注册
+
+2. 获取 API Key:
+   控制台 → API Key 管理 → 创建 API Key
+
+3. 设置环境变量:
+   export SENSENOVA_API_KEY="sk-your-api-key"
+
+4. 安装依赖:
+   pip install openai
+
+5. 使用:
+   python local_image_generator.py --provider sensenova "蓝发猫耳少女"
+
+💡 免费额度:
+   - 公测期间每模型每5小时1500次调用
+   - 图像生成模型: sensenova-u1-fast
+
+⚠️ 注意:
+   - 需要联网
+   - 图片版权归用户所有
+        """
+
+
+class ProviderRouter:
+    """Provider 路由器 - 自动选择最优生成方式 v6.0"""
+
+    PROVIDERS = {
+        "local": {
+            "class": Live2DOptimizedGenerator,
+            "desc": "本地 Stable Diffusion",
+            "cost": "免费",
+            "requires_gpu": True,
+            "quality": "中等",
+        },
+        "sensenova": {
+            "class": SenseNovaProvider,
+            "desc": "商汤日日新 SenseNova",
+            "cost": "免费额度",
+            "requires_gpu": False,
+            "quality": "高",
+        },
+    }
+
+    @classmethod
+    def get_available_providers(cls) -> List[str]:
+        """获取所有可用的 Provider"""
+        available = []
+        for name, info in cls.PROVIDERS.items():
+            if name == "local":
+                # 检查是否有 GPU 或是否能运行
+                try:
+                    import torch
+                    available.append(name)
+                except ImportError:
+                    pass
+            elif name == "sensenova":
+                # 检查 API Key
+                if os.environ.get("SENSENOVA_API_KEY"):
+                    available.append(name)
+        return available
+
+    @classmethod
+    def create_provider(cls, name: str, **kwargs):
+        """创建指定 Provider"""
+        if name not in cls.PROVIDERS:
+            raise ValueError(f"未知 Provider: {name}。可用: {list(cls.PROVIDERS.keys())}")
+
+        provider_class = cls.PROVIDERS[name]["class"]
+        return provider_class(**kwargs)
+
+    @classmethod
+    def auto_select(cls, preference: str = "auto") -> str:
+        """自动选择最优 Provider"""
+        available = cls.get_available_providers()
+
+        if not available:
+            raise RuntimeError("没有可用的 Provider。请安装依赖或设置 API Key。")
+
+        if preference == "sensenova" and "sensenova" in available:
+            return "sensenova"
+        elif preference == "local" and "local" in available:
+            return "local"
+        elif preference == "auto":
+            # 优先使用云端（质量更高）
+            if "sensenova" in available:
+                return "sensenova"
+            return "local"
+
+        return available[0]
+
+    @classmethod
+    def get_provider_info(cls) -> Dict:
+        """获取所有 Provider 信息"""
+        return {
+            name: {
+                "desc": info["desc"],
+                "cost": info["cost"],
+                "requires_gpu": info["requires_gpu"],
+                "quality": info["quality"],
+                "available": name in cls.get_available_providers()
+            }
+            for name, info in cls.PROVIDERS.items()
+        }
 
 
 if __name__ == "__main__":
