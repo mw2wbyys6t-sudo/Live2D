@@ -126,7 +126,7 @@ class ModelConfig:
 
 
 class PromptEngineer:
-    """GPT-4 风格提示词工程 - 自动扩展和优化提示词"""
+    """GPT-4 风格提示词工程 - 自动扩展和优化提示词 v6.0"""
 
     # 艺术家风格库 - 基于参考图风格分析
     ARTISTS = {
@@ -160,9 +160,225 @@ class PromptEngineer:
         "global illumination", "ray tracing"
     ]
 
+    # 角色特征解析规则 v6.0 - 支持自然语言解析
+    CHARACTER_PATTERNS = {
+        "hair_color": {
+            "蓝": "blue", "藍": "blue", "blue": "blue",
+            "红": "red", "紅": "red", "red": "red",
+            "金": "blonde", "黄": "blonde", "blonde": "blonde", "yellow": "blonde",
+            "黑": "black", "black": "black",
+            "白": "white", "white": "white",
+            "粉": "pink", "pink": "pink",
+            "紫": "purple", "purple": "purple",
+            "绿": "green", "綠": "green", "green": "green",
+            "银": "silver", "銀": "silver", "silver": "silver",
+            "橙": "orange", "orange": "orange",
+            "灰": "grey", "gray": "grey", "grey": "grey",
+        },
+        "hair_style": {
+            "长发": "long hair", "long hair": "long hair", "long": "long hair",
+            "短发": "short hair", "short hair": "short hair", "short": "short hair",
+            "双马尾": "twintails", "twintails": "twintails",
+            "单马尾": "ponytail", "ponytail": "ponytail",
+            "丸子头": "bun", "bun": "bun",
+            "卷发": "curly hair", "curly": "curly hair",
+            "波浪发": "wavy hair", "wavy": "wavy hair",
+            "直发": "straight hair", "straight": "straight hair",
+            "波波头": "bob cut", "bob": "bob cut",
+            "姬发式": "hime cut", "hime": "hime cut",
+        },
+        "eye_color": {
+            "蓝眼": "blue eyes", "蓝眼睛": "blue eyes", "blue eyes": "blue eyes",
+            "红眼": "red eyes", "红眼睛": "red eyes", "red eyes": "red eyes",
+            "绿眼": "green eyes", "绿眼睛": "green eyes", "green eyes": "green eyes",
+            "紫眼": "purple eyes", "紫眼睛": "purple eyes", "purple eyes": "purple eyes",
+            "金眼": "golden eyes", "金眼睛": "golden eyes", "golden eyes": "golden eyes",
+            "粉眼": "pink eyes", "粉眼睛": "pink eyes", "pink eyes": "pink eyes",
+        },
+        "features": {
+            "猫耳": "cat ears", "cat ears": "cat ears", "nekomimi": "cat ears",
+            "狐耳": "fox ears", "fox ears": "fox ears",
+            "兽耳": "animal ears", "animal ears": "animal ears",
+            "尾巴": "tail", "tail": "tail",
+            "翅膀": "wings", "wings": "wings",
+            "角": "horns", "horns": "horns",
+            "眼镜": "glasses", "glasses": "glasses",
+            "眼罩": "eyepatch", "eyepatch": "eyepatch",
+        },
+        "expression": {
+            "微笑": "smile", "smile": "smile", "笑": "smile",
+            "开心": "happy", "happy": "happy",
+            "可爱": "cute", "cute": "cute",
+            "严肃": "serious", "serious": "serious",
+            "害羞": "shy", "shy": "shy", " blush": "blushing",
+            "冷酷": "cool", "cool": "cool",
+            "惊讶": "surprised", "surprised": "surprised",
+        },
+        "clothing": {
+            "校服": "school uniform", "school uniform": "school uniform",
+            "水手服": "serafuku", "serafuku": "serafuku", "sailor uniform": "sailor uniform",
+            "连衣裙": "dress", "dress": "dress",
+            "和服": "kimono", "kimono": "kimono",
+            "女仆装": "maid outfit", "maid": "maid outfit",
+            "哥特": "gothic", "gothic": "gothic",
+            "洛丽塔": "lolita fashion", "lolita": "lolita fashion",
+            "运动服": "sportswear", "sportswear": "sportswear",
+        }
+    }
+
+    @classmethod
+    def parse_character_from_text(cls, text: str) -> Dict[str, str]:
+        """从自然语言解析角色特征 v6.0"""
+        text_lower = text.lower()
+        character = {
+            "hair_color": "",
+            "hair_style": "",
+            "eye_color": "",
+            "features": [],
+            "expression": "",
+            "clothing": "",
+            "raw": text
+        }
+
+        # 解析发色
+        for key, value in cls.CHARACTER_PATTERNS["hair_color"].items():
+            if key in text or key in text_lower:
+                character["hair_color"] = value
+                break
+
+        # 解析发型
+        for key, value in cls.CHARACTER_PATTERNS["hair_style"].items():
+            if key in text or key in text_lower:
+                character["hair_style"] = value
+                break
+
+        # 解析眼睛颜色
+        for key, value in cls.CHARACTER_PATTERNS["eye_color"].items():
+            if key in text or key in text_lower:
+                character["eye_color"] = value
+                break
+
+        # 解析特征
+        for key, value in cls.CHARACTER_PATTERNS["features"].items():
+            if key in text or key in text_lower:
+                if value not in character["features"]:
+                    character["features"].append(value)
+
+        # 解析表情
+        for key, value in cls.CHARACTER_PATTERNS["expression"].items():
+            if key in text or key in text_lower:
+                character["expression"] = value
+                break
+
+        # 解析服装
+        for key, value in cls.CHARACTER_PATTERNS["clothing"].items():
+            if key in text or key in text_lower:
+                character["clothing"] = value
+                break
+
+        return character
+
+    @classmethod
+    def build_prompt_from_character(cls, character: Dict[str, str],
+                                     style: str = "anime",
+                                     live2d_mode: bool = True) -> Tuple[str, str]:
+        """从结构化角色构建Prompt v6.0"""
+        parts = []
+
+        # 质量前缀
+        parts.append("(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2)")
+
+        # 基础
+        parts.append("1girl, solo")
+
+        # 发色
+        if character.get("hair_color"):
+            parts.append(f"({character['hair_color']} hair:1.2)")
+
+        # 发型
+        if character.get("hair_style"):
+            parts.append(f"({character['hair_style']}:1.1)")
+
+        # 眼睛
+        if character.get("eye_color"):
+            parts.append(f"({character['eye_color']}:1.2)")
+
+        # 特征
+        for feature in character.get("features", []):
+            parts.append(f"({feature}:1.2)")
+
+        # 表情
+        if character.get("expression"):
+            parts.append(f"({character['expression']}:1.1)")
+
+        # 服装
+        if character.get("clothing"):
+            parts.append(f"({character['clothing']}:1.1)")
+
+        # 原始描述补充
+        raw = character.get("raw", "")
+        if raw:
+            # 移除已解析的关键词，保留其他描述
+            cleaned = raw
+            for category in cls.CHARACTER_PATTERNS.values():
+                for key in category.keys():
+                    cleaned = cleaned.replace(key, "")
+            cleaned = cleaned.strip()
+            if cleaned and len(cleaned) > 2:
+                parts.append(cleaned)
+
+        # 风格
+        if style == "anime":
+            parts.append("(anime style:1.3), (illustration:1.2)")
+        elif style == "pastel":
+            parts.append("(pastel colors:1.3), (soft shading:1.2)")
+
+        # Live2D优化
+        if live2d_mode:
+            parts.extend([
+                "(clean lineart:1.3)", "(clear edges:1.3)",
+                "(flat colors:1.2)", "(white background:1.2)",
+                "(simple background:1.2)", "(front view:1.2)",
+                "(perfect anatomy:1.2)", "(beautiful detailed face:1.3)",
+                "(beautiful detailed eyes:1.3)"
+            ])
+
+        # 艺术家
+        artists = cls.ARTISTS.get(style, cls.ARTISTS["anime"])
+        parts.append(f"({artists[0]}:1.1), ({artists[1]}:1.1)")
+
+        # 质量后缀
+        parts.append("(sharp focus:1.2), (vibrant colors:1.1)")
+
+        prompt = ", ".join(parts)
+
+        # 负向提示词
+        negative = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3),
+(worst quality:1.3), (low quality:1.3), (blurry:1.3),
+(bad proportions:1.3), (extra limbs:1.3), (disfigured:1.3),
+(photorealistic:1.2), (3d:1.2), (western:1.2),
+(complex background:1.2), (multiple girls:1.3)"""
+
+        if live2d_mode:
+            negative += """, (profile view:1.2), (side view:1.2), (back view:1.2),
+(open mouth:1.2), (dynamic pose:1.2), (sitting:1.2),
+(gradient shading:1.2), (painterly:1.2), (watercolor:1.2)"""
+
+        return prompt, negative
+
     @classmethod
     def expand_prompt(cls, user_prompt: str, style: str = "anime") -> str:
         """自动扩展提示词 - 模拟 GPT-4 提示词工程"""
+        # 先尝试解析角色特征
+        character = cls.parse_character_from_text(user_prompt)
+
+        # 如果解析到了特征，使用结构化构建
+        if any([character.get("hair_color"), character.get("features"),
+                character.get("clothing")]):
+            prompt, _ = cls.build_prompt_from_character(character, style)
+            return prompt
+
+        # 否则使用传统扩展
         expanded = user_prompt
 
         # 添加艺术家风格
@@ -227,13 +443,23 @@ class PromptEngineer:
 
 
 class QualityAssessor:
-    """智能质量评估器 - 自动判断生成质量"""
+    """智能质量评估器 v6.0 - Live2D适配度专业评估"""
+
+    # Live2D适配度评估维度权重
+    LIVE2D_WEIGHTS = {
+        "face_quality": 0.25,      # 脸部质量（对称性、清晰度）
+        "edge_clarity": 0.20,      # 边缘清晰度（分层关键）
+        "background_purity": 0.20, # 背景纯净度
+        "color_separation": 0.15,  # 颜色分离度
+        "sharpness": 0.10,         # 整体清晰度
+        "contrast": 0.10,          # 对比度
+    }
 
     @staticmethod
-    def assess_image(image_path: str) -> Dict[str, float]:
+    def assess_image(image_path: str, live2d_mode: bool = True) -> Dict[str, float]:
         """
-        评估图片质量
-        返回分数字典：overall, sharpness, color_balance, contrast, noise_level
+        评估图片质量 v6.0
+        返回分数字典：包含基础质量 + Live2D适配度
         """
         try:
             from PIL import Image
@@ -241,12 +467,14 @@ class QualityAssessor:
 
             img = Image.open(image_path).convert('RGB')
             img_array = np.array(img)
+            h, w = img_array.shape[:2]
 
+            # ========== 基础质量评估 ==========
             # 1. 清晰度评估（拉普拉斯算子方差）
             from scipy import ndimage
             laplacian = ndimage.laplace(img_array.mean(axis=2))
             sharpness = float(np.var(laplacian))
-            sharpness_score = min(sharpness / 500, 1.0)  # 归一化
+            sharpness_score = min(sharpness / 500, 1.0)
 
             # 2. 色彩平衡评估
             r, g, b = img_array[:,:,0], img_array[:,:,1], img_array[:,:,2]
@@ -263,57 +491,160 @@ class QualityAssessor:
             noise = np.mean(np.abs(img_array.astype(float) - smoothed))
             noise_score = max(1.0 - noise / 30, 0)
 
-            # 综合评分
-            overall = (sharpness_score * 0.3 + color_balance * 0.2 +
-                      contrast_score * 0.3 + noise_score * 0.2)
+            # ========== Live2D适配度评估 ==========
+            if live2d_mode:
+                # 5. 脸部质量评估（检测上半部分的对称性和清晰度）
+                face_region = img_array[:h//2, :]
+                face_laplacian = ndimage.laplace(face_region.mean(axis=2))
+                face_sharpness = min(np.var(face_laplacian) / 300, 1.0)
 
-            return {
-                "overall": overall,
-                "sharpness": sharpness_score,
-                "color_balance": color_balance,
-                "contrast": contrast_score,
-                "noise_level": noise_score,
-            }
+                # 脸部对称性（左右对比）
+                face_left = face_region[:, :w//2]
+                face_right = np.fliplr(face_region[:, w//2:])
+                min_w = min(face_left.shape[1], face_right.shape[1])
+                face_symmetry = 1.0 - np.mean(np.abs(
+                    face_left[:, :min_w].astype(float) - face_right[:, :min_w].astype(float)
+                )) / 255.0
+                face_quality = (face_sharpness * 0.6 + face_symmetry * 0.4)
+
+                # 6. 边缘清晰度（Sobel算子）
+                sobel_h = ndimage.sobel(img_array.mean(axis=2), axis=0)
+                sobel_v = ndimage.sobel(img_array.mean(axis=2), axis=1)
+                edge_strength = np.sqrt(sobel_h**2 + sobel_v**2).mean()
+                edge_clarity = min(edge_strength / 30, 1.0)
+
+                # 7. 背景纯净度（边缘区域颜色方差）
+                border = np.concatenate([
+                    img_array[0, :].flatten(),
+                    img_array[-1, :].flatten(),
+                    img_array[:, 0].flatten(),
+                    img_array[:, -1].flatten()
+                ])
+                bg_uniformity = 1.0 - min(np.std(border) / 80, 1.0)
+                background_purity = bg_uniformity
+
+                # 8. 颜色分离度（颜色量化后的区域数）
+                try:
+                    from sklearn.cluster import KMeans
+                    pixels = img_array.reshape(-1, 3)
+                    sample_size = min(5000, len(pixels))
+                    sample = pixels[np.random.choice(len(pixels), sample_size, replace=False)]
+                    kmeans = KMeans(n_clusters=16, random_state=42, n_init=10)
+                    kmeans.fit(sample)
+                    n_colors = len(np.unique(kmeans.labels_))
+                    # 颜色区域适中（8-12种）最适合Live2D
+                    color_separation = 1.0 - abs(n_colors - 10) / 10.0
+                    color_separation = max(0, min(1, color_separation))
+                except ImportError:
+                    color_separation = 0.7
+
+                # Live2D综合评分
+                live2d_scores = {
+                    "face_quality": face_quality,
+                    "edge_clarity": edge_clarity,
+                    "background_purity": background_purity,
+                    "color_separation": color_separation,
+                    "sharpness": sharpness_score,
+                    "contrast": contrast_score,
+                }
+
+                live2d_overall = sum(
+                    live2d_scores[k] * QualityAssessor.LIVE2D_WEIGHTS[k]
+                    for k in QualityAssessor.LIVE2D_WEIGHTS.keys()
+                )
+
+                return {
+                    "overall": live2d_overall,
+                    "sharpness": sharpness_score,
+                    "color_balance": color_balance,
+                    "contrast": contrast_score,
+                    "noise_level": noise_score,
+                    "face_quality": face_quality,
+                    "edge_clarity": edge_clarity,
+                    "background_purity": background_purity,
+                    "color_separation": color_separation,
+                    "live2d_score": live2d_overall,
+                }
+            else:
+                # 非Live2D模式：基础评分
+                overall = (sharpness_score * 0.3 + color_balance * 0.2 +
+                          contrast_score * 0.3 + noise_score * 0.2)
+
+                return {
+                    "overall": overall,
+                    "sharpness": sharpness_score,
+                    "color_balance": color_balance,
+                    "contrast": contrast_score,
+                    "noise_level": noise_score,
+                }
 
         except ImportError:
-            # 如果缺少依赖，返回默认评分
             return {
-                "overall": 0.7,
-                "sharpness": 0.7,
-                "color_balance": 0.7,
-                "contrast": 0.7,
-                "noise_level": 0.7,
+                "overall": 0.7, "sharpness": 0.7, "color_balance": 0.7,
+                "contrast": 0.7, "noise_level": 0.7,
+                "face_quality": 0.7, "edge_clarity": 0.7,
+                "background_purity": 0.7, "color_separation": 0.7,
+                "live2d_score": 0.7,
             }
         except Exception as e:
             print(f"⚠️ 质量评估失败: {e}")
             return {
-                "overall": 0.5,
-                "sharpness": 0.5,
-                "color_balance": 0.5,
-                "contrast": 0.5,
-                "noise_level": 0.5,
+                "overall": 0.5, "sharpness": 0.5, "color_balance": 0.5,
+                "contrast": 0.5, "noise_level": 0.5,
+                "face_quality": 0.5, "edge_clarity": 0.5,
+                "background_purity": 0.5, "color_separation": 0.5,
+                "live2d_score": 0.5,
             }
 
     @staticmethod
-    def is_quality_acceptable(scores: Dict[str, float], threshold: float = 0.6) -> bool:
-        """判断质量是否可接受"""
+    def is_quality_acceptable(scores: Dict[str, float], threshold: float = 0.6,
+                               live2d_mode: bool = True) -> bool:
+        """判断质量是否可接受 v6.0"""
+        if live2d_mode and "live2d_score" in scores:
+            return scores["live2d_score"] >= threshold
         return scores["overall"] >= threshold
 
     @staticmethod
-    def get_best_image(image_paths: List[str]) -> Tuple[str, Dict[str, float]]:
-        """从多张图片中选择质量最好的一张"""
+    def get_best_image(image_paths: List[str], live2d_mode: bool = True) -> Tuple[str, Dict[str, float]]:
+        """从多张图片中选择质量最好的一张 v6.0"""
         best_path = None
         best_score = -1
         best_scores = None
 
         for path in image_paths:
-            scores = QualityAssessor.assess_image(path)
-            if scores["overall"] > best_score:
-                best_score = scores["overall"]
+            scores = QualityAssessor.assess_image(path, live2d_mode=live2d_mode)
+            # Live2D模式下优先使用live2d_score
+            score = scores.get("live2d_score", scores["overall"])
+            if score > best_score:
+                best_score = score
                 best_path = path
                 best_scores = scores
 
         return best_path, best_scores
+
+    @staticmethod
+    def generate_report(scores: Dict[str, float]) -> str:
+        """生成质量评估报告"""
+        lines = ["📊 质量评估报告:", "=" * 40]
+
+        if "live2d_score" in scores:
+            lines.append(f"Live2D适配度: {scores['live2d_score']:.1%}")
+            lines.append(f"  脸部质量:   {scores['face_quality']:.1%}")
+            lines.append(f"  边缘清晰度: {scores['edge_clarity']:.1%}")
+            lines.append(f"  背景纯净度: {scores['background_purity']:.1%}")
+            lines.append(f"  颜色分离度: {scores['color_separation']:.1%}")
+            lines.append("")
+
+        lines.append(f"综合评分: {scores['overall']:.1%}")
+        lines.append(f"  清晰度:   {scores['sharpness']:.1%}")
+        lines.append(f"  色彩平衡: {scores['color_balance']:.1%}")
+        lines.append(f"  对比度:   {scores['contrast']:.1%}")
+        lines.append(f"  噪声水平: {scores['noise_level']:.1%}")
+
+        status = "✅ 通过" if scores.get("live2d_score", scores["overall"]) >= 0.6 else "❌ 未通过"
+        lines.append(f"\n{status}")
+
+        return "\n".join(lines)
 
 
 class MultiStagePipeline:
@@ -468,7 +799,7 @@ class MultiStagePipeline:
 
 
 class BatchGenerator:
-    """批量生成器 - 生成多张选最优"""
+    """批量生成器 v6.0 - 多维度选优 + 详细报告"""
 
     def __init__(self, generator: 'Live2DOptimizedGenerator'):
         self.generator = generator
@@ -485,16 +816,22 @@ class BatchGenerator:
         steps: int = 25,
         guidance_scale: float = 7.5,
         use_multistage: bool = False,
-    ) -> Tuple[Optional[str], List[str]]:
+        live2d_mode: bool = True,
+        min_live2d_score: float = 0.6,
+    ) -> Tuple[Optional[str], List[str], Dict]:
         """
-        批量生成并选择最优
+        批量生成并选择最优 v6.0
 
         Returns:
-            (best_path, all_paths)
+            (best_path, all_paths, report)
         """
         print(f"\n🎯 批量生成 {batch_size} 张图片...")
+        print(f"   Live2D模式: {'是' if live2d_mode else '否'}")
+        print(f"   最低适配度: {min_live2d_score:.0%}")
 
         all_paths = []
+        all_scores = []
+
         for i in range(batch_size):
             print(f"\n{'='*60}")
             print(f"🎨 生成 {i+1}/{batch_size}")
@@ -525,18 +862,71 @@ class BatchGenerator:
 
             if path:
                 all_paths.append(path)
+                # 评估
+                scores = self.assessor.assess_image(path, live2d_mode=live2d_mode)
+                all_scores.append(scores)
+
+                # 显示当前评分
+                if live2d_mode and "live2d_score" in scores:
+                    print(f"   Live2D适配度: {scores['live2d_score']:.1%}")
+                else:
+                    print(f"   综合评分: {scores['overall']:.1%}")
 
         if not all_paths:
-            return None, []
+            return None, [], {"error": "所有生成失败"}
 
         # 选择最优
         print(f"\n🏆 从 {len(all_paths)} 张中选择最优...")
-        best_path, scores = self.assessor.get_best_image(all_paths)
+        best_path, best_scores = self.assessor.get_best_image(
+            all_paths, live2d_mode=live2d_mode
+        )
 
-        print(f"✅ 最优图片: {Path(best_path).name}")
-        print(f"   综合评分: {scores['overall']:.2f}")
+        # 生成详细报告
+        report = self._generate_batch_report(all_paths, all_scores, best_path, live2d_mode)
+        print(report["summary"])
 
-        return best_path, all_paths
+        # 检查是否达到最低标准
+        score_key = "live2d_score" if live2d_mode else "overall"
+        if best_scores.get(score_key, 0) < min_live2d_score:
+            print(f"\n⚠️ 警告: 最优图片 {score_key}={best_scores.get(score_key, 0):.1%} 低于最低标准 {min_live2d_score:.0%}")
+            print("   建议: 调整提示词或使用多阶段生成")
+
+        return best_path, all_paths, report
+
+    def _generate_batch_report(self, paths: List[str], scores: List[Dict],
+                                best_path: str, live2d_mode: bool) -> Dict:
+        """生成批量生成报告"""
+        score_key = "live2d_score" if live2d_mode else "overall"
+
+        # 排序
+        ranked = sorted(
+            zip(paths, scores),
+            key=lambda x: x[1].get(score_key, x[1]["overall"]),
+            reverse=True
+        )
+
+        lines = ["\n📊 批量生成报告:", "=" * 50]
+
+        for i, (path, score) in enumerate(ranked, 1):
+            s = score.get(score_key, score["overall"])
+            marker = "🏆" if path == best_path else f"{i}."
+            lines.append(f"{marker} {Path(path).name}: {s:.1%}")
+
+            if live2d_mode and "live2d_score" in score:
+                lines.append(f"   脸部:{score['face_quality']:.0%} 边缘:{score['edge_clarity']:.0%} "
+                           f"背景:{score['background_purity']:.0%} 颜色:{score['color_separation']:.0%}")
+
+        avg_score = sum(s.get(score_key, s["overall"]) for s in scores) / len(scores)
+        lines.append(f"\n平均评分: {avg_score:.1%}")
+        lines.append(f"最优评分: {ranked[0][1].get(score_key, ranked[0][1]['overall']):.1%}")
+
+        return {
+            "summary": "\n".join(lines),
+            "ranked": [(p, s) for p, s in ranked],
+            "average_score": avg_score,
+            "best_score": ranked[0][1].get(score_key, ranked[0][1]["overall"]),
+            "total": len(paths)
+        }
 
 
 class ReferenceStyleAnalyzer:

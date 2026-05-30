@@ -145,8 +145,45 @@ def generate_random_features():
     return features
 
 
-def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
-    """构建优化的多样化提示词"""
+def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True, use_structured=True):
+    """构建优化的多样化提示词 v6.0 - 支持结构化解析"""
+
+    # v6.0: 优先使用结构化解析
+    if use_structured and custom_prompt:
+        try:
+            from local_image_generator import PromptEngineer
+            character = PromptEngineer.parse_character_from_text(custom_prompt)
+
+            # 如果解析到了特征，使用结构化构建
+            if any([character.get("hair_color"), character.get("features"),
+                    character.get("clothing")]):
+                print(f"🧠 结构化解析角色: {custom_prompt}")
+                print(f"   发色: {character.get('hair_color', '默认')}")
+                print(f"   发型: {character.get('hair_style', '默认')}")
+                print(f"   眼睛: {character.get('eye_color', '默认')}")
+                print(f"   特征: {', '.join(character.get('features', [])) or '无'}")
+                print(f"   表情: {character.get('expression', '默认')}")
+                print(f"   服装: {character.get('clothing', '默认')}")
+
+                prompt, _ = PromptEngineer.build_prompt_from_character(
+                    character, style="anime", live2d_mode=live2d_optimized
+                )
+
+                # 构建特征字典用于返回
+                features = {
+                    'hairstyle': character.get('hair_style', 'long hair'),
+                    'hair_color': character.get('hair_color', 'pink') + ' hair',
+                    'eye_color': character.get('eye_color', 'blue') + ' eyes',
+                    'clothing': character.get('clothing', 'school uniform'),
+                    'accessory': 'hair ribbon',
+                    'expression': character.get('expression', 'smile'),
+                    'pose': 'standing',
+                }
+                return prompt, features
+        except Exception as e:
+            print(f"⚠️ 结构化解析失败，回退到随机生成: {e}")
+
+    # 传统随机特征生成
     features = generate_random_features()
 
     if live2d_optimized:
