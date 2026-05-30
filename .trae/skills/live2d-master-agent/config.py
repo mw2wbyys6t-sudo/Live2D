@@ -42,7 +42,7 @@ class Config:
                             key, value = line.split("=", 1)
                             key = key.strip()
                             value = value.strip()
-                            if key and value and key not in os.environ:
+                            if key and key not in os.environ:
                                 os.environ[key] = value
                 break
     
@@ -55,6 +55,8 @@ class Config:
             "SEEDREAM_DEFAULT_QUALITY": "high",
             "OUTPUT_DIR": "./output",
             "MAX_PSD_SIZE_MB": "50",
+            "SENSENOVA_API_KEY": "",
+            "SENSENOVA_BASE_URL": "https://token.sensenova.cn/v1",
         }
         
         for key, value in defaults.items():
@@ -90,8 +92,20 @@ class Config:
         return int(os.getenv("MAX_PSD_SIZE_MB", "50"))
     
     @property
+    def sensenova_api_key(self) -> Optional[str]:
+        return os.getenv("SENSENOVA_API_KEY") or None
+    
+    @property
+    def sensenova_base_url(self) -> str:
+        return os.getenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
+    
+    @property
     def has_api_key(self) -> bool:
         return bool(self.ark_api_key)
+    
+    @property
+    def has_sensenova_key(self) -> bool:
+        return bool(self.sensenova_api_key)
     
     def get_model_name(self, version: Optional[str] = None) -> str:
         version = version or self.seedream_version
@@ -105,7 +119,8 @@ class Config:
     def __repr__(self) -> str:
         return (
             f"Config(\n"
-            f"  api_key={'***' + self.ark_api_key[-8:] if self.ark_api_key else 'Not configured'},\n"
+            f"  ark_api_key={'***' + self.ark_api_key[-8:] if self.ark_api_key else 'Not configured'},\n"
+            f"  sensenova_api_key={'***' + self.sensenova_api_key[-8:] if self.sensenova_api_key else 'Not configured'},\n"
             f"  base_url='{self.ark_base_url}',\n"
             f"  seedream_version='{self.seedream_version}',\n"
             f"  seedream_size='{self.seedream_size}',\n"
