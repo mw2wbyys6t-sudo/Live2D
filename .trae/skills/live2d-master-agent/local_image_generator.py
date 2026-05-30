@@ -1616,6 +1616,12 @@ def main():
     if args.list_providers:
         print("📚 可用 Provider 列表:")
         print("=" * 60)
+        # 先导入 config 确保环境变量已加载
+        try:
+            from config import config as _cfg
+            _ = _cfg.has_sensenova_key  # 触发加载
+        except Exception:
+            pass
         info = ProviderRouter.get_provider_info()
         for name, details in info.items():
             status = "✅" if details["available"] else "❌"
