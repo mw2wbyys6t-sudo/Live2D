@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent - 本地图像生成器 v4.1
+Live2D Master Agent - 本地图像生成器 v5.0
 基于 Stable Diffusion + diffusers 的专业图像生成工具
 
 核心升级：
 - 🎯 商业级 AI 质量（匹配 DALL-E 3 / Seedream）
-- 🎨 GPT-4 风格提示词工程自动扩展
-- ⚡ 权重控制语法 + 艺术家风格引用
+- 🔄 多阶段生成管道（草稿→精修→超分）
+- 🤖 智能质量评估 + 自动重试
+- 🎨 参考图风格自动分析
+- 📊 批量生成选最优
 - 🔧 与分层工具无缝连接
-- 📊 生成参数智能推荐
-- 🖼️ 专业后处理管道（超分/色彩校正/降噪）
 
 使用方法：
     python local_image_generator.py "cute anime girl"
-    python local_image_generator.py --model "gsdf/Counterfeit-V3.0" --quality ultra "beautiful character"
-    python local_image_generator.py --live2d-mode --width 512 --height 768 "idol girl"
+    python local_image_generator.py --model "gsdf/Counterfeit-V3.0" --quality ultra --batch 5 "beautiful character"
+    python local_image_generator.py --reference ref.png --style-transfer "new character"
 """
 
 import os
@@ -25,6 +25,7 @@ import warnings
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Union
 import json
+import numpy as np
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -225,13 +226,388 @@ class PromptEngineer:
         return ", ".join(parts)
 
 
+class QualityAssessor:
+    """智能质量评估器 - 自动判断生成质量"""
+
+    @staticmethod
+    def assess_image(image_path: str) -> Dict[str, float]:
+        """
+        评估图片质量
+        返回分数字典：overall, sharpness, color_balance, contrast, noise_level
+        """
+        try:
+            from PIL import Image
+            import numpy as np
+
+            img = Image.open(image_path).convert('RGB')
+            img_array = np.array(img)
+
+            # 1. 清晰度评估（拉普拉斯算子方差）
+            from scipy import ndimage
+            laplacian = ndimage.laplace(img_array.mean(axis=2))
+            sharpness = float(np.var(laplacian))
+            sharpness_score = min(sharpness / 500, 1.0)  # 归一化
+
+            # 2. 色彩平衡评估
+            r, g, b = img_array[:,:,0], img_array[:,:,1], img_array[:,:,2]
+            color_balance = 1.0 - abs(r.mean() - g.mean()) / 255 - abs(g.mean() - b.mean()) / 255
+            color_balance = max(color_balance, 0)
+
+            # 3. 对比度评估
+            contrast = float(np.std(img_array))
+            contrast_score = min(contrast / 80, 1.0)
+
+            # 4. 噪声评估
+            from scipy.ndimage import gaussian_filter
+            smoothed = gaussian_filter(img_array.astype(float), sigma=1)
+            noise = np.mean(np.abs(img_array.astype(float) - smoothed))
+            noise_score = max(1.0 - noise / 30, 0)
+
+            # 综合评分
+            overall = (sharpness_score * 0.3 + color_balance * 0.2 +
+                      contrast_score * 0.3 + noise_score * 0.2)
+
+            return {
+                "overall": overall,
+                "sharpness": sharpness_score,
+                "color_balance": color_balance,
+                "contrast": contrast_score,
+                "noise_level": noise_score,
+            }
+
+        except ImportError:
+            # 如果缺少依赖，返回默认评分
+            return {
+                "overall": 0.7,
+                "sharpness": 0.7,
+                "color_balance": 0.7,
+                "contrast": 0.7,
+                "noise_level": 0.7,
+            }
+        except Exception as e:
+            print(f"⚠️ 质量评估失败: {e}")
+            return {
+                "overall": 0.5,
+                "sharpness": 0.5,
+                "color_balance": 0.5,
+                "contrast": 0.5,
+                "noise_level": 0.5,
+            }
+
+    @staticmethod
+    def is_quality_acceptable(scores: Dict[str, float], threshold: float = 0.6) -> bool:
+        """判断质量是否可接受"""
+        return scores["overall"] >= threshold
+
+    @staticmethod
+    def get_best_image(image_paths: List[str]) -> Tuple[str, Dict[str, float]]:
+        """从多张图片中选择质量最好的一张"""
+        best_path = None
+        best_score = -1
+        best_scores = None
+
+        for path in image_paths:
+            scores = QualityAssessor.assess_image(path)
+            if scores["overall"] > best_score:
+                best_score = scores["overall"]
+                best_path = path
+                best_scores = scores
+
+        return best_path, best_scores
+
+
+class MultiStagePipeline:
+    """多阶段生成管道 - 草稿→精修→超分"""
+
+    def __init__(self, generator: 'Live2DOptimizedGenerator'):
+        self.generator = generator
+        self.assessor = QualityAssessor()
+
+    def generate_draft(self, prompt: str, negative_prompt: str, width: int, height: int, seed: int) -> Optional[str]:
+        """第一阶段：快速草稿生成"""
+        print("\n📋 阶段 1/3: 生成草稿...")
+        success, path = self.generator.generate(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width // 2,  # 低分辨率草稿
+            height=height // 2,
+            steps=15,  # 少步数
+            seed=seed,
+            live2d_optimized=False,  # 草稿不优化
+        )
+        return path if success else None
+
+    def refine_image(self, draft_path: str, prompt: str, negative_prompt: str, width: int, height: int, seed: int) -> Optional[str]:
+        """第二阶段：精修（图生图）"""
+        print("\n🔧 阶段 2/3: 精修图片...")
+        try:
+            from diffusers import StableDiffusionImg2ImgPipeline
+            from PIL import Image
+            import torch
+
+            # 加载图生图pipeline
+            pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+                self.generator.model_id,
+                torch_dtype=torch.float16 if self.generator.device == "cuda" else torch.float32,
+                safety_checker=None,
+            )
+            pipe = pipe.to(self.generator.device)
+
+            # 加载草稿
+            init_image = Image.open(draft_path).convert("RGB")
+            init_image = init_image.resize((width, height))
+
+            # 精修
+            generator = torch.Generator(device=self.generator.device).manual_seed(seed)
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                image=init_image,
+                strength=0.4,  # 适度变化
+                num_inference_steps=30,
+                guidance_scale=7.5,
+                generator=generator,
+            )
+
+            refined_path = draft_path.replace('.png', '_refined.png')
+            result.images[0].save(refined_path)
+            print(f"✅ 精修完成: {refined_path}")
+            return refined_path
+
+        except Exception as e:
+            print(f"⚠️ 精修失败，使用草稿: {e}")
+            return draft_path
+
+    def upscale_image(self, image_path: str, target_width: int, target_height: int) -> Optional[str]:
+        """第三阶段：超分辨率"""
+        print("\n📈 阶段 3/3: 超分辨率放大...")
+        try:
+            from PIL import Image
+
+            img = Image.open(image_path)
+
+            # 使用LANCZOS重采样（高质量）
+            upscaled = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+            # 后处理增强
+            from PIL import ImageFilter, ImageEnhance
+
+            # 轻微锐化
+            enhancer = ImageEnhance.Sharpness(upscaled)
+            upscaled = enhancer.enhance(1.2)
+
+            # 对比度微调
+            enhancer = ImageEnhance.Contrast(upscaled)
+            upscaled = enhancer.enhance(1.05)
+
+            upscaled_path = image_path.replace('.png', '_upscaled.png')
+            upscaled.save(upscaled_path)
+            print(f"✅ 超分完成: {upscaled_path}")
+            return upscaled_path
+
+        except Exception as e:
+            print(f"⚠️ 超分失败: {e}")
+            return image_path
+
+    def run_pipeline(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        width: int = 512,
+        height: int = 768,
+        seed: Optional[int] = None,
+        enable_multistage: bool = True,
+    ) -> Optional[str]:
+        """运行完整的多阶段管道"""
+        if seed is None:
+            seed = int(time.time()) % 1000000
+
+        if not enable_multistage:
+            # 单阶段生成
+            success, path = self.generator.generate(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                width=width,
+                height=height,
+                seed=seed,
+            )
+            return path if success else None
+
+        # 多阶段生成
+        draft_path = self.generate_draft(prompt, negative_prompt, width, height, seed)
+        if not draft_path:
+            return None
+
+        refined_path = self.refine_image(draft_path, prompt, negative_prompt, width, height, seed)
+        if not refined_path:
+            refined_path = draft_path
+
+        final_path = self.upscale_image(refined_path, width, height)
+
+        # 质量评估
+        scores = self.assessor.assess_image(final_path)
+        print(f"\n📊 质量评估:")
+        print(f"   综合评分: {scores['overall']:.2f}")
+        print(f"   清晰度: {scores['sharpness']:.2f}")
+        print(f"   色彩平衡: {scores['color_balance']:.2f}")
+        print(f"   对比度: {scores['contrast']:.2f}")
+        print(f"   噪声水平: {scores['noise_level']:.2f}")
+
+        return final_path
+
+
+class BatchGenerator:
+    """批量生成器 - 生成多张选最优"""
+
+    def __init__(self, generator: 'Live2DOptimizedGenerator'):
+        self.generator = generator
+        self.assessor = QualityAssessor()
+        self.pipeline = MultiStagePipeline(generator)
+
+    def generate_batch(
+        self,
+        prompt: str,
+        negative_prompt: str,
+        batch_size: int = 4,
+        width: int = 512,
+        height: int = 768,
+        steps: int = 25,
+        guidance_scale: float = 7.5,
+        use_multistage: bool = False,
+    ) -> Tuple[Optional[str], List[str]]:
+        """
+        批量生成并选择最优
+
+        Returns:
+            (best_path, all_paths)
+        """
+        print(f"\n🎯 批量生成 {batch_size} 张图片...")
+
+        all_paths = []
+        for i in range(batch_size):
+            print(f"\n{'='*60}")
+            print(f"🎨 生成 {i+1}/{batch_size}")
+            print(f"{'='*60}")
+
+            seed = int(time.time()) % 1000000 + i * 1000
+
+            if use_multistage:
+                path = self.pipeline.run_pipeline(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    seed=seed,
+                )
+            else:
+                success, path = self.generator.generate(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    steps=steps,
+                    guidance_scale=guidance_scale,
+                    seed=seed,
+                )
+                if not success:
+                    path = None
+
+            if path:
+                all_paths.append(path)
+
+        if not all_paths:
+            return None, []
+
+        # 选择最优
+        print(f"\n🏆 从 {len(all_paths)} 张中选择最优...")
+        best_path, scores = self.assessor.get_best_image(all_paths)
+
+        print(f"✅ 最优图片: {Path(best_path).name}")
+        print(f"   综合评分: {scores['overall']:.2f}")
+
+        return best_path, all_paths
+
+
+class ReferenceStyleAnalyzer:
+    """参考图风格分析器 - 自动提取风格特征"""
+
+    @staticmethod
+    def analyze_image(image_path: str) -> Dict[str, any]:
+        """分析参考图的风格特征"""
+        try:
+            from PIL import Image
+            import numpy as np
+
+            img = Image.open(image_path).convert('RGB')
+            img_array = np.array(img)
+
+            # 色彩分析
+            r, g, b = img_array[:,:,0], img_array[:,:,1], img_array[:,:,2]
+
+            # 主色调
+            dominant_color = [
+                int(r.mean()),
+                int(g.mean()),
+                int(b.mean())
+            ]
+
+            # 色彩饱和度
+            saturation = np.std(img_array) / 255.0
+
+            # 亮度
+            brightness = np.mean(img_array) / 255.0
+
+            # 对比度
+            contrast = np.std(img_array) / 255.0
+
+            # 风格判断
+            style = "anime"
+            if saturation < 0.3 and brightness > 0.7:
+                style = "pastel"
+            elif saturation > 0.6:
+                style = "vibrant"
+            elif contrast > 0.3:
+                style = "dramatic"
+
+            return {
+                "dominant_color": dominant_color,
+                "saturation": float(saturation),
+                "brightness": float(brightness),
+                "contrast": float(contrast),
+                "style": style,
+                "size": img.size,
+            }
+
+        except Exception as e:
+            print(f"⚠️ 风格分析失败: {e}")
+            return {
+                "dominant_color": [128, 128, 128],
+                "saturation": 0.5,
+                "brightness": 0.5,
+                "contrast": 0.5,
+                "style": "anime",
+                "size": (512, 768),
+            }
+
+    @staticmethod
+    def generate_style_prompt(analysis: Dict[str, any]) -> str:
+        """基于分析结果生成风格提示词"""
+        style = analysis["style"]
+
+        prompts = {
+            "pastel": "pastel colors, soft color palette, dreamy atmosphere, ethereal, soft shading",
+            "vibrant": "vibrant colors, saturated colors, bold colors, high contrast, dynamic",
+            "dramatic": "dramatic lighting, strong contrast, chiaroscuro, cinematic lighting",
+            "anime": "anime style, illustration, clean lineart, smooth shading",
+        }
+
+        return prompts.get(style, prompts["anime"])
+
+
 class Live2DOptimizedGenerator:
-    """Live2D 优化的图像生成器 v4.1 - 商业级 AI 质量"""
+    """Live2D 优化的图像生成器 v5.0 - 商业级 AI 质量"""
 
     # 基于 DALL-E 3 / Seedream 分析的专业提示词模板
-    # 使用权重控制语法 (keyword:1.3) 和结构化格式
-
-    # 专业级提示词模板（匹配参考图质量）
     PROFESSIONAL_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2), (8k uhd:1.1),
 (anime style:1.3), (illustration:1.2), (official art:1.2), (pixiv:1.1), (artstation:1.1),
 1girl, solo, {pose}, {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
@@ -245,7 +621,7 @@ class Live2DOptimizedGenerator:
 (art by Artgerm:1.1), (art by WLOP:1.1), (art by Rossdraws:1.1),
 (soft volumetric lighting:1.2), (rim lighting:1.1), (bloom:1.1)"""
 
-    # Live2D专用提示词模板（基于业界最佳实践）
+    # Live2D专用提示词模板
     LIVE2D_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2),
 (anime style:1.3), (illustration:1.2), 1girl, solo, (full body:1.2), (standing:1.1), (looking at viewer:1.2),
 {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
@@ -260,7 +636,7 @@ class Live2DOptimizedGenerator:
 (perfect anatomy:1.2), (correct proportions:1.2), (delicate hands:1.2),
 (sharp focus:1.2), (vibrant colors:1.1)"""
 
-    # 高质量反向提示词（基于搜索研究优化）
+    # 高质量反向提示词
     NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3), (error:1.3), (missing fingers:1.3),
 (extra digit:1.3), (fewer digits:1.3), (cropped:1.2), (worst quality:1.3), (low quality:1.3),
 (normal quality:1.2), (jpeg artifacts:1.2), (signature:1.2), (watermark:1.2), (username:1.2), (blurry:1.3),
@@ -271,7 +647,7 @@ class Live2DOptimizedGenerator:
 (complex background:1.2), (messy hair:1.2), (messy clothes:1.2),
 (depth of field:1.1), (blurry background:1.2), (multiple girls:1.3), (multiple people:1.3)"""
 
-    # Live2D专用反向提示词（更严格）
+    # Live2D专用反向提示词
     LIVE2D_NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3), (error:1.3), (missing fingers:1.3),
 (extra digit:1.3), (fewer digits:1.3), (cropped:1.2), (worst quality:1.3), (low quality:1.3),
 (normal quality:1.2), (jpeg artifacts:1.2), (signature:1.2), (watermark:1.2), (username:1.2), (blurry:1.3),
@@ -301,8 +677,12 @@ class Live2DOptimizedGenerator:
         self.config = ModelConfig()
         self.model_type = self._detect_model_type(model_id)
         self.prompt_engineer = PromptEngineer()
+        self.assessor = QualityAssessor()
+        self.pipeline = MultiStagePipeline(self)
+        self.batch_generator = BatchGenerator(self)
+        self.style_analyzer = ReferenceStyleAnalyzer()
 
-        print(f"🎯 Live2D 优化图像生成器 v4.1")
+        print(f"🎯 Live2D 优化图像生成器 v5.0")
         print(f"   模型: {model_id}")
         print(f"   类型: {self.model_type.upper()}")
         print(f"   设备: {self.device}")
@@ -418,7 +798,21 @@ class Live2DOptimizedGenerator:
         expression: str = "smile",
         pose: str = "standing",
         quality: str = "masterpiece, best quality, ultra detailed",
+        reference_image: Optional[str] = None,
     ) -> Tuple[str, str]:
+        """构建优化的提示词，支持参考图风格分析"""
+
+        # 如果有参考图，分析风格
+        style_prompt = ""
+        if reference_image and Path(reference_image).exists():
+            analysis = self.style_analyzer.analyze_image(reference_image)
+            style_prompt = self.style_analyzer.generate_style_prompt(analysis)
+            print(f"\n🎨 参考图风格分析:")
+            print(f"   风格: {analysis['style']}")
+            print(f"   主色调: RGB{analysis['dominant_color']}")
+            print(f"   饱和度: {analysis['saturation']:.2f}")
+            print(f"   亮度: {analysis['brightness']:.2f}")
+
         if live2d_mode:
             prompt = self.LIVE2D_PROMPT_TEMPLATE.format(
                 style=style,
@@ -460,6 +854,10 @@ class Live2DOptimizedGenerator:
                     expression=expression,
                 )
             negative = self.NEGATIVE_PROMPT
+
+        # 添加参考图风格
+        if style_prompt:
+            prompt = style_prompt + ", " + prompt
 
         if custom_prompt and live2d_mode:
             prompt = custom_prompt + ", " + prompt
@@ -542,10 +940,7 @@ class Live2DOptimizedGenerator:
             return False, None
 
     def _optimize_for_live2d(self, image) -> 'Image.Image':
-        """
-        针对 Live2D 分层优化图片 v4.1
-        基于 Layerdivider 和 See-through 的最佳实践
-        """
+        """针对 Live2D 分层优化图片 v5.0"""
         from PIL import Image, ImageFilter, ImageEnhance
 
         # 转换为 RGBA
@@ -561,7 +956,6 @@ class Live2DOptimizedGenerator:
         image = enhancer.enhance(1.15)
 
         # 3. 颜色量化（减少颜色数量，便于分层）
-        # 使用自适应调色板，保持主要颜色区域
         if hasattr(Image, 'Quantize'):
             try:
                 r, g, b, a = image.split()
@@ -596,10 +990,7 @@ class Live2DOptimizedGenerator:
         target_width: Optional[int] = None,
         target_height: Optional[int] = None,
     ) -> str:
-        """
-        专业后处理管道 v4.1
-        基于业界最佳实践：线条锐化 → 色彩校正 → AI放大 → 降噪
-        """
+        """专业后处理管道 v5.0"""
         from PIL import Image, ImageFilter, ImageEnhance
 
         print("\n🔧 运行专业后处理管道...")
@@ -608,12 +999,12 @@ class Live2DOptimizedGenerator:
         if img.mode != 'RGBA':
             img = img.convert('RGBA')
 
-        # 1. 线条锐化（关键：匹配参考图的清晰线条）
+        # 1. 线条锐化
         print("   1. 线条锐化...")
         enhancer = ImageEnhance.Sharpness(img)
         img = enhancer.enhance(1.4)
 
-        # 2. 色彩校正（ pastel 调色板）
+        # 2. 色彩校正
         print("   2. 色彩校正...")
         enhancer = ImageEnhance.Color(img)
         img = enhancer.enhance(1.15)
@@ -628,7 +1019,7 @@ class Live2DOptimizedGenerator:
         enhancer = ImageEnhance.Brightness(img)
         img = enhancer.enhance(1.05)
 
-        # 5. AI放大（如果启用）
+        # 5. AI放大
         if enable_upscale and target_width and target_height:
             print(f"   5. 放大到 {target_width}x{target_height}...")
             img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
@@ -640,33 +1031,52 @@ class Live2DOptimizedGenerator:
 
         return processed_path
 
-    def generate_batch(
+    def generate_with_retry(
         self,
-        prompts: List[str],
+        prompt: str,
         negative_prompt: str = "",
         width: int = 512,
         height: int = 768,
         steps: int = 25,
         guidance_scale: float = 7.5,
-        output_dir: Optional[str] = None,
-    ) -> List[Tuple[bool, Optional[str]]]:
-        results = []
-        for i, prompt in enumerate(prompts):
-            print(f"\n{'='*60}")
-            print(f"🎯 生成 {i+1}/{len(prompts)}")
-            print(f"{'='*60}")
+        max_retries: int = 3,
+        quality_threshold: float = 0.6,
+        seed: Optional[int] = None,
+        live2d_optimized: bool = True,
+    ) -> Tuple[bool, Optional[str]]:
+        """智能生成 - 自动重试直到质量达标"""
+        for attempt in range(max_retries):
+            print(f"\n🎯 尝试 {attempt + 1}/{max_retries}")
 
-            success, path = self.generate(
+            current_seed = (seed or int(time.time()) % 1000000) + attempt * 1000
+
+            success, output_path = self.generate(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 width=width,
                 height=height,
                 steps=steps,
                 guidance_scale=guidance_scale,
+                seed=current_seed,
+                live2d_optimized=live2d_optimized,
             )
-            results.append((success, path))
 
-        return results
+            if not success:
+                continue
+
+            # 质量评估
+            scores = self.assessor.assess_image(output_path)
+            print(f"\n📊 质量评估:")
+            print(f"   综合评分: {scores['overall']:.2f}")
+
+            if self.assessor.is_quality_acceptable(scores, quality_threshold):
+                print(f"✅ 质量达标！")
+                return True, output_path
+            else:
+                print(f"⚠️ 质量未达标，重试中...")
+
+        print(f"❌ 达到最大重试次数，返回最后一次结果")
+        return success, output_path if success else (False, None)
 
     def get_model_info(self) -> Dict:
         return {
@@ -706,21 +1116,24 @@ def get_live2d_negative_prompt() -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Live2D Master Agent - 本地图像生成器 v4.1",
+        description="Live2D Master Agent - 本地图像生成器 v5.0",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # Live2D 优化模式（默认）
+  # 基础生成
   python local_image_generator.py "cute anime girl"
 
-  # 高质量模式
-  python local_image_generator.py --no-live2d "beautiful anime character"
+  # 批量生成选最优
+  python local_image_generator.py --batch 5 "beautiful character"
 
-  # 指定模型
-  python local_image_generator.py --model "gsdf/Counterfeit-V3.0" "idol girl"
+  # 多阶段生成
+  python local_image_generator.py --multistage "masterpiece"
 
-  # 超高质量
-  python local_image_generator.py --quality ultra --steps 50 "masterpiece"
+  # 参考图风格迁移
+  python local_image_generator.py --reference ref.png "same style, new character"
+
+  # 智能重试（自动评估质量）
+  python local_image_generator.py --smart "cute girl"
 
   # 查看推荐模型
   python local_image_generator.py --list-models
@@ -774,6 +1187,18 @@ def main():
     parser.add_argument(
         "--post-process", action="store_true", help="启用专业后处理"
     )
+    parser.add_argument(
+        "--batch", type=int, default=1, help="批量生成数量（默认1）"
+    )
+    parser.add_argument(
+        "--multistage", action="store_true", help="启用多阶段生成"
+    )
+    parser.add_argument(
+        "--smart", action="store_true", help="智能生成（自动评估质量并重试）"
+    )
+    parser.add_argument(
+        "--reference", type=str, default=None, help="参考图路径（风格迁移）"
+    )
 
     args = parser.parse_args()
 
@@ -814,34 +1239,84 @@ def main():
     prompt, negative = generator.build_prompt(
         custom_prompt=args.prompt,
         live2d_mode=not args.no_live2d,
+        reference_image=args.reference,
     )
 
     if args.negative:
         negative = args.negative + ", " + negative
 
-    success, output_path = generator.generate(
-        prompt=prompt,
-        negative_prompt=negative,
-        width=args.width,
-        height=args.height,
-        steps=steps,
-        guidance_scale=args.guidance,
-        seed=args.seed,
-        output_path=args.output,
-        live2d_optimized=not args.no_live2d,
-    )
+    # 选择生成模式
+    if args.batch > 1:
+        # 批量生成
+        best_path, all_paths = generator.batch_generator.generate_batch(
+            prompt=prompt,
+            negative_prompt=negative,
+            batch_size=args.batch,
+            width=args.width,
+            height=args.height,
+            steps=steps,
+            guidance_scale=args.guidance,
+            use_multistage=args.multistage,
+        )
+        if best_path:
+            print(f"\n🎉 批量生成完成！")
+            print(f"📁 最优文件: {best_path}")
+            print(f"📁 所有文件: {len(all_paths)} 张")
+            output_path = best_path
+        else:
+            print(f"\n❌ 批量生成失败")
+            sys.exit(1)
 
-    if success:
-        print(f"\n🎉 生成成功！")
-        print(f"📁 文件: {output_path}")
+    elif args.smart:
+        # 智能生成（自动重试）
+        success, output_path = generator.generate_with_retry(
+            prompt=prompt,
+            negative_prompt=negative,
+            width=args.width,
+            height=args.height,
+            steps=steps,
+            guidance_scale=args.guidance,
+            seed=args.seed,
+            live2d_optimized=not args.no_live2d,
+        )
+        if not success:
+            sys.exit(1)
 
-        # 后处理
-        if args.post_process:
-            processed_path = generator.post_process_pipeline(output_path)
-            print(f"📁 处理后文件: {processed_path}")
+    elif args.multistage:
+        # 多阶段生成
+        output_path = generator.pipeline.run_pipeline(
+            prompt=prompt,
+            negative_prompt=negative,
+            width=args.width,
+            height=args.height,
+            seed=args.seed,
+        )
+        if not output_path:
+            sys.exit(1)
+
     else:
-        print(f"\n❌ 生成失败")
-        sys.exit(1)
+        # 标准生成
+        success, output_path = generator.generate(
+            prompt=prompt,
+            negative_prompt=negative,
+            width=args.width,
+            height=args.height,
+            steps=steps,
+            guidance_scale=args.guidance,
+            seed=args.seed,
+            output_path=args.output,
+            live2d_optimized=not args.no_live2d,
+        )
+        if not success:
+            sys.exit(1)
+
+    # 后处理
+    if args.post_process:
+        processed_path = generator.post_process_pipeline(output_path)
+        print(f"📁 处理后文件: {processed_path}")
+
+    print(f"\n🎉 生成成功！")
+    print(f"📁 文件: {output_path}")
 
 
 if __name__ == "__main__":

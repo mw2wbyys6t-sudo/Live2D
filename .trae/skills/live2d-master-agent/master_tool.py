@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v7.2 - 商业级 AI 质量版
+Live2D Master Agent v8.0 - 全面升级版
 功能: 本地图片生成 + AI智能分层 + PSD转换
 
 核心：
-- 🎯 自研本地 Stable Diffusion 生成器 v4.1（匹配 DALL-E 3 / Seedream 质量）
+- 🎯 自研本地 Stable Diffusion 生成器 v5.0（多阶段/批量/智能）
 - 🟢 内置AI分层工具（基于色彩聚类 + 区域检测）
 - 🔗 生成与分层无缝连接（一键工作流）
 
@@ -12,6 +12,9 @@ Live2D Master Agent v7.2 - 商业级 AI 质量版
 - 完全本地运行，无需网络
 - 支持 CPU/GPU 推理
 - GPT-4 风格提示词工程
+- 智能质量评估 + 自动重试
+- 批量生成选最优
+- 参考图风格自动分析
 - 生成即分层就绪
 """
 
@@ -72,7 +75,6 @@ LIVE2D_POSES = [
 ]
 
 # 专业级提示词模板（匹配参考图质量）
-# 使用权重控制语法 (keyword:1.3) 提升关键元素质量
 PROFESSIONAL_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2), (8k uhd:1.1),
 (anime style:1.3), (illustration:1.2), (official art:1.2), (pixiv:1.1), (artstation:1.1),
 1girl, solo, {pose}, {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
@@ -86,7 +88,7 @@ PROFESSIONAL_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra 
 (art by Artgerm:1.1), (art by WLOP:1.1), (art by Rossdraws:1.1),
 (soft volumetric lighting:1.2), (rim lighting:1.1), (bloom:1.1)"""
 
-# Live2D 专用提示词模板（基于业界最佳实践）
+# Live2D 专用提示词模板
 LIVE2D_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detailed:1.2), (highres:1.2),
 (anime style:1.3), (illustration:1.2), 1girl, solo, (full body:1.2), (standing:1.1), (looking at viewer:1.2),
 {hairstyle}, {hair_color}, {eye_color}, {clothing}, {accessory}, {expression},
@@ -101,7 +103,7 @@ LIVE2D_PROMPT_TEMPLATE = """(masterpiece:1.4), (best quality:1.3), (ultra detail
 (perfect anatomy:1.2), (correct proportions:1.2), (delicate hands:1.2),
 (sharp focus:1.2), (vibrant colors:1.1)"""
 
-# 高质量反向提示词（基于搜索研究优化）
+# 高质量反向提示词
 HIGH_QUALITY_NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (text:1.3), (error:1.3), (missing fingers:1.3),
 (extra digit:1.3), (fewer digits:1.3), (cropped:1.2), (worst quality:1.3), (low quality:1.3),
 (normal quality:1.2), (jpeg artifacts:1.2), (signature:1.2), (watermark:1.2), (username:1.2), (blurry:1.3),
@@ -144,13 +146,7 @@ def generate_random_features():
 
 
 def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True):
-    """构建优化的多样化提示词
-
-    Args:
-        custom_prompt: 用户自定义提示词
-        live2d_optimized: 是否使用 Live2D 优化模式
-        high_quality: 是否使用高质量提示词（参考图风格）
-    """
+    """构建优化的多样化提示词"""
     features = generate_random_features()
 
     if live2d_optimized:
@@ -200,9 +196,9 @@ def get_latest_image(output_dir):
     return str(png_files[0]) if png_files else None
 
 
-def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True):
+def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True, reference_image=None, batch_size=1, use_smart=False, use_multistage=False):
     """
-    生成图片（使用自研本地生成器 v4.1）
+    生成图片（使用自研本地生成器 v5.0）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -219,19 +215,64 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
         # 根据模式选择反向提示词
         negative_prompt = get_live2d_negative_prompt() if live2d_mode else get_default_negative_prompt()
 
-        success, output_path = generator.generate(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            width=width,
-            height=height,
-            steps=steps,
-            seed=seed,
-            live2d_optimized=live2d_mode,
-        )
+        # 批量生成
+        if batch_size > 1:
+            print(f"\n🎯 批量生成 {batch_size} 张图片...")
+            best_path, all_paths = generator.batch_generator.generate_batch(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                batch_size=batch_size,
+                width=width,
+                height=height,
+                steps=steps,
+                use_multistage=use_multistage,
+            )
+            if best_path:
+                print(f"\n✅ 批量生成完成！最优: {Path(best_path).name}")
+                return best_path, seed
 
-        if success and output_path:
-            print("\n✅ 成功！使用本地 Stable Diffusion v4.1")
-            return output_path, seed
+        # 智能生成（自动重试）
+        elif use_smart:
+            print(f"\n🤖 智能生成（自动评估质量）...")
+            success, output_path = generator.generate_with_retry(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                width=width,
+                height=height,
+                steps=steps,
+                seed=seed,
+                live2d_optimized=live2d_mode,
+            )
+            if success and output_path:
+                return output_path, seed
+
+        # 多阶段生成
+        elif use_multistage:
+            print(f"\n🔄 多阶段生成...")
+            output_path = generator.pipeline.run_pipeline(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                width=width,
+                height=height,
+                seed=seed,
+            )
+            if output_path:
+                return output_path, seed
+
+        # 标准生成
+        else:
+            success, output_path = generator.generate(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                width=width,
+                height=height,
+                steps=steps,
+                seed=seed,
+                live2d_optimized=live2d_mode,
+            )
+            if success and output_path:
+                print("\n✅ 成功！使用本地 Stable Diffusion v5.0")
+                return output_path, seed
 
     except ImportError as e:
         print(f"❌ 缺少依赖: {e}")
@@ -244,12 +285,7 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
 
 
 def run_layering_pipeline(image_path, output_dir):
-    """
-    运行完整的分层管道
-    1. 内置AI分层
-    2. 生成PSD规划
-    3. 建议See-through专业分层
-    """
+    """运行完整的分层管道"""
     print(f"\n{'='*80}")
     print("🎨 启动分层管道")
     print(f"{'='*80}")
@@ -339,7 +375,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v7.2\n")
+            f.write("Live2D PSD 分层指南 v8.0\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -507,18 +543,24 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v7.2 - 商业级 AI 质量版',
+        description='Live2D Master Agent v8.0 - 全面升级版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # 完整工作流：生成 + 分层
+  # 基础生成
   python master_tool.py "cute anime girl"
 
-  # 生成多个角色
-  python master_tool.py -n 3 "beautiful character"
+  # 批量生成选最优
+  python master_tool.py --batch 5 "beautiful character"
 
-  # 使用已有图片进行分层
-  python master_tool.py --skip-generate
+  # 智能生成（自动评估质量）
+  python master_tool.py --smart "cute girl"
+
+  # 多阶段生成
+  python master_tool.py --multistage "masterpiece"
+
+  # 参考图风格迁移
+  python master_tool.py --reference ref.png "new character"
 
   # 指定模型
   python master_tool.py --model "gsdf/Counterfeit-V3.0"
@@ -595,6 +637,22 @@ def main():
         '--layer-only', action='store_true',
         help='仅运行分层，跳过生成'
     )
+    parser.add_argument(
+        '--batch', type=int, default=1,
+        help='批量生成数量（默认1，推荐4-8）'
+    )
+    parser.add_argument(
+        '--smart', action='store_true',
+        help='智能生成（自动评估质量并重试）'
+    )
+    parser.add_argument(
+        '--multistage', action='store_true',
+        help='多阶段生成（草稿→精修→超分）'
+    )
+    parser.add_argument(
+        '--reference', type=str, default=None,
+        help='参考图路径（自动分析风格）'
+    )
     args = parser.parse_args()
 
     base_dir = Path(__file__).parent
@@ -602,11 +660,13 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v7.2 - 商业级 AI 质量版")
+    print("🎨 Live2D Master Agent v8.0 - 全面升级版")
     print("="*80)
     print("\n核心功能:")
-    print("  🎯 自研本地生成器 v4.1")
-    print("  🎨 内置AI分层工具")
+    print("  🎯 自研本地生成器 v5.0")
+    print("  🤖 智能质量评估 + 自动重试")
+    print("  📊 批量生成选最优")
+    print("  🎨 参考图风格自动分析")
     print("  🔗 生成与分层无缝连接")
 
     # 显示See-through指南
@@ -682,6 +742,17 @@ def main():
             else:
                 print(f"\n⚠️ 优化模式: 已禁用")
 
+            # 显示生成模式
+            if args.batch > 1:
+                print(f"\n📊 批量生成模式: {args.batch} 张")
+            elif args.smart:
+                print(f"\n🤖 智能生成模式: 自动评估质量")
+            elif args.multistage:
+                print(f"\n🔄 多阶段生成模式: 草稿→精修→超分")
+
+            if args.reference:
+                print(f"\n🎨 参考图: {args.reference}")
+
             image_path, seed = generate_image(
                 prompt,
                 output_dir,
@@ -689,7 +760,11 @@ def main():
                 height=args.height,
                 steps=args.steps,
                 model_id=args.model,
-                live2d_mode=live2d_opt
+                live2d_mode=live2d_opt,
+                reference_image=args.reference,
+                batch_size=args.batch,
+                use_smart=args.smart,
+                use_multistage=args.multistage,
             )
 
             if not image_path:
