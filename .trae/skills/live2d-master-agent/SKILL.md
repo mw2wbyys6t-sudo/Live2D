@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 5.0
+version: 7.0
 creator: Live2D Community
-description: 专业的 Live2D 制作助手，提供从概念到绑定的完整工作流，支持向导模式和专家模式，具备高质量图像生成（默认免费）、一站式工具箱、PSD分层规划、ComfyUI一键安装，增强质量检查、丰富参数模板、详细Rigging指导等先进功能
+description: 专业的 Live2D 制作助手 v7.0，提供从概念到绑定的完整工作流。新增：商汤SenseNova云端生成、Live2D分层专用模式（全身照+部件分离+遮挡补全）、一键生成→自动分层、智能质量评估（7维度Live2D适配度）、多Provider路由、安全审计修复。
 ---
 
 # Role
@@ -37,9 +37,37 @@ description: 专业的 Live2D 制作助手，提供从概念到绑定的完整�
 
 # Configuration
 
-## 🎨 多样化图像生成（推荐）
+## 🎨 图像生成（多Provider支持）
 
-### 完全免费，无需API密钥！
+### 方案一：商汤SenseNova云端生成（推荐高质量）
+
+使用商汤日日新SenseNova API，生成质量接近商业AI水平。
+
+**配置API密钥**:
+```bash
+# 创建 .env 文件
+echo 'SENSENOVA_API_KEY=your_api_key' > .env
+```
+
+**使用方法**:
+```bash
+# Live2D分层专用生成（全身照+部件分离+遮挡补全）
+python local_image_generator.py --provider sensenova --live2d-rig "蓝发猫耳少女"
+
+# 一键生成+自动分层
+python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "蓝发猫耳少女"
+
+# 使用基础版颜色聚类分层
+python local_image_generator.py --provider sensenova --live2d-rig --auto-layer --layer-tool v6 "角色描述"
+```
+
+**特点**:
+- 结构化角色解析（自动提取发色/发型/眼睛/服装等）
+- Live2D分层专用提示词（6大维度优化）
+- 7维度智能质量评估（全身可见性/部件边界/对称性等）
+- 一键生成→自动分层无缝衔接
+
+### 方案二：完全免费，无需API密钥
 
 使用 Pollinations.ai 免费服务，**无需任何配置，开箱即用**！
 
@@ -85,6 +113,10 @@ master_tool.run_ai_layer_tool(image_path)
 
 | 特性 | 说明 |
 |------|------|
+| **多Provider** | 本地SD / 商汤SenseNova / Pollinations.ai |
+| **分层专用** | Live2D rigging专用生成模式 |
+| **自动分层** | 生成后一键自动分层 |
+| **质量评估** | 7维度Live2D适配度评估 |
 | **完全免费** | 无需付费，无限制使用 |
 | **无需注册** | 无需账号，无需API密钥 |
 | **开箱即用** | 无需安装任何依赖 |
@@ -95,22 +127,26 @@ master_tool.run_ai_layer_tool(image_path)
 | **多样化生成** | 随机特征组合，避免撞衫 |
 | **随机种子** | 每次生成不同结果 |
 
-### 支持的免费服务
+### 支持的生成服务
 
-| 服务 | 说明 | 质量 | 速度 |
-|------|------|------|------|
-| **Pollinations.ai** | 完全免费，无需注册 | ⭐⭐⭐⭐ | 快 |
-| **Puter.js** | Stable Diffusion 3/XL | ⭐⭐⭐⭐⭐ | 中 |
-| **SiliconFlow** | 新用户2000万Tokens | ⭐⭐⭐⭐⭐ | 快 |
-| **Hugging Face** | 免费推理 | ⭐⭐⭐⭐ | 中 |
-| **ComfyUI本地** | 最高质量，完全离线 | ⭐⭐⭐⭐⭐+ | 取决于硬件 |
+| 服务 | 说明 | 质量 | 速度 | 成本 |
+|------|------|------|------|------|
+| **商汤SenseNova** | 云端生成，OpenAI兼容 | ⭐⭐⭐⭐⭐ | 快 | 按量计费 |
+| **Pollinations.ai** | 完全免费，无需注册 | ⭐⭐⭐⭐ | 快 | 免费 |
+| **Puter.js** | Stable Diffusion 3/XL | ⭐⭐⭐⭐⭐ | 中 | 免费 |
+| **SiliconFlow** | 新用户2000万Tokens | ⭐⭐⭐⭐⭐ | 快 | 免费额度 |
+| **Hugging Face** | 免费推理 | ⭐⭐⭐⭐ | 中 | 免费 |
+| **ComfyUI本地** | 最高质量，完全离线 | ⭐⭐⭐⭐⭐+ | 取决于硬件 | 免费 |
 
 ### 多服务自动降级机制
 
 ```
 用户请求生成角色立绘
      ↓
-【首选】使用 Pollinations.ai（完全免费）
+【首选】使用 商汤SenseNova（高质量）
+     ↓ (成功) → 返回图片 ✅
+     ↓ (失败)
+使用 Pollinations.ai（完全免费）
      ↓ (成功) → 返回图片 ✅
      ↓ (失败)
 尝试备用服务
@@ -131,6 +167,18 @@ clean layer separation,
 isolated character on white background,
 sharp clean lines, vibrant colors,
 ultra detailed, masterpiece
+```
+
+### Live2D分层专用提示词（--live2d-rig）
+
+启用分层专用模式时，自动添加：
+```
+full body, standing straight, front view, looking at viewer,
+clean lineart, clear edges, sharp outlines,
+flat colors, cel shading, minimal gradients, solid colors,
+distinct part separation, clear boundaries,
+complete body parts under clothing, hidden parts drawn,
+symmetrical face, symmetrical eyes, centered composition
 ```
 
 ## 智能图像生成方案
@@ -324,8 +372,11 @@ python live2d_layer_pro.py character.png
 
 | 文件 | 说明 | 版本 |
 |------|------|------|
-| **master_tool.py** | 一站式工具箱（集成多服务降级、多样化生成） | v5.0 |
+| **master_tool.py** | 一站式工具箱（集成多服务降级、多样化生成） | v8.0 |
+| **local_image_generator.py** | 本地/云端图像生成器（多Provider、分层专用模式） | v6.0 |
 | **live2d_layer_pro.py** | 专业版AI智能分层工具 | v5.0 |
+| **live2d_layer_v6.py** | K-means聚类分层工具 | v6.0 |
+| **config.py** | 配置管理（支持SenseNova API） | v2.0 |
 
 ### 辅助工具
 
@@ -358,7 +409,7 @@ python live2d_layer_pro.py character.png
 
 ## 📝 使用示例
 
-### 示例1：一键生成角色
+### 示例1：一键生成角色（免费方案）
 
 ```bash
 # 生成角色立绘并转换为PSD
@@ -371,7 +422,33 @@ python master_tool.py "cute anime girl, pink hair, blue eyes"
 # ✅ AI智能分层完成
 ```
 
-### 示例2：生成多个多样化角色
+### 示例2：Live2D分层专用生成（推荐）
+
+```bash
+# 使用商汤SenseNova生成Live2D分层专用图片
+python local_image_generator.py --provider sensenova --live2d-rig "蓝发猫耳少女"
+
+# 输出:
+# ✅ 结构化解析角色特征
+# ✅ 全身照生成（正面站立）
+# ✅ 7维度Live2D适配度评估
+# ✅ 部件边界清晰度: 100%
+```
+
+### 示例3：一键生成+自动分层
+
+```bash
+# 生成后自动进行Live2D分层
+python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "蓝发猫耳少女"
+
+# 输出:
+# ✅ 图片生成成功
+# ✅ 自动调用 live2d_layer_pro.py 进行智能分层
+# ✅ 生成23个标准图层
+# ✅ 输出PSD文件和分层指南
+```
+
+### 示例4：生成多个多样化角色
 
 ```bash
 # 生成5个不同的角色
@@ -381,13 +458,13 @@ python master_tool.py -n 5 "anime girl"
 # 每个角色具有不同的发型、发色、服装组合
 ```
 
-### 示例3：使用已有图片
+### 示例5：使用已有图片
 
 ```bash
 python master_tool.py --skip-generate
 ```
 
-### 示例4：专业版分层
+### 示例6：专业版分层
 
 ```bash
 python live2d_layer_pro.py character.png
@@ -400,34 +477,40 @@ python live2d_layer_pro.py character.png
 
 ## 📊 版本更新记录
 
-### v5.0 (最新)
+### v7.0 (最新) - 2026-05-30
+- ✅ 新增商汤SenseNova云端生成Provider
+- ✅ 新增Live2D分层专用生成模式（--live2d-rig）
+- ✅ 新增一键生成→自动分层（--auto-layer）
+- ✅ 新增7维度Live2D分层质量评估
+- ✅ 新增结构化角色解析（中文/英文关键词）
+- ✅ 新增多Provider路由（本地SD/商汤云端自动选择）
+- ✅ 新增智能尺寸映射（适配商汤API限制）
+- ✅ 安全审计修复（7项安全问题全部修复）
+- ✅ 环境变量自动加载（.env文件支持）
+
+### v6.3 (2026-05-29)
+- ✅ 新增Stable Diffusion WebUI集成
+- ✅ 多源智能选择：SD WebUI > Pollinations
+
+### v6.2 (2026-05-29)
+- ✅ 新增智能重试机制
+- ✅ 新增3个服务端自动降级
+- ✅ 新增可自定义图片分辨率
+
+### v5.0 (2026-05-22)
 - ✅ 新增多服务自动降级机制
 - ✅ 新增多样化特征系统（避免撞衫）
 - ✅ 新增专业版分层工具 v5.0
-- ✅ 新增随机种子生成
-- ✅ 新增批量生成功能
-- ✅ 完善备选方案提示
-- ✅ 代码精简约50%
-
-### v4.0
-- ✅ 新增高质量图片生成器 v2.0
-- ✅ 新增PSD直接转换器
-- ✅ 网络稳定性增强
-- ✅ 自动重试机制
-
-### v3.8
-- ✅ 免费图像生成功能完善
-- ✅ Pollinations.ai 集成
-
-### v3.0
-- ✅ 一站式工具箱
-- ✅ 参数设计器
-- ✅ 质量检查引擎
 
 ## 🔒 安全声明
 
 - ✅ API密钥通过环境变量管理
 - ✅ `.env` 文件已加入 `.gitignore`
+- ✅ 路径遍历防护（validate_image_path）
+- ✅ 命令注入过滤（shlex.quote）
+- ✅ 模型白名单验证
+- ✅ 信息泄露修复（API Key掩码）
+- ✅ CORS安全配置
 - ✅ 不存储任何用户数据
 - ✅ 本地处理，隐私保护
 
@@ -441,4 +524,4 @@ MIT License
 
 ---
 
-**Live2D Master Agent v5.0** - 让Live2D制作更简单！
+**Live2D Master Agent v7.0** - 让Live2D制作更简单！

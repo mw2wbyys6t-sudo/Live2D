@@ -1,19 +1,33 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent - 本地图像生成器 v5.0
-基于 Stable Diffusion + diffusers 的专业图像生成工具
+Live2D Master Agent - 图像生成器 v6.0
+支持本地 Stable Diffusion + 商汤SenseNova云端 + 多种免费服务
 
 核心升级：
 - 🎯 商业级 AI 质量（匹配 DALL-E 3 / Seedream）
+- ☁️ 商汤SenseNova云端生成（OpenAI兼容）
+- 🦴 Live2D分层专用模式（全身照+部件分离+遮挡补全）
+- 🔧 一键生成→自动分层
 - 🔄 多阶段生成管道（草稿→精修→超分）
-- 🤖 智能质量评估 + 自动重试
+- 🤖 智能质量评估 + 自动重试（7维度Live2D适配度）
 - 🎨 参考图风格自动分析
 - 📊 批量生成选最优
-- 🔧 与分层工具无缝连接
+- 🔐 安全审计修复（7项安全问题）
 
 使用方法：
+    # 基础生成
     python local_image_generator.py "cute anime girl"
+    
+    # 商汤SenseNova + Live2D分层专用
+    python local_image_generator.py --provider sensenova --live2d-rig "蓝发猫耳少女"
+    
+    # 一键生成+自动分层
+    python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "蓝发猫耳少女"
+    
+    # 本地SD多阶段生成
     python local_image_generator.py --model "gsdf/Counterfeit-V3.0" --quality ultra --batch 5 "beautiful character"
+    
+    # 参考图风格迁移
     python local_image_generator.py --reference ref.png --style-transfer "new character"
 """
 
