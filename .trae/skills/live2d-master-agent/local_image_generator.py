@@ -160,6 +160,16 @@ class PromptEngineer:
         "global illumination", "ray tracing"
     ]
 
+    # Live2D 分层专用提示词 - 基于官方文档和社区最佳实践
+    LIVE2D_RIGGING_KEYWORDS = {
+        "full_body": "(full body:1.3), (standing straight:1.2), (front view:1.2), (looking at viewer:1.2), (arms at sides:1.1), (legs visible:1.2), (feet visible:1.1)",
+        "part_separation": "(distinct part separation:1.2), (clear boundaries between hair and face:1.2), (separate bangs:1.1), (separate side hair:1.1), (separate back hair:1.1), (separate arms:1.1), (separate legs:1.1)",
+        "occlusion_fill": "(complete body parts under clothing:1.2), (hidden parts drawn:1.2), (complete limbs behind hair:1.1), (complete body under outfit:1.1), (no cut-off parts:1.2)",
+        "layer_friendly": "(flat coloring:1.2), (cel shading:1.2), (minimal gradients:1.2), (solid colors:1.2), (no soft blending between parts:1.2), (hard edges:1.3)",
+        "symmetry": "(symmetrical face:1.2), (symmetrical eyes:1.2), (centered composition:1.2), (balanced proportions:1.2)",
+        "rigging_ready": "(Live2D rigging ready:1.2), (VTuber model:1.1), (clean lineart:1.3), (white background:1.2), (simple background:1.2), (isolated character:1.2)",
+    }
+
     # 角色特征解析规则 v6.0 - 支持自然语言解析
     CHARACTER_PATTERNS = {
         "hair_color": {
@@ -281,8 +291,16 @@ class PromptEngineer:
     @classmethod
     def build_prompt_from_character(cls, character: Dict[str, str],
                                      style: str = "anime",
-                                     live2d_mode: bool = True) -> Tuple[str, str]:
-        """从结构化角色构建Prompt v6.0"""
+                                     live2d_mode: bool = True,
+                                     live2d_rigging: bool = False) -> Tuple[str, str]:
+        """从结构化角色构建Prompt v6.0
+
+        Args:
+            character: 角色特征字典
+            style: 风格
+            live2d_mode: 是否启用Live2D基础优化
+            live2d_rigging: 是否启用Live2D分层专用优化（全身照+部件分离+遮挡补全）
+        """
         parts = []
 
         # 质量前缀
@@ -333,8 +351,18 @@ class PromptEngineer:
         elif style == "pastel":
             parts.append("(pastel colors:1.3), (soft shading:1.2)")
 
-        # Live2D优化
-        if live2d_mode:
+        # Live2D分层专用优化（最高优先级）
+        if live2d_rigging:
+            parts.extend([
+                cls.LIVE2D_RIGGING_KEYWORDS["full_body"],
+                cls.LIVE2D_RIGGING_KEYWORDS["part_separation"],
+                cls.LIVE2D_RIGGING_KEYWORDS["occlusion_fill"],
+                cls.LIVE2D_RIGGING_KEYWORDS["layer_friendly"],
+                cls.LIVE2D_RIGGING_KEYWORDS["symmetry"],
+                cls.LIVE2D_RIGGING_KEYWORDS["rigging_ready"],
+            ])
+        elif live2d_mode:
+            # 基础Live2D优化
             parts.extend([
                 "(clean lineart:1.3)", "(clear edges:1.3)",
                 "(flat colors:1.2)", "(white background:1.2)",
@@ -359,7 +387,16 @@ class PromptEngineer:
 (photorealistic:1.2), (3d:1.2), (western:1.2),
 (complex background:1.2), (multiple girls:1.3)"""
 
-        if live2d_mode:
+        if live2d_rigging:
+            # Live2D分层专用反向提示词
+            negative += """, (profile view:1.2), (side view:1.2), (back view:1.2),
+(open mouth:1.2), (talking:1.2), (dynamic pose:1.2), (action pose:1.2),
+(sitting:1.2), (lying down:1.2), (partial body:1.3), (cropped:1.3),
+(gradient shading:1.2), (soft shading:1.2), (painterly:1.2), (watercolor:1.2),
+(messy hair:1.2), (messy clothes:1.2), (torn clothes:1.2),
+(missing limbs:1.3), (incomplete body:1.3), (cut-off:1.3),
+(depth of field:1.2), (blurry background:1.2), (bokeh:1.2)"""
+        elif live2d_mode:
             negative += """, (profile view:1.2), (side view:1.2), (back view:1.2),
 (open mouth:1.2), (dynamic pose:1.2), (sitting:1.2),
 (gradient shading:1.2), (painterly:1.2), (watercolor:1.2)"""
@@ -455,11 +492,27 @@ class QualityAssessor:
         "contrast": 0.10,          # 对比度
     }
 
+    # Live2D分层专用评估维度权重（用于rigging-ready图片）
+    LIVE2D_RIGGING_WEIGHTS = {
+        "full_body_visibility": 0.20,   # 全身可见性（头到脚）
+        "part_boundary_clarity": 0.20,  # 部件边界清晰度（头发/脸/身体分离）
+        "symmetry": 0.15,               # 对称性（正面站立）
+        "edge_clarity": 0.15,           # 边缘清晰度
+        "color_flatness": 0.10,         # 颜色平坦度（适合分层）
+        "background_purity": 0.10,      # 背景纯净度
+        "occlusion_completeness": 0.10, # 遮挡区域完整性
+    }
+
     @staticmethod
-    def assess_image(image_path: str, live2d_mode: bool = True) -> Dict[str, float]:
+    def assess_image(image_path: str, live2d_mode: bool = True, live2d_rigging: bool = False) -> Dict[str, float]:
         """
         评估图片质量 v6.0
         返回分数字典：包含基础质量 + Live2D适配度
+
+        Args:
+            image_path: 图片路径
+            live2d_mode: 是否启用Live2D基础评估
+            live2d_rigging: 是否启用Live2D分层专用评估（全身照+部件分离+遮挡补全）
         """
         try:
             from PIL import Image
@@ -491,8 +544,111 @@ class QualityAssessor:
             noise = np.mean(np.abs(img_array.astype(float) - smoothed))
             noise_score = max(1.0 - noise / 30, 0)
 
-            # ========== Live2D适配度评估 ==========
-            if live2d_mode:
+            # ========== Live2D分层专用评估 ==========
+            if live2d_rigging:
+                # 1. 全身可见性（检测从头到脚是否有内容）
+                # 分析垂直方向上的内容分布
+                row_means = img_array.mean(axis=(1, 2))
+                # 检测顶部和底部是否有内容（非背景色）
+                top_region = row_means[:h//10].mean()
+                bottom_region = row_means[-h//10:].mean()
+                center_region = row_means[h//3:2*h//3].mean()
+                # 如果顶部和底部都有内容，说明是全身照
+                full_body_visibility = 0.5
+                if top_region < center_region * 0.9 and bottom_region < center_region * 0.9:
+                    full_body_visibility = 0.9  # 全身照
+                elif top_region < center_region * 0.9:
+                    full_body_visibility = 0.6  # 半身照
+
+                # 2. 部件边界清晰度（检测头发/脸/身体的边界）
+                # 使用边缘检测评估不同区域的边界清晰度
+                sobel_h = ndimage.sobel(img_array.mean(axis=2), axis=0)
+                sobel_v = ndimage.sobel(img_array.mean(axis=2), axis=1)
+                edge_strength = np.sqrt(sobel_h**2 + sobel_v**2)
+                # 分析上半部分（脸部+头发）的边缘密度
+                upper_edges = edge_strength[:h//2, :].mean()
+                part_boundary_clarity = min(upper_edges / 30, 1.0)
+
+                # 3. 对称性（左右对比）
+                left_half = img_array[:, :w//2]
+                right_half = np.fliplr(img_array[:, w//2:])
+                min_w = min(left_half.shape[1], right_half.shape[1])
+                symmetry = 1.0 - np.mean(np.abs(
+                    left_half[:, :min_w].astype(float) - right_half[:, :min_w].astype(float)
+                )) / 255.0
+
+                # 4. 边缘清晰度（整体）
+                edge_clarity = min(edge_strength.mean() / 30, 1.0)
+
+                # 5. 颜色平坦度（颜色量化后的方差小说明颜色平坦）
+                try:
+                    from sklearn.cluster import KMeans
+                    pixels = img_array.reshape(-1, 3)
+                    sample_size = min(5000, len(pixels))
+                    sample = pixels[np.random.choice(len(pixels), sample_size, replace=False)]
+                    kmeans = KMeans(n_clusters=32, random_state=42, n_init=10)
+                    kmeans.fit(sample)
+                    # 计算每个聚类的方差，方差小说明颜色平坦
+                    cluster_vars = []
+                    for i in range(32):
+                        cluster_pixels = sample[kmeans.labels_ == i]
+                        if len(cluster_pixels) > 10:
+                            cluster_vars.append(np.var(cluster_pixels))
+                    avg_var = np.mean(cluster_vars) if cluster_vars else 1000
+                    color_flatness = max(0, min(1, 1.0 - avg_var / 2000))
+                except ImportError:
+                    color_flatness = 0.7
+
+                # 6. 背景纯净度
+                border = np.concatenate([
+                    img_array[0, :].flatten(),
+                    img_array[-1, :].flatten(),
+                    img_array[:, 0].flatten(),
+                    img_array[:, -1].flatten()
+                ])
+                bg_uniformity = 1.0 - min(np.std(border) / 80, 1.0)
+                background_purity = bg_uniformity
+
+                # 7. 遮挡区域完整性（检测中间区域是否有被遮挡的内容）
+                # 分析中心区域的颜色丰富度，丰富度高说明有完整身体
+                center_region_colors = img_array[h//4:3*h//4, w//4:3*w//4]
+                color_variety = np.std(center_region_colors)
+                occlusion_completeness = min(color_variety / 100, 1.0)
+
+                # Live2D分层综合评分
+                rigging_scores = {
+                    "full_body_visibility": full_body_visibility,
+                    "part_boundary_clarity": part_boundary_clarity,
+                    "symmetry": symmetry,
+                    "edge_clarity": edge_clarity,
+                    "color_flatness": color_flatness,
+                    "background_purity": background_purity,
+                    "occlusion_completeness": occlusion_completeness,
+                }
+
+                rigging_overall = sum(
+                    rigging_scores[k] * QualityAssessor.LIVE2D_RIGGING_WEIGHTS[k]
+                    for k in QualityAssessor.LIVE2D_RIGGING_WEIGHTS.keys()
+                )
+
+                return {
+                    "overall": rigging_overall,
+                    "sharpness": sharpness_score,
+                    "color_balance": color_balance,
+                    "contrast": contrast_score,
+                    "noise_level": noise_score,
+                    "full_body_visibility": full_body_visibility,
+                    "part_boundary_clarity": part_boundary_clarity,
+                    "symmetry": symmetry,
+                    "edge_clarity": edge_clarity,
+                    "color_flatness": color_flatness,
+                    "background_purity": background_purity,
+                    "occlusion_completeness": occlusion_completeness,
+                    "live2d_rigging_score": rigging_overall,
+                }
+
+            # ========== Live2D基础适配度评估 ==========
+            elif live2d_mode:
                 # 5. 脸部质量评估（检测上半部分的对称性和清晰度）
                 face_region = img_array[:h//2, :]
                 face_laplacian = ndimage.laplace(face_region.mean(axis=2))
@@ -585,6 +741,9 @@ class QualityAssessor:
                 "face_quality": 0.7, "edge_clarity": 0.7,
                 "background_purity": 0.7, "color_separation": 0.7,
                 "live2d_score": 0.7,
+                "full_body_visibility": 0.7, "part_boundary_clarity": 0.7,
+                "symmetry": 0.7, "color_flatness": 0.7,
+                "occlusion_completeness": 0.7, "live2d_rigging_score": 0.7,
             }
         except Exception as e:
             print(f"⚠️ 质量评估失败: {e}")
@@ -594,27 +753,37 @@ class QualityAssessor:
                 "face_quality": 0.5, "edge_clarity": 0.5,
                 "background_purity": 0.5, "color_separation": 0.5,
                 "live2d_score": 0.5,
+                "full_body_visibility": 0.5, "part_boundary_clarity": 0.5,
+                "symmetry": 0.5, "color_flatness": 0.5,
+                "occlusion_completeness": 0.5, "live2d_rigging_score": 0.5,
             }
 
     @staticmethod
     def is_quality_acceptable(scores: Dict[str, float], threshold: float = 0.6,
-                               live2d_mode: bool = True) -> bool:
+                               live2d_mode: bool = True, live2d_rigging: bool = False) -> bool:
         """判断质量是否可接受 v6.0"""
+        if live2d_rigging and "live2d_rigging_score" in scores:
+            return scores["live2d_rigging_score"] >= threshold
         if live2d_mode and "live2d_score" in scores:
             return scores["live2d_score"] >= threshold
         return scores["overall"] >= threshold
 
     @staticmethod
-    def get_best_image(image_paths: List[str], live2d_mode: bool = True) -> Tuple[str, Dict[str, float]]:
+    def get_best_image(image_paths: List[str], live2d_mode: bool = True, live2d_rigging: bool = False) -> Tuple[str, Dict[str, float]]:
         """从多张图片中选择质量最好的一张 v6.0"""
         best_path = None
         best_score = -1
         best_scores = None
 
         for path in image_paths:
-            scores = QualityAssessor.assess_image(path, live2d_mode=live2d_mode)
-            # Live2D模式下优先使用live2d_score
-            score = scores.get("live2d_score", scores["overall"])
+            scores = QualityAssessor.assess_image(path, live2d_mode=live2d_mode, live2d_rigging=live2d_rigging)
+            # 优先使用对应的评分
+            if live2d_rigging and "live2d_rigging_score" in scores:
+                score = scores["live2d_rigging_score"]
+            elif live2d_mode and "live2d_score" in scores:
+                score = scores["live2d_score"]
+            else:
+                score = scores["overall"]
             if score > best_score:
                 best_score = score
                 best_path = path
@@ -623,11 +792,21 @@ class QualityAssessor:
         return best_path, best_scores
 
     @staticmethod
-    def generate_report(scores: Dict[str, float]) -> str:
+    def generate_report(scores: Dict[str, float], live2d_rigging: bool = False) -> str:
         """生成质量评估报告"""
         lines = ["📊 质量评估报告:", "=" * 40]
 
-        if "live2d_score" in scores:
+        if live2d_rigging and "live2d_rigging_score" in scores:
+            lines.append(f"Live2D分层适配度: {scores['live2d_rigging_score']:.1%}")
+            lines.append(f"  全身可见性:   {scores['full_body_visibility']:.1%}")
+            lines.append(f"  部件边界清晰度: {scores['part_boundary_clarity']:.1%}")
+            lines.append(f"  对称性:       {scores['symmetry']:.1%}")
+            lines.append(f"  边缘清晰度:   {scores['edge_clarity']:.1%}")
+            lines.append(f"  颜色平坦度:   {scores['color_flatness']:.1%}")
+            lines.append(f"  背景纯净度:   {scores['background_purity']:.1%}")
+            lines.append(f"  遮挡完整性:   {scores['occlusion_completeness']:.1%}")
+            lines.append("")
+        elif "live2d_score" in scores:
             lines.append(f"Live2D适配度: {scores['live2d_score']:.1%}")
             lines.append(f"  脸部质量:   {scores['face_quality']:.1%}")
             lines.append(f"  边缘清晰度: {scores['edge_clarity']:.1%}")
@@ -641,7 +820,10 @@ class QualityAssessor:
         lines.append(f"  对比度:   {scores['contrast']:.1%}")
         lines.append(f"  噪声水平: {scores['noise_level']:.1%}")
 
-        status = "✅ 通过" if scores.get("live2d_score", scores["overall"]) >= 0.6 else "❌ 未通过"
+        if live2d_rigging:
+            status = "✅ 通过" if scores.get("live2d_rigging_score", scores["overall"]) >= 0.6 else "❌ 未通过"
+        else:
+            status = "✅ 通过" if scores.get("live2d_score", scores["overall"]) >= 0.6 else "❌ 未通过"
         lines.append(f"\n{status}")
 
         return "\n".join(lines)
@@ -1617,6 +1799,11 @@ def main():
     parser.add_argument(
         "--list-providers", action="store_true", help="列出可用 Provider"
     )
+    parser.add_argument(
+        "--live2d-rig",
+        action="store_true",
+        help="启用 Live2D 分层专用模式（全身照+部件分离+遮挡补全）",
+    )
 
     args = parser.parse_args()
 
@@ -1677,11 +1864,20 @@ def main():
         character = PromptEngineer.parse_character_from_text(args.prompt)
         if any([character.get("hair_color"), character.get("features")]):
             prompt, negative = PromptEngineer.build_prompt_from_character(
-                character, style="anime", live2d_mode=not args.no_live2d
+                character, style="anime",
+                live2d_mode=not args.no_live2d,
+                live2d_rigging=args.live2d_rig
             )
         else:
+            # 非结构化提示词，手动添加Live2D分层关键词
             prompt = args.prompt
             negative = ""
+            if args.live2d_rig:
+                rig_keywords = PromptEngineer.LIVE2D_RIGGING_KEYWORDS
+                prompt += ", " + ", ".join(rig_keywords.values())
+                negative = """(profile view:1.2), (side view:1.2), (back view:1.2),
+(open mouth:1.2), (dynamic pose:1.2), (partial body:1.3), (cropped:1.3),
+(gradient shading:1.2), (soft shading:1.2), (missing limbs:1.3)"""
 
         output_path = provider.generate(
             prompt=prompt,
@@ -1692,8 +1888,12 @@ def main():
         )
 
         # 质量评估
-        scores = QualityAssessor.assess_image(output_path, live2d_mode=True)
-        print(QualityAssessor.generate_report(scores))
+        scores = QualityAssessor.assess_image(
+            output_path,
+            live2d_mode=not args.no_live2d,
+            live2d_rigging=args.live2d_rig
+        )
+        print(QualityAssessor.generate_report(scores, live2d_rigging=args.live2d_rig))
 
     else:
         # 使用本地 SD
@@ -1907,7 +2107,8 @@ class SenseNovaProvider:
         os.makedirs(output_dir, exist_ok=True)
 
         # 构建增强提示词
-        enhanced_prompt = self._enhance_prompt(prompt, actual_width, actual_height)
+        live2d_rigging = kwargs.get("live2d_rigging", False)
+        enhanced_prompt = self._enhance_prompt(prompt, actual_width, actual_height, live2d_rigging=live2d_rigging)
 
         try:
             if self.client:
@@ -1928,18 +2129,40 @@ class SenseNovaProvider:
             print(f"❌ 商汤生成失败: {e}")
             raise
 
-    def _enhance_prompt(self, prompt: str, width: int, height: int) -> str:
-        """增强提示词以提升生成质量"""
+    def _enhance_prompt(self, prompt: str, width: int, height: int, live2d_rigging: bool = False) -> str:
+        """增强提示词以提升生成质量
+
+        Args:
+            prompt: 原始提示词
+            width: 图片宽度
+            height: 图片高度
+            live2d_rigging: 是否启用Live2D分层专用优化
+        """
         # 添加质量前缀
         quality_prefix = "masterpiece, best quality, ultra detailed, "
 
-        # 添加Live2D优化词
-        live2d_keywords = (
-            "anime style, illustration, clean lineart, "
-            "white background, simple background, "
-            "front view, standing, perfect anatomy, "
-            "beautiful detailed face, beautiful detailed eyes"
-        )
+        if live2d_rigging:
+            # Live2D分层专用优化词
+            live2d_keywords = (
+                "anime style, illustration, "
+                "full body, standing straight, front view, looking at viewer, "
+                "clean lineart, clear edges, sharp outlines, "
+                "flat colors, cel shading, minimal gradients, solid colors, "
+                "distinct part separation, clear boundaries, "
+                "complete body parts under clothing, hidden parts drawn, "
+                "symmetrical face, symmetrical eyes, centered composition, "
+                "white background, simple background, isolated character, "
+                "perfect anatomy, correct proportions, "
+                "beautiful detailed face, beautiful detailed eyes"
+            )
+        else:
+            # 基础Live2D优化词
+            live2d_keywords = (
+                "anime style, illustration, clean lineart, "
+                "white background, simple background, "
+                "front view, standing, perfect anatomy, "
+                "beautiful detailed face, beautiful detailed eyes"
+            )
 
         # 组合提示词
         enhanced = f"{quality_prefix}{prompt}, {live2d_keywords}"
