@@ -1720,7 +1720,7 @@ def main():
         pass
 
     parser = argparse.ArgumentParser(
-        description="Live2D Master Agent - 本地图像生成器 v6.0 (集成分层工具)",
+        description="Live2D Master Agent - 图像生成器 v6.1 (集成GitHub开源分层工具)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -1735,6 +1735,9 @@ def main():
 
   # 使用商汤SenseNova生成并自动分层
   python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "蓝发猫耳少女"
+
+  # 使用GitHub开源分层工具
+  python local_image_generator.py --live2d-rig --auto-layer --layer-tool github "蓝发猫耳少女"
 
   # 批量生成选最优
   python local_image_generator.py --batch 5 "beautiful character"
@@ -1836,8 +1839,8 @@ def main():
         "--layer-tool",
         type=str,
         default="pro",
-        choices=["pro", "v6"],
-        help="分层工具选择 (pro=专业版按部位分层, v6=K-means颜色聚类分层，默认pro)",
+        choices=["pro", "v6", "github"],
+        help="分层工具选择 (pro=专业版按部位分层, v6=K-means颜色聚类分层, github=GitHub开源工具，默认pro)",
     )
     parser.add_argument(
         "--layer-k",
@@ -2092,6 +2095,30 @@ def main():
 
             except Exception as e:
                 print(f"❌ 基础版分层失败: {e}")
+
+        # 尝试GitHub开源分层工具
+        if layer_tool == "github" or (layer_tool in ["pro", "v6"] and not 'layer_output' in locals()):
+            try:
+                from github_layer_integration import GitHubLayerIntegration
+                print("\n🎨 使用 GitHub 开源分层工具进行智能分层...")
+                integration = GitHubLayerIntegration(output_dir=args.output or "./outputs")
+
+                # 显示可用工具
+                available = integration.get_available_tools()
+                if available:
+                    print(f"   可用工具: {', '.join(available)}")
+
+                result = integration.process_image(output_path, auto_select=True)
+
+                if result:
+                    print(f"\n✅ GitHub分层完成！")
+                    print(f"📁 输出目录: {result}")
+                else:
+                    print("❌ GitHub分层失败")
+
+            except Exception as e:
+                print(f"❌ GitHub分层工具失败: {e}")
+                print("💡 尝试安装: python github_layer_integration.py --install anime_segmentation")
 
 
 class SenseNovaProvider:
