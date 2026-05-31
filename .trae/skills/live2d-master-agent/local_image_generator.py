@@ -1706,12 +1706,21 @@ def main():
         pass
 
     parser = argparse.ArgumentParser(
-        description="Live2D Master Agent - 本地图像生成器 v5.0",
+        description="Live2D Master Agent - 本地图像生成器 v6.0 (集成分层工具)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
   # 基础生成
   python local_image_generator.py "cute anime girl"
+
+  # Live2D分层专用生成（全身照+部件分离）
+  python local_image_generator.py --live2d-rig "蓝发猫耳少女"
+
+  # 生成后自动分层（一键生成→分层）
+  python local_image_generator.py --live2d-rig --auto-layer "蓝发猫耳少女"
+
+  # 使用商汤SenseNova生成并自动分层
+  python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "蓝发猫耳少女"
 
   # 批量生成选最优
   python local_image_generator.py --batch 5 "beautiful character"
@@ -1803,6 +1812,30 @@ def main():
         "--live2d-rig",
         action="store_true",
         help="启用 Live2D 分层专用模式（全身照+部件分离+遮挡补全）",
+    )
+    parser.add_argument(
+        "--auto-layer",
+        action="store_true",
+        help="生成后自动进行Live2D分层（需要安装分层工具依赖）",
+    )
+    parser.add_argument(
+        "--layer-tool",
+        type=str,
+        default="pro",
+        choices=["pro", "v6"],
+        help="分层工具选择 (pro=专业版按部位分层, v6=K-means颜色聚类分层，默认pro)",
+    )
+    parser.add_argument(
+        "--layer-k",
+        type=int,
+        default=8,
+        help="K-means聚类数量（仅v6模式有效，默认8）",
+    )
+    parser.add_argument(
+        "--layer-threshold",
+        type=float,
+        default=0.8,
+        help="分层透明度阈值（仅v6模式有效，默认0.8）",
     )
 
     args = parser.parse_args()
@@ -1982,6 +2015,69 @@ def main():
 
     print(f"\n🎉 生成成功！")
     print(f"📁 文件: {output_path}")
+
+    # ====== 自动分层处理 ======
+    if args.auto_layer:
+        print("\n" + "="*60)
+        print("🔧 自动分层模式")
+        print("="*60)
+
+        # 先进行Live2D兼容性检查
+        try:
+            from live2d_image_processor import check_live2d_compatibility
+            compat_result = check_live2d_compatibility(output_path)
+            print(f"\n📊 Live2D兼容性评分: {compat_result.get('score', 'N/A')}")
+            for issue in compat_result.get('issues', []):
+                print(f"   {issue}")
+        except Exception as e:
+            print(f"⚠️ 兼容性检查跳过: {e}")
+
+        # 选择分层工具
+        layer_tool = args.layer_tool
+
+        if layer_tool == "pro":
+            # 使用专业版分层工具
+            try:
+                from live2d_layer_pro import Live2DLayerToolPro
+                print("\n🎨 使用 Live2D Layer Tool Pro 进行智能分层...")
+                tool = Live2DLayerToolPro()
+                result = tool.process_image(output_path)
+
+                if result:
+                    print(f"\n✅ 分层完成！")
+                    print(f"📁 输出目录: {result['output_dir']}")
+                    print(f"📦 图层数量: {len(result['layers'])}")
+                    if result.get('psd'):
+                        print(f"📄 PSD文件: {result['psd']}")
+                    print(f"📖 分层指南: {result['guide']}")
+                else:
+                    print("❌ 分层失败")
+
+            except Exception as e:
+                print(f"❌ 专业版分层失败: {e}")
+                print("💡 尝试使用基础版分层...")
+                layer_tool = "v6"
+
+        if layer_tool == "v6":
+            # 使用v6版分层工具
+            try:
+                from live2d_layer_v6 import Live2DLayerToolV6
+                print("\n🎨 使用 Live2D Layer Tool v6 进行颜色聚类分层...")
+                tool = Live2DLayerToolV6(
+                    output_path,
+                    k_clusters=args.layer_k,
+                    threshold=args.layer_threshold
+                )
+                layer_output = tool.process()
+
+                if layer_output:
+                    print(f"\n✅ 分层完成！")
+                    print(f"📁 输出目录: {layer_output}")
+                else:
+                    print("❌ 分层失败")
+
+            except Exception as e:
+                print(f"❌ 基础版分层失败: {e}")
 
 
 class SenseNovaProvider:
