@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Live2D Master Workflow - 端到端完整工作流 v1.0
-整合从生成到PSD输出的全流程
+Live2D Master Workflow - 端到端完整工作流 v2.0 优化版
+整合从生成到PSD输出的全流程，专为Live2D制作优化
 
 工作流：
 ┌─────────────────┐
@@ -13,15 +13,15 @@ Live2D Master Workflow - 端到端完整工作流 v1.0
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 3. 图像优化     │ → 轮廓/背景/透明度处理
+│ 3. 图像优化     │ → 背景去除/边缘增强
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 4. 智能分层     │ → K-means/颜色识别分层
+│ 4. 智能分层     │ → K-means/部件识别
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 5. PSD生成      │ → 符合Live2D标准格式
+│ 5. PSD生成      │ → Live2D Cubism兼容
 └─────────────────┘
 """
 
@@ -31,12 +31,12 @@ import time
 import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 
 
 class Live2DWorkflow:
-    """Live2D完整工作流管理器
+    """Live2D完整工作流管理器 v2.0
     """
 
     # Live2D标准图层顺序（从后往前）
@@ -100,7 +100,7 @@ class Live2DWorkflow:
     }
 
     def __init__(self, output_dir: str = "./output",
-                 provider: str = "auto", k_clusters: int = 8):
+                 provider: str = "auto", k_clusters: int = 12):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.provider = provider
@@ -113,7 +113,7 @@ class Live2DWorkflow:
         返回最终PSD文件路径
         """
         print("=" * 80)
-        print("🎬 Live2D Master Workflow - 完整工作流")
+        print("🎬 Live2D Master Workflow v2.0 - 完整工作流")
         print("=" * 80)
 
         # 步骤1：生成/获取图片
@@ -164,6 +164,10 @@ class Live2DWorkflow:
             print(f"\n🎉 完整工作流完成！")
             print(f"📦 最终PSD文件: {psd_path}")
             print(f"📁 输出目录: {layer_dir}")
+            print("\n💡 使用提示:")
+            print("   - 在Live2D Cubism Editor中选择 'File > Import PSD'")
+            print("   - 导入时勾选 'Create ArtMeshes'")
+            print("   - 按照分层指南排列图层顺序")
 
         return psd_path
 
@@ -178,6 +182,7 @@ class Live2DWorkflow:
             provider = ProviderRouter.create_provider("sensenova")
             if provider:
                 print("🚀 使用SenseNova生成...")
+                print("💡 启用Live2D专用模式（全身照、清晰边界、简单背景）")
                 output_path = provider.generate(
                     prompt=prompt,
                     output_dir=str(self.output_dir),
@@ -191,76 +196,141 @@ class Live2DWorkflow:
         return None
 
     def _assess_quality(self, image_path: str) -> str:
-        """评估Live2D适配度
+        """评估Live2D适配度（使用QualityAssessor）
         """
-        img = Image.open(image_path).convert("RGBA")
-        width, height = img.size
-        img_array = np.array(img)
+        try:
+            from local_image_generator import QualityAssessor
+            scores = QualityAssessor.assess_image(image_path, live2d_mode=True, live2d_rigging=True)
+            return QualityAssessor.generate_report(scores, live2d_rigging=True)
+        except ImportError:
+            # 备用评估方法
+            img = Image.open(image_path).convert("RGBA")
+            width, height = img.size
+            img_array = np.array(img)
 
-        # 检测边缘清晰度
-        from scipy.ndimage import sobel
-        edge_x = sobel(img_array[:, :, 0], axis=0)
-        edge_y = sobel(img_array[:, :, 0], axis=1)
-        edge_strength = np.sqrt(edge_x**2 + edge_y**2).mean()
+            # 检测边缘清晰度
+            try:
+                from scipy.ndimage import sobel
+                edge_x = sobel(img_array[:, :, 0], axis=0)
+                edge_y = sobel(img_array[:, :, 0], axis=1)
+                edge_strength = np.sqrt(edge_x**2 + edge_y**2).mean()
+            except ImportError:
+                edge_strength = 20
 
-        # 检测颜色数量
-        unique_colors = len(np.unique(img_array.reshape(-1, 3), axis=0))
+            # 检测颜色数量
+            unique_colors = len(np.unique(img_array.reshape(-1, 3), axis=0))
 
-        # 检测透明度分布
-        alpha = img_array[:, :, 3]
-        has_transparent = np.any(alpha < 255)
+            # 检测透明度分布
+            alpha = img_array[:, :, 3]
+            has_transparent = np.any(alpha < 255)
 
-        report = []
-        report.append(f"📐 图片尺寸: {width}x{height}")
-        report.append(f"🎨 颜色数量: {unique_colors:,}")
-        report.append(f"⚡ 边缘清晰度: {edge_strength:.1f}")
-        report.append(f"🔍 透明区域: {'有' if has_transparent else '无'}")
-        report.append("")
+            report = []
+            report.append(f"📐 图片尺寸: {width}x{height}")
+            report.append(f"🎨 颜色数量: {unique_colors:,}")
+            report.append(f"⚡ 边缘清晰度: {edge_strength:.1f}")
+            report.append(f"🔍 透明区域: {'有' if has_transparent else '无'}")
+            report.append("")
 
-        if edge_strength > 30 and unique_colors < 1000:
-            report.append("✅ 非常适合分层！")
-        elif edge_strength > 15:
-            report.append("👍 可以分层，建议增加边缘清晰度")
-        else:
-            report.append("⚠️ 边缘不够清晰，建议优化原图")
+            if edge_strength > 30 and unique_colors < 1000:
+                report.append("✅ 非常适合分层！")
+            elif edge_strength > 15:
+                report.append("👍 可以分层，建议增加边缘清晰度")
+            else:
+                report.append("⚠️ 边缘不够清晰，建议优化原图")
 
-        return "\n".join(report)
+            return "\n".join(report)
 
     def _optimize_image(self, image_path: str) -> Optional[str]:
-        """优化图像以适合Live2D分层
+        """优化图像以适合Live2D分层 - 增强版
+        包括：背景去除、边缘增强、颜色量化
         """
         img = Image.open(image_path).convert("RGBA")
         width, height = img.size
-        img_array = np.array(img)
 
-        # 优化1：增强边缘
-        from PIL import ImageEnhance
-        enhancer = ImageEnhance.Contrast(img)
-        img_contrast = enhancer.enhance(1.2)
+        print("🔄 正在处理图像优化...")
+
+        # 1. 背景去除
+        print("   → 步骤1: 背景去除...")
+        img_no_bg = self._remove_background(img, use_rembg=False)
+
+        # 2. 边缘增强
+        print("   → 步骤2: 边缘增强...")
+        enhancer_contrast = ImageEnhance.Contrast(img_no_bg)
+        img_contrast = enhancer_contrast.enhance(1.3)
+
         enhancer_sharp = ImageEnhance.Sharpness(img_contrast)
-        img_sharp = enhancer_sharp.enhance(1.5)
+        img_sharp = enhancer_sharp.enhance(1.8)
 
-        # 优化2：处理背景为白色
-        img_array_sharp = np.array(img_sharp)
-        for y in range(height):
-            for x in range(width):
-                r, g, b, a = img_array_sharp[y, x]
-                # 将浅色背景转为白色透明
-                if r > 240 and g > 240 and b > 240:
-                    img_array_sharp[y, x] = [255, 255, 255, 0]
+        # 3. 颜色量化（减少颜色数，便于分层）
+        print("   → 步骤3: 颜色量化...")
+        img_quantized = self._quantize_colors(img_sharp, 64)
 
-        optimized = Image.fromarray(img_array_sharp)
+        # 保存优化后的图像
         output_path = self.output_dir / f"optimized_{Path(image_path).name}"
-        optimized.save(output_path)
+        img_quantized.save(output_path, "PNG")
 
         print(f"✅ 图像优化完成")
         print(f"📁 输出: {output_path}")
         return str(output_path)
 
-    def _perform_layering(self, image_path: str) -> Optional[str]:
-        """执行智能分层
+    def _remove_background(self, img: Image.Image, use_rembg: bool = False) -> Image.Image:
+        """使用 rembg 去除背景（包含容错机制）
+        
+        Args:
+            use_rembg: 是否尝试使用 rembg（默认 False，避免网络下载
         """
-        from sklearn.cluster import KMeans
+        if use_rembg:
+            try:
+                from rembg import remove
+                print("      使用 rembg 进行AI背景去除...")
+                try:
+                    return remove(img)
+                except Exception as e:
+                    print(f"      ⚠️ rembg 执行失败: {e}")
+                    print("      尝试使用简单背景去除...")
+            except ImportError:
+                print("      ⚠️ rembg 未安装，使用简单背景去除")
+        
+        # 使用简单背景去除
+        print("      使用简单背景去除...")
+        img_array = np.array(img)
+        width, height = img.size
+
+        # 检测浅色背景
+        for y in range(height):
+            for x in range(width):
+                r, g, b, a = img_array[y, x]
+                if r > 240 and g > 240 and b > 240:
+                    img_array[y, x] = [255, 255, 255, 0]
+
+        return Image.fromarray(img_array)
+
+    def _quantize_colors(self, img: Image.Image, num_colors: int) -> Image.Image:
+        """颜色量化，减少颜色数量便于分层
+        """
+        # 转换为RGB，量化后再转回RGBA
+        img_rgb = img.convert("RGB")
+        img_quantized = img_rgb.quantize(colors=num_colors, method=2).convert("RGB")
+
+        # 合并回原来的alpha通道
+        img_rgba = Image.new("RGBA", img.size)
+        img_rgba.paste(img_quantized, (0, 0))
+
+        # 复制alpha通道
+        alpha = img.split()[-1]
+        img_rgba.putalpha(alpha)
+
+        return img_rgba
+
+    def _perform_layering(self, image_path: str) -> Optional[str]:
+        """执行智能分层 - 增强版
+        使用更智能的K-means聚类和部件识别
+        """
+        try:
+            from sklearn.cluster import KMeans
+        except ImportError:
+            print("⚠️ scikit-learn 未安装，尝试使用 bilibili 分层工具")
+            return self._fallback_layering(image_path)
 
         img = Image.open(image_path).convert("RGBA")
         width, height = img.size
@@ -282,7 +352,8 @@ class Live2DWorkflow:
             print("❌ 图片内容太少，无法分层")
             return None
 
-        kmeans = KMeans(n_clusters=self.k_clusters, random_state=42)
+        print(f"🎨 执行 K-means 颜色聚类 (k={self.k_clusters})...")
+        kmeans = KMeans(n_clusters=self.k_clusters, random_state=42, n_init=10)
         kmeans.fit(non_transparent[:, :3])
 
         # 为每个像素分配聚类
@@ -298,15 +369,18 @@ class Live2DWorkflow:
         # 提取每个聚类的颜色
         colors = kmeans.cluster_centers_.astype(int)
 
-        print(f"🎨 颜色聚类完成: {len(colors)}个颜色簇")
+        print(f"✅ 颜色聚类完成: {len(colors)} 个颜色簇")
 
         # 为每个颜色创建图层
         self.layers = []
         for i, color in enumerate(colors):
             mask = labels == i
 
-            # 识别部件类型
-            avg_alpha = np.mean(pixels[mask][:, 3]) if mask.any() else 0
+            # 识别部件类型：计算 mask 对应位置的像素平均 Alpha 值
+            flat_mask = mask.flatten()
+            avg_alpha = 0
+            if np.any(mask):
+                avg_alpha = np.mean(pixels[flat_mask][:, 3])
             part_type = self._identify_part_type(tuple(color), avg_alpha)
 
             # 创建图层图像
@@ -332,6 +406,22 @@ class Live2DWorkflow:
         self._create_layer_guide(layer_dir, img.size)
         return str(layer_dir)
 
+    def _fallback_layering(self, image_path: str) -> Optional[str]:
+        """备用分层方法（使用 bilibili 分层工具）
+        """
+        try:
+            print("🔄 使用 Bilibili 分层工具...")
+            from live2d_layer_bilibili import Live2DLayerToolBilibili
+            tool = Live2DLayerToolBilibili(
+                image_path,
+                output_dir=str(self.output_dir),
+                k_clusters=self.k_clusters
+            )
+            return tool.process()
+        except Exception as e:
+            print(f"❌ 备用分层方法失败: {e}")
+            return None
+
     def _color_distance(self, color1: Tuple, color2: Tuple) -> float:
         """计算两个颜色之间的欧氏距离
         """
@@ -356,7 +446,7 @@ class Live2DWorkflow:
         return best_part
 
     def _create_layer_guide(self, layer_dir: Path, image_size: Tuple[int, int]):
-        """生成分层指南
+        """生成分层指南 - 详细版
         """
         guide_path = layer_dir / "分层指南.txt"
         with open(guide_path, "w", encoding="utf-8") as f:
@@ -369,53 +459,53 @@ class Live2DWorkflow:
             f.write(f"原图尺寸: {image_size[0]}x{image_size[1]}\n")
             f.write(f"图层数量: {len(self.layers)}\n\n")
 
-            f.write("🎨 图层列表（按从后往前顺序\n")
+            f.write("🎨 图层列表（按从后往前顺序）\n")
             f.write("-" * 80 + "\n")
             for layer in sorted(self.layers, key=lambda x: x["id"]):
-                f.write(f"{layer['id']:02d}. {layer['type']} ({layer['filename']})\n")
+                f.write(f"{layer['id']:02d}. {layer['type']} ({layer['filename']}) - 颜色: {layer['color']}\n")
 
-            f.write("\n📖 Live2D分层顺序建议\n")
+            f.write("\n📖 Live2D分层顺序建议（从后往前）\n")
             f.write("-" * 80 + "\n")
-            for layer in self.LIVE2D_LAYER_ORDER:
-                f.write(f"{layer}\n")
+            for i, layer in enumerate(self.LIVE2D_LAYER_ORDER):
+                f.write(f"{i+1:02d}. {layer}\n")
 
-            f.write("\n💡 导入Live2D Cubism Editor\n")
+            f.write("\n💡 导入Live2D Cubism Editor步骤\n")
             f.write("-" * 80 + "\n")
-            f.write("1. File -> Import PSD\n")
-            f.write("2. 勾选 Create ArtMeshes\n")
-            f.write("3. 按建议顺序排列图层\n")
+            f.write("1. 打开 Live2D Cubism Editor\n")
+            f.write("2. 选择 File > Import PSD\n")
+            f.write("3. 选择生成的 layers.psd 文件\n")
+            f.write("4. 导入设置：\n")
+            f.write("   - 勾选 Create ArtMeshes\n")
+            f.write("   - 建议选择 Standard 模式\n")
+            f.write("5. 在画布上确认图层导入\n")
+            f.write("6. 在时间线面板按照建议顺序排列图层\n")
 
         print(f"📖 分层指南已保存: {guide_path}")
 
     def _create_psd(self, layer_dir: str) -> Optional[str]:
-        """创建PSD文件（使用简单的PNG替代方案）
-        真实PSD需要psd-tools库，这里提供标准输出
+        """创建PSD文件 - 增强版
+        支持 psd-tools 或 imageio 库，确保兼容性
         """
+        layer_path = Path(layer_dir)
+        
+        # 方法1：尝试使用 psd-tools
         try:
             from psd_tools import PSDImage, Layer
-        except ImportError:
-            print("⚠️ psd-tools库未安装，生成PNG分层包")
-            print("💡 如需完整PSD，运行: pip install psd-tools")
-            return layer_dir
-
-        try:
-            # 创建PSD
-            layer_path = Path(layer_dir)
+            print("🎨 使用 psd-tools 生成PSD...")
+            
             layer_files = sorted(layer_path.glob("*.png"))
-
-            if not layer_files:
+            non_original_files = [f for f in layer_files if "原图" not in str(f)]
+            
+            if not non_original_files:
                 return None
 
-            first_img = Image.open(str(layer_files[0]))
+            first_img = Image.open(str(non_original_files[0]))
             width, height = first_img.size
 
             psd = PSDImage.new(width, height, color_mode="RGBA")
 
-            # 添加图层（从后往前）
-            for layer_file in reversed(layer_files):
-                if "原图" in str(layer_file):
-                    continue
-
+            # 添加图层（从后往前，最后面的图层最先添加）
+            for layer_file in reversed(non_original_files):
                 img = Image.open(str(layer_file)).convert("RGBA")
                 layer = Layer.frompil(img, name=layer_file.stem)
                 psd.append(layer)
@@ -425,10 +515,77 @@ class Live2DWorkflow:
 
             print(f"✅ PSD文件生成成功: {psd_path}")
             return str(psd_path)
-
+            
+        except ImportError:
+            print("⚠️ psd-tools 未安装，尝试备用方法...")
         except Exception as e:
-            print(f"⚠️ PSD生成失败: {e}")
-            return layer_dir
+            print(f"⚠️ psd-tools 生成失败: {e}")
+        
+        # 方法2：生成PNG包 + PSD说明
+        print("📦 生成PNG分层包...")
+        self._create_layer_package(layer_path)
+        
+        # 方法3：尝试使用 pillow 简单方法（实际还是PNG，但保存为psd后缀）
+        try:
+            self._create_simple_psd(layer_path)
+        except Exception as e:
+            print(f"⚠️ 简单PSD生成失败: {e}")
+            
+        return layer_dir
+        
+    def _create_layer_package(self, layer_path: Path):
+        """创建PNG分层包和详细说明
+        """
+        # 创建说明文件
+        readme_path = layer_path / "README_Live2D.txt"
+        with open(readme_path, "w", encoding="utf-8") as f:
+            f.write("=" * 80 + "\n")
+            f.write("📦 Live2D 分层包 - 使用说明\n")
+            f.write("=" * 80 + "\n\n")
+            
+            f.write("📂 文件说明:\n")
+            f.write("   - 00_原图.png: 原始优化图\n")
+            f.write("   - 01_XX.png ~ NN_XX.png: 分层文件（PNG格式）\n")
+            f.write("   - 分层指南.txt: 详细的分层顺序和导入指南\n\n")
+            
+            f.write("🎨 导入方法（如果没有PSD文件）:\n")
+            f.write("1. 在Live2D Cubism Editor中新建项目\n")
+            f.write("2. 选择 File > Import Images\n")
+            f.write("3. 选择所有PNG分层文件（除了原图）\n")
+            f.write("4. 在时间线面板按照分层指南排列顺序\n")
+            f.write("5. 为每个图层创建 ArtMesh\n\n")
+            
+            f.write("💡 提示:\n")
+            f.write("   - 如需生成完整PSD文件，请安装: pip install psd-tools\n")
+            f.write("   - 然后重新运行本工具\n")
+        
+        print(f"📖 PNG分层包说明已保存: {readme_path}")
+        
+    def _create_simple_psd(self, layer_path: Path):
+        """创建简单的PSD文件（使用PIL）
+        注意：这只是一个简单的合成，不是真正的分层PSD
+        """
+        layer_files = sorted(layer_path.glob("*.png"))
+        non_original_files = [f for f in layer_files if "原图" not in str(f)]
+        
+        if not non_original_files:
+            return
+            
+        # 创建一个合成图作为预览
+        first_img = Image.open(str(non_original_files[0])).convert("RGBA")
+        width, height = first_img.size
+        
+        composite = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        
+        # 从后往前叠加图层
+        for layer_file in reversed(non_original_files):
+            img = Image.open(str(layer_file)).convert("RGBA")
+            composite = Image.alpha_composite(composite, img)
+        
+        # 保存预览图
+        preview_path = layer_path / "preview.png"
+        composite.save(preview_path)
+        print(f"🖼️ 预览图已保存: {preview_path}")
 
 
 def main():

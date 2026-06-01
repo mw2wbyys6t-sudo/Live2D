@@ -1753,10 +1753,21 @@ def main():
 
   # 查看推荐模型
   python local_image_generator.py --list-models
+  
+  # 使用完整工作流（生成→评估→优化→分层→PSD输出）
+  python local_image_generator.py --full-workflow "蓝发猫耳少女"
+  
+  # 使用现有图片运行完整工作流
+  python live2d_workflow.py --input character.png
 """,
     )
 
     parser.add_argument("prompt", nargs="?", help="生成提示词")
+    parser.add_argument(
+        "--full-workflow",
+        action="store_true",
+        help="使用完整Live2D工作流（生成→评估→优化→分层→PSD输出）",
+    )
     parser.add_argument(
         "--model",
         type=str,
@@ -1895,6 +1906,44 @@ def main():
             print(f"   步数: {info['steps']}")
             print(f"   引导: {info['guidance_scale']}")
             print(f"   描述: {info['desc']}")
+        return
+
+    # ====== 完整工作流模式 ======
+    if args.full_workflow:
+        print("\n" + "="*80)
+        print("🎬 Live2D Master Workflow - 完整工作流模式")
+        print("="*80)
+        
+        try:
+            from live2d_workflow import Live2DWorkflow
+            
+            workflow = Live2DWorkflow(
+                output_dir=args.output or "./outputs",
+                provider=args.provider,
+                k_clusters=args.layer_k or 12,
+            )
+            
+            result = workflow.run_full_workflow(
+                prompt=args.prompt or "蓝发猫耳少女",
+                input_image=args.reference,
+            )
+            
+            if result:
+                print("\n🎉 完整工作流执行成功！")
+                if str(result).endswith('.psd'):
+                    print(f"📄 PSD文件: {result}")
+                else:
+                    print(f"📁 输出目录: {result}")
+            else:
+                print("\n❌ 工作流执行失败")
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f"❌ 完整工作流模式执行失败: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+        
         return
 
     if not args.prompt:
