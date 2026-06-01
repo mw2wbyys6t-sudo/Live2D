@@ -114,7 +114,8 @@ class Live2DLayerToolBilibili:
             for ref_color in color_list:
                 dist = self._color_distance(color, ref_color)
                 if dist < min_dist:
-                    min_dist = best_part = part
+                    min_dist = dist
+                    best_part = part
 
         return best_part
 
@@ -156,15 +157,15 @@ class Live2DLayerToolBilibili:
         kmeans.fit(non_transparent[:, :3])
 
         # 为每个像素分配聚类
-        labels = np.zeros((height, width)
-        for i, label in enumerate(pixels):
-            if pixels[i][3] < 50:
-                labels[h, w] = -1
-            else:
-                label = kmeans.predict([pixels[i][:3]])[0]
-                labels[h, w] = label
-            else:
-                labels[i] = -1
+        labels = np.zeros((height, width), dtype=int)
+        pixels_2d = img_array.reshape(height, width, 4)
+        for h in range(height):
+            for w in range(width):
+                if pixels_2d[h, w, 3] < 50:
+                    labels[h, w] = -1
+                else:
+                    label = kmeans.predict([pixels_2d[h, w, :3]])[0]
+                    labels[h, w] = label
 
         # 提取每个聚类的颜色
         colors = kmeans.cluster_centers_.astype(int)
