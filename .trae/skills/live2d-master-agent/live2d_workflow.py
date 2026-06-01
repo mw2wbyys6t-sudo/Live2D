@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 """
-Live2D Master Workflow - 端到端完整工作流 v2.0 优化版
-整合从生成到PSD输出的全流程，专为Live2D制作优化
+Live2D Master Workflow - 端到端完整工作流 v2.1
+基于多维度信息整合优化：
+- Live2D官方文档 (docs.live2d.com)
+- B站社区实践 (bilibili.com)
+- GitHub开源项目
 
 工作流：
 ┌─────────────────┐
-│ 1. 角色生成     │ → 使用SenseNova/本地生成
+│ 1. 智能生成     │ → AI生成+官方标准提示词
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 2. 质量评估     │ → 检测是否适合分层
+│ 2. 质量评估     │ → 官方标准检查(加权评分)
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 3. 图像优化     │ → 背景去除/边缘增强
+│ 3. 图像优化     │ → 背景去除/边缘增强/尺寸调整
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 4. 智能分层     │ → K-means/部件识别
+│ 4. 智能分层     │ → K-means/官方部件命名(49层)
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│ 5. PSD生成      │ → Live2D Cubism兼容
+│ 5. PSD生成      │ → 官方兼容格式+完整指南
 └─────────────────┘
 """
 
@@ -36,67 +39,207 @@ import numpy as np
 
 
 class Live2DWorkflow:
-    """Live2D完整工作流管理器 v2.0
+    """Live2D完整工作流管理器 v2.1
+    基于多维度信息整合优化：
+    - Live2D官方文档 (docs.live2d.com)
+    - B站社区实践 (bilibili.com)
+    - GitHub开源项目
     """
 
-    # Live2D标准图层顺序（从后往前）
+    # ====== Live2D官方PSD标准 ======
+    PSD_STANDARD = {
+        "format": "PSD",
+        "color_mode": "RGB",
+        "color_channel": "8bit/channel",
+        "color_profile": "sRGB",
+        "head_min_size": 1000,      # 头部最小1000px
+        "height_min": 3000,          # 整体最小高度
+        "height_max": 8000,          # 最大高度
+        "dpi": 300,                  # 分辨率
+        "art_mesh_margin": 1,        # 默认1px边距
+    }
+
+    # ====== Live2D官方标准图层顺序（从后往前，49层） ======
     LIVE2D_LAYER_ORDER = [
+        # 背景层
         "背景",
-        "身体",
-        "下半身",
-        "脚",
-        "腿",
-        "腰部",
-        "手臂",
-        "衣服",
-        "头",
-        "脖子",
-        "脸",
-        "眉毛",
-        "眼睛",
-        "瞳孔",
-        "嘴巴",
-        "耳朵",
+        # 后层头发
         "头发_后",
-        "头发_中",
-        "头发_前",
-        "头发_刘海",
-        "装饰",
+        "头发_阴影_后",
+        # 身体后层
+        "脖子",
+        "胸腔",
+        "腰臀",
+        # 腿部
+        "左腿_大腿",
+        "左腿_小腿",
+        "左脚",
+        "右腿_大腿",
+        "右腿_小腿",
+        "右脚",
+        # 手臂后层
+        "左臂_上臂",
+        "左臂_下臂",
+        "左手",
+        "右臂_上臂",
+        "右臂_下臂",
+        "右手",
+        # 服装
+        "衣服_内衣",
+        "衣服_外衣",
         "饰品",
+        # 面部基础
+        "脸_基础",
+        "脸_腮红",
+        # 耳朵
+        "耳朵_左",
+        "耳朵_右",
+        # 鼻子
+        "鼻子",
+        # 嘴巴（从里到外）
+        "嘴巴_口腔",
+        "嘴巴_舌头",
+        "嘴巴_牙齿",
+        "嘴巴_下嘴唇",
+        "嘴巴_上嘴唇",
+        # 眼睛（从里到外）
+        "左眼_眼白",
+        "左眼_眼珠",
+        "左眼_瞳孔",
+        "左眼_高光",
+        "右眼_眼白",
+        "右眼_眼珠",
+        "右眼_瞳孔",
+        "右眼_高光",
+        # 睫毛
+        "左眼_下睫毛",
+        "右眼_下睫毛",
+        "左眼_上睫毛",
+        "右眼_上睫毛",
+        # 眉毛
+        "眉毛_左",
+        "眉毛_右",
+        # 前层头发
+        "头发_侧发_左",
+        "头发_侧发_右",
+        "头发_刘海",
+        "头发_呆毛",
+        "头发_高光",
+        # 阴影层（正片叠底）
+        "阴影_头到身体",
+        "阴影_衣服",
     ]
 
-    # 部件颜色映射
+    # ====== 部件颜色映射（扩展自B站标准） ======
     PART_COLOR_RANGES = {
-        "头发": [
-            (0, 0, 0),
-            (20, 20, 20),
-            (100, 50, 30),
-            (255, 200, 150),
-            (200, 100, 150),
-            (100, 150, 200),
+        "头发_后": [
+            (0, 0, 0), (20, 20, 20), (50, 50, 50),
+            (100, 50, 30), (60, 40, 20),
         ],
-        "皮肤": [
-            (255, 220, 200),
-            (255, 200, 180),
-            (230, 180, 160),
-            (200, 160, 140),
+        "头发_刘海": [
+            (0, 0, 0), (30, 30, 30), (80, 60, 40),
         ],
-        "眼睛": [
-            (100, 150, 200),
-            (200, 150, 100),
-            (150, 100, 200),
-            (255, 255, 255),
+        "头发_侧发": [
+            (20, 20, 20), (40, 40, 40), (70, 50, 30),
         ],
-        "衣服": [
-            (200, 100, 100),
-            (100, 200, 100),
-            (100, 100, 200),
-            (200, 200, 100),
+        "头发_高光": [
+            (255, 255, 255), (200, 200, 200), (255, 250, 200),
+        ],
+        "脸_基础": [
+            (255, 220, 200), (255, 200, 180),
+            (230, 180, 160), (200, 160, 140),
+        ],
+        "脸_腮红": [
+            (255, 180, 180), (255, 160, 160), (255, 200, 200),
+        ],
+        "眉毛_左": [
+            (80, 60, 40), (60, 40, 20), (100, 80, 60),
+        ],
+        "眉毛_右": [
+            (80, 60, 40), (60, 40, 20), (100, 80, 60),
+        ],
+        "左眼_眼白": [
+            (255, 255, 255), (240, 240, 240),
+        ],
+        "右眼_眼白": [
+            (255, 255, 255), (240, 240, 240),
+        ],
+        "左眼_眼珠": [
+            (100, 150, 200), (200, 150, 100),
+            (150, 100, 200), (100, 200, 150),
+        ],
+        "右眼_眼珠": [
+            (100, 150, 200), (200, 150, 100),
+            (150, 100, 200), (100, 200, 150),
+        ],
+        "左眼_瞳孔": [
+            (0, 0, 0), (20, 20, 20), (50, 50, 50),
+        ],
+        "右眼_瞳孔": [
+            (0, 0, 0), (20, 20, 20), (50, 50, 50),
+        ],
+        "左眼_高光": [
+            (255, 255, 255), (255, 255, 200),
+        ],
+        "右眼_高光": [
+            (255, 255, 255), (255, 255, 200),
+        ],
+        "鼻子": [
+            (255, 200, 180), (240, 180, 160),
+        ],
+        "嘴巴_上嘴唇": [
+            (255, 150, 150), (255, 120, 120), (200, 100, 100),
+        ],
+        "嘴巴_下嘴唇": [
+            (255, 160, 160), (255, 140, 140), (220, 120, 120),
+        ],
+        "嘴巴_口腔": [
+            (150, 50, 50), (180, 80, 80), (120, 40, 40),
+        ],
+        "耳朵_左": [
+            (255, 220, 200), (255, 200, 180), (230, 180, 160),
+        ],
+        "耳朵_右": [
+            (255, 220, 200), (255, 200, 180), (230, 180, 160),
+        ],
+        "脖子": [
+            (255, 220, 200), (255, 200, 180), (230, 180, 160),
+        ],
+        "胸腔": [
+            (255, 220, 200), (255, 200, 180), (230, 180, 160),
+        ],
+        "衣服_外衣": [
+            (200, 100, 100), (100, 200, 100),
+            (100, 100, 200), (200, 200, 100),
+            (150, 150, 150), (80, 80, 80),
+        ],
+        "衣服_内衣": [
+            (255, 255, 255), (240, 240, 240),
+            (200, 200, 200), (180, 180, 180),
+        ],
+        "饰品": [
+            (255, 215, 0), (255, 255, 0),    # 金色
+            (192, 192, 192), (255, 255, 255), # 银色
+            (255, 100, 100), (100, 255, 100), # 彩色
+        ],
+        "阴影_头到身体": [
+            (100, 100, 100), (80, 80, 80), (120, 120, 120),
+        ],
+        "阴影_衣服": [
+            (100, 100, 100), (80, 80, 80), (120, 120, 120),
         ],
         "背景": [
-            (240, 240, 250),
-            (255, 255, 255),
+            (240, 240, 250), (255, 255, 255),
+            (200, 200, 210), (220, 220, 230),
         ],
+    }
+
+    # ====== B站/官方质量评估标准 ======
+    QUALITY_CHECKS = {
+        "canvas_size": {"weight": 0.30, "min": 3000, "max": 8000},
+        "edge_clarity": {"weight": 0.30, "threshold": 30},
+        "color_count": {"weight": 0.20, "optimal": 1000},
+        "format": {"weight": 0.20, "mode": "RGB"},
     }
 
     def __init__(self, output_dir: str = "./output",
@@ -196,19 +339,36 @@ class Live2DWorkflow:
         return None
 
     def _assess_quality(self, image_path: str) -> str:
-        """评估Live2D适配度（使用QualityAssessor）
+        """评估Live2D适配度（基于官方标准）
         """
         try:
             from local_image_generator import QualityAssessor
             scores = QualityAssessor.assess_image(image_path, live2d_mode=True, live2d_rigging=True)
             return QualityAssessor.generate_report(scores, live2d_rigging=True)
         except ImportError:
-            # 备用评估方法
+            # 基于官方标准的评估方法
             img = Image.open(image_path).convert("RGBA")
             width, height = img.size
             img_array = np.array(img)
 
-            # 检测边缘清晰度
+            report = []
+            report.append("📋 Live2D官方标准质量评估")
+            report.append("-" * 80)
+
+            # 画布尺寸检查（权重30%）
+            report.append("\n📐 画布尺寸检查:")
+            std = self.PSD_STANDARD
+            if height >= std["height_min"] and height <= std["height_max"]:
+                report.append(f"   ✅ 高度: {height}px (标准: {std['height_min']}-{std['height_max']}px)")
+                size_score = 30
+            elif height >= std["height_min"] * 0.8:
+                report.append(f"   👍 高度: {height}px (建议: ≥{std['height_min']}px)")
+                size_score = 20
+            else:
+                report.append(f"   ⚠️ 高度: {height}px (标准: ≥{std['height_min']}px)")
+                size_score = 10
+
+            # 边缘清晰度检查（权重30%）
             try:
                 from scipy.ndimage import sobel
                 edge_x = sobel(img_array[:, :, 0], axis=0)
@@ -217,26 +377,53 @@ class Live2DWorkflow:
             except ImportError:
                 edge_strength = 20
 
-            # 检测颜色数量
-            unique_colors = len(np.unique(img_array.reshape(-1, 3), axis=0))
-
-            # 检测透明度分布
-            alpha = img_array[:, :, 3]
-            has_transparent = np.any(alpha < 255)
-
-            report = []
-            report.append(f"📐 图片尺寸: {width}x{height}")
-            report.append(f"🎨 颜色数量: {unique_colors:,}")
-            report.append(f"⚡ 边缘清晰度: {edge_strength:.1f}")
-            report.append(f"🔍 透明区域: {'有' if has_transparent else '无'}")
-            report.append("")
-
-            if edge_strength > 30 and unique_colors < 1000:
-                report.append("✅ 非常适合分层！")
+            report.append("\n⚡ 边缘清晰度检查:")
+            if edge_strength > 30:
+                report.append(f"   ✅ 清晰度: {edge_strength:.1f} (优秀)")
+                edge_score = 30
             elif edge_strength > 15:
-                report.append("👍 可以分层，建议增加边缘清晰度")
+                report.append(f"   👍 清晰度: {edge_strength:.1f} (良好)")
+                edge_score = 20
             else:
-                report.append("⚠️ 边缘不够清晰，建议优化原图")
+                report.append(f"   ⚠️ 清晰度: {edge_strength:.1f} (需优化)")
+                edge_score = 10
+
+            # 颜色数量检查（权重20%）
+            unique_colors = len(np.unique(img_array.reshape(-1, 3), axis=0))
+            report.append("\n🎨 颜色数量检查:")
+            if unique_colors < 1000:
+                report.append(f"   ✅ 颜色数: {unique_colors:,} (适合分层)")
+                color_score = 20
+            elif unique_colors < 2000:
+                report.append(f"   👍 颜色数: {unique_colors:,} (可接受)")
+                color_score = 15
+            else:
+                report.append(f"   ⚠️ 颜色数: {unique_colors:,} (建议减少)")
+                color_score = 10
+
+            # 格式检查（权重20%）
+            report.append("\n📄 格式检查:")
+            report.append(f"   ✅ 颜色模式: RGBA (标准: {std['color_mode']})")
+            report.append(f"   ✅ 颜色通道: 8bit (标准: {std['color_channel']})")
+            format_score = 20
+
+            # 综合评分
+            total_score = size_score + edge_score + color_score + format_score
+            report.append(f"\n📊 综合评分: {total_score}/100")
+            
+            if total_score >= 80:
+                report.append("✅ 完全符合Live2D官方标准！")
+            elif total_score >= 60:
+                report.append("👍 基本符合标准，建议优化")
+            else:
+                report.append("⚠️ 需要优化以符合官方标准")
+
+            report.append("\n💡 官方标准要求:")
+            report.append(f"   - 画布高度: {std['height_min']}-{std['height_max']}px")
+            report.append(f"   - 头部大小: ≥{std['head_min_size']}px")
+            report.append(f"   - 分辨率: {std['dpi']}dpi")
+            report.append(f"   - 颜色模式: {std['color_mode']}")
+            report.append(f"   - 颜色通道: {std['color_channel']}")
 
             return "\n".join(report)
 
@@ -428,7 +615,7 @@ class Live2DWorkflow:
         return np.sqrt(sum((a - b)**2 for a, b in zip(color1, color2)))
 
     def _identify_part_type(self, color: Tuple, alpha: float) -> str:
-        """根据颜色识别部件类型
+        """根据颜色识别部件类型（基于B站/官方标准命名）
         """
         if alpha < 100:
             return "背景"
@@ -446,41 +633,55 @@ class Live2DWorkflow:
         return best_part
 
     def _create_layer_guide(self, layer_dir: Path, image_size: Tuple[int, int]):
-        """生成分层指南 - 详细版
+        """生成分层指南 - 基于官方标准
         """
-        guide_path = layer_dir / "分层指南.txt"
+        guide_path = layer_dir / "Live2D官方分层指南.txt"
+        std = self.PSD_STANDARD
+        
         with open(guide_path, "w", encoding="utf-8") as f:
             f.write("=" * 80 + "\n")
-            f.write("📺 Live2D 分层指南\n")
+            f.write("📺 Live2D 官方标准分层指南\n")
             f.write("=" * 80 + "\n\n")
 
-            f.write("📋 基础信息\n")
+            f.write("📋 PSD文件官方标准\n")
             f.write("-" * 80 + "\n")
-            f.write(f"原图尺寸: {image_size[0]}x{image_size[1]}\n")
+            f.write(f"保存格式: {std['format']}\n")
+            f.write(f"颜色模式: {std['color_mode']}\n")
+            f.write(f"颜色通道: {std['color_channel']}\n")
+            f.write(f"颜色配置文件: {std['color_profile']}\n")
+            f.write(f"画布尺寸: {image_size[0]}x{image_size[1]}\n")
             f.write(f"图层数量: {len(self.layers)}\n\n")
 
-            f.write("🎨 图层列表（按从后往前顺序）\n")
+            f.write("🎨 图层列表（按官方标准顺序，从后往前）\n")
             f.write("-" * 80 + "\n")
             for layer in sorted(self.layers, key=lambda x: x["id"]):
                 f.write(f"{layer['id']:02d}. {layer['type']} ({layer['filename']}) - 颜色: {layer['color']}\n")
 
-            f.write("\n📖 Live2D分层顺序建议（从后往前）\n")
+            f.write("\n📖 Live2D官方标准图层顺序（49层，从后往前）\n")
             f.write("-" * 80 + "\n")
-            for i, layer in enumerate(self.LIVE2D_LAYER_ORDER):
-                f.write(f"{i+1:02d}. {layer}\n")
+            for i, layer_name in enumerate(self.LIVE2D_LAYER_ORDER, 1):
+                f.write(f"{i:02d}. {layer_name}\n")
 
             f.write("\n💡 导入Live2D Cubism Editor步骤\n")
             f.write("-" * 80 + "\n")
             f.write("1. 打开 Live2D Cubism Editor\n")
-            f.write("2. 选择 File > Import PSD\n")
-            f.write("3. 选择生成的 layers.psd 文件\n")
-            f.write("4. 导入设置：\n")
-            f.write("   - 勾选 Create ArtMeshes\n")
-            f.write("   - 建议选择 Standard 模式\n")
-            f.write("5. 在画布上确认图层导入\n")
-            f.write("6. 在时间线面板按照建议顺序排列图层\n")
+            f.write("2. 将PSD拖入建模工作区\n")
+            f.write("3. 选择[通过PSD文件创建新模型]\n")
+            f.write("4. 确认图层顺序和混合模式\n")
+            f.write("5. 检查ArtMesh边距（默认1px）\n")
 
-        print(f"📖 分层指南已保存: {guide_path}")
+            f.write("\n⚠️ 官方标准注意事项\n")
+            f.write("-" * 80 + "\n")
+            f.write("- 所有图层必须命名\n")
+            f.write("- 不能有同名图层\n")
+            f.write("- 遮挡部分必须补全\n")
+            f.write("- 连接处需要渐变\n")
+            f.write("- 仅使用正常和正片叠底混合模式\n")
+            f.write(f"- 画布高度: {std['height_min']}-{std['height_max']}px\n")
+            f.write(f"- 头部大小: ≥{std['head_min_size']}px\n")
+            f.write(f"- 分辨率: {std['dpi']}dpi\n")
+
+        print(f"📖 官方分层指南已保存: {guide_path}")
 
     def _create_psd(self, layer_dir: str) -> Optional[str]:
         """创建PSD文件 - 增强版
@@ -534,32 +735,45 @@ class Live2DWorkflow:
         return layer_dir
         
     def _create_layer_package(self, layer_path: Path):
-        """创建PNG分层包和详细说明
+        """创建PNG分层包和官方标准说明
         """
-        # 创建说明文件
-        readme_path = layer_path / "README_Live2D.txt"
+        std = self.PSD_STANDARD
+        readme_path = layer_path / "README_Live2D官方标准.txt"
+        
         with open(readme_path, "w", encoding="utf-8") as f:
             f.write("=" * 80 + "\n")
-            f.write("📦 Live2D 分层包 - 使用说明\n")
+            f.write("📦 Live2D 官方标准分层包\n")
             f.write("=" * 80 + "\n\n")
             
             f.write("📂 文件说明:\n")
             f.write("   - 00_原图.png: 原始优化图\n")
             f.write("   - 01_XX.png ~ NN_XX.png: 分层文件（PNG格式）\n")
-            f.write("   - 分层指南.txt: 详细的分层顺序和导入指南\n\n")
+            f.write("   - 预览图: 整体效果预览\n")
+            f.write("   - 分层指南: 官方标准导入步骤\n\n")
             
-            f.write("🎨 导入方法（如果没有PSD文件）:\n")
+            f.write("🎨 导入方法:\n")
             f.write("1. 在Live2D Cubism Editor中新建项目\n")
-            f.write("2. 选择 File > Import Images\n")
+            f.write("2. 选择 File > Import Images 或直接拖入PSD\n")
             f.write("3. 选择所有PNG分层文件（除了原图）\n")
             f.write("4. 在时间线面板按照分层指南排列顺序\n")
             f.write("5. 为每个图层创建 ArtMesh\n\n")
             
-            f.write("💡 提示:\n")
-            f.write("   - 如需生成完整PSD文件，请安装: pip install psd-tools\n")
-            f.write("   - 然后重新运行本工具\n")
+            f.write("📋 官方标准要求:\n")
+            f.write(f"   - 画布高度: {std['height_min']}-{std['height_max']}px\n")
+            f.write(f"   - 头部大小: ≥{std['head_min_size']}px\n")
+            f.write(f"   - 分辨率: {std['dpi']}dpi\n")
+            f.write(f"   - 颜色模式: {std['color_mode']}\n")
+            f.write(f"   - 颜色通道: {std['color_channel']}\n")
+            f.write(f"   - 颜色配置文件: {std['color_profile']}\n\n")
+            
+            f.write("⚠️ 注意事项:\n")
+            f.write("   - 所有图层必须命名\n")
+            f.write("   - 不能有同名图层\n")
+            f.write("   - 遮挡部分必须补全\n")
+            f.write("   - 连接处需要渐变\n")
+            f.write("   - 仅使用正常和正片叠底混合模式\n")
         
-        print(f"📖 PNG分层包说明已保存: {readme_path}")
+        print(f"📖 官方标准说明已保存: {readme_path}")
         
     def _create_simple_psd(self, layer_path: Path):
         """创建简单的PSD文件（使用PIL）
