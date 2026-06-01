@@ -1,15 +1,38 @@
 # Live2D Master Agent - Python Requirements
+#
+# 注意：推荐使用 install.py 或 cloud_resource_manager.py 来安装依赖
+# 这样会自动使用国内镜像加速下载
+#
+# 快速安装:
+#   python install.py
+# 或
+#   python cloud_resource_manager.py quickstart
+#
 
-# 核心库
+# ====== 核心依赖 (必需) ======
 Pillow>=10.0.0
 numpy>=1.24.0
 requests>=2.31.0
 urllib3>=2.0.0
 
-# PSD处理
+# ====== 推荐依赖 (建议安装) ======
+# PSD 文件处理
 psd-tools>=1.9.0
 
-# 可选：图像处理增强
-# opencv-python>=4.8.0
-# torch>=2.0.0
+# 分层工具增强
+scipy>=1.10.0
+scikit-learn>=1.3.0
+
+# ====== 可选依赖 ======
+# AI 背景去除工具
+# rembg[cpu]>=2.0.0
+
+# 本地 Stable Diffusion 生成
+# diffusers>=0.20.0
 # transformers>=4.30.0
+# torch>=2.0.0
+# accelerate>=0.20.0
+
+# Hugging Face 模型下载
+# huggingface-hub>=0.17.0
+
