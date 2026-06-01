@@ -6,12 +6,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 
 	"live2d-api/config"
 	"live2d-api/handlers"
+	"live2d-api/services"
 )
 
 func main() {
@@ -37,6 +40,9 @@ func main() {
 		cfg.Server.Port = *port
 	}
 
+	// 设置最大并发数为 CPU 核心数的 2 倍
+	runtime.GOMAXPROCS(runtime.NumCPU() * 2)
+
 	// 确保输出目录存在
 	os.MkdirAll(cfg.Output.BaseDir, 0755)
 
@@ -46,81 +52,80 @@ func main() {
 	// 创建路由
 	r := gin.Default()
 
-	// 安全中间件：限制请求体大小，防止内存耗尽
+	// ========== 性能优化中间件 ==========
+
+	// Gzip 压缩中间件（提升响应速度）
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	// 请求体大小限制中间件
 	r.Use(func(c *gin.Context) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 10<<20) // 10MB
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.Server.MaxRequestBodySize)
 		c.Next()
 	})
 
-	// 安全中间件：添加安全响应头
+	// 请求超时中间件
+	r.Use(func(c *gin.Context) {
+		c.Request.Header.Set("Connection", "keep-alive")
+		c.Next()
+	})
+
+	// 安全响应头中间件
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Content-Security-Policy", "default-src 'self'")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		c.Next()
 	})
 
-	// CORS 中间件：默认拒绝跨域，如需跨域请配置允许的来源
+	// CORS 中间件
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 		if origin != "" {
 			// 生产环境中应使用白名单验证 origin
-			// 当前配置：仅允许同源请求（Origin 为空或等于当前 Host）
-			if origin == fmt.Sprintf("http://%s", cfg.Server.Host) ||
-				origin == fmt.Sprintf("https://%s", cfg.Server.Host) ||
-				cfg.Server.Host == "0.0.0.0" || cfg.Server.Host == "" {
+			allowedOrigins := cfg.Server.AllowedOrigins
+			if len(allowedOrigins) == 0 || contains(allowedOrigins, origin) {
 				c.Header("Access-Control-Allow-Origin", origin)
-				c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-				c.Header("Access-Control-Allow-Headers", "Content-Type")
+				c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+				c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+				c.Header("Access-Control-Allow-Credentials", "true")
 			}
 		}
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
 		c.Next()
 	})
 
-	// 创建处理器
-	h := handlers.NewHandler(cfg)
+	// ========== 创建服务和处理器 ==========
 
-	// 注册路由
+	// 创建图像生成服务（带缓存）
+	imageService := services.NewImageGenerator(cfg)
+	cacheService := services.NewRequestCache(cfg.Cache)
+	
+	// 创建处理器
+	h := handlers.NewHandler(cfg, imageService, cacheService)
+
+	// ========== 注册路由 ==========
 	setupRoutes(r, h)
 
-	// 启动服务器
+	// ========== 启动服务器 ==========
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 
-	fmt.Println("╔══════════════════════════════════════════════════════════════╗")
-	fmt.Println("║     🎨 Live2D Master Agent API v7.0 (Go Edition)            ║")
-	fmt.Println("║     自研本地生成器 + AI分层工具                               ║")
-	fmt.Println("╠══════════════════════════════════════════════════════════════╣")
-	fmt.Printf("║  服务地址: http://%s\n", addr)
-	fmt.Printf("║  输出目录: %s\n", cfg.Output.BaseDir)
-	fmt.Printf("║  Python:   %s\n", cfg.Python.PythonPath)
-	fmt.Println("╠══════════════════════════════════════════════════════════════╣")
-	fmt.Println("║  API 端点:                                                   ║")
-	fmt.Println("║    GET  /api/health      - 健康检查                         ║")
-	fmt.Println("║    GET  /api/status      - 系统状态                         ║")
-	fmt.Println("║    GET  /api/info        - API信息                          ║")
-	fmt.Println("║    GET  /api/models      - 可用模型列表                     ║")
-	fmt.Println("║    POST /api/generate    - 生成图片                         ║")
-	fmt.Println("║    POST /api/psd-plan    - PSD分层规划                      ║")
-	fmt.Println("║    POST /api/see-through - See-through工作流                ║")
-	fmt.Println("║    GET  /api/scripts     - Python脚本列表                   ║")
-	fmt.Println("║    GET  /output/:file    - 获取输出文件                     ║")
-	fmt.Println("╚══════════════════════════════════════════════════════════════╝")
-	fmt.Println()
+	printServerInfo(cfg, addr)
 
-	// 使用 http.Server 并配置超时，防止慢速攻击和资源耗尽
+	// 配置高性能 HTTP 服务器
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           r,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20, // 1MB
+		ReadHeaderTimeout: cfg.Server.ReadHeaderTimeout,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       cfg.Server.IdleTimeout,
+		MaxHeaderBytes:    cfg.Server.MaxHeaderBytes,
 	}
 
 	if err := server.ListenAndServe(); err != nil {
@@ -140,11 +145,49 @@ func setupRoutes(r *gin.Engine, h *handlers.Handler) {
 		api.POST("/psd-plan", h.CreatePSDPlan)
 		api.POST("/see-through", h.RunSeeThrough)
 		api.GET("/scripts", h.GetPythonScripts)
+		api.GET("/cache/stats", h.GetCacheStats)
+		api.POST("/cache/clear", h.ClearCache)
 	}
 
-	// 静态文件服务
+	// 静态文件服务（带缓存）
 	r.GET("/output/:filename", h.ServeOutput)
 
 	// 根路径
 	r.GET("/", h.GetAPIInfo)
+}
+
+func printServerInfo(cfg *config.Config, addr string) {
+	fmt.Println("\n" + "="*80)
+	fmt.Println("║     🎨 Live2D Master Agent API v7.1 (Go Edition)           ║")
+	fmt.Println("║     高性能优化版本 - 支持连接池、并发处理、请求缓存          ║")
+	fmt.Println("="*80)
+	fmt.Printf("║  服务地址: http://%s\n", addr)
+	fmt.Printf("║  输出目录: %s\n", cfg.Output.BaseDir)
+	fmt.Printf("║  Python:   %s\n", cfg.Python.PythonPath)
+	fmt.Printf("║  最大并发: %d\n", runtime.NumCPU()*2)
+	fmt.Printf("║  缓存大小: %dMB\n", cfg.Cache.MaxSizeMB)
+	fmt.Println("="*80)
+	fmt.Println("║  API 端点:                                                   ║")
+	fmt.Println("║    GET  /api/health      - 健康检查                         ║")
+	fmt.Println("║    GET  /api/status      - 系统状态                         ║")
+	fmt.Println("║    GET  /api/info        - API信息                          ║")
+	fmt.Println("║    GET  /api/models      - 可用模型列表                     ║")
+	fmt.Println("║    POST /api/generate    - 生成图片（支持缓存）              ║")
+	fmt.Println("║    POST /api/psd-plan    - PSD分层规划                      ║")
+	fmt.Println("║    POST /api/see-through - See-through工作流                ║")
+	fmt.Println("║    GET  /api/scripts     - Python脚本列表                   ║")
+	fmt.Println("║    GET  /api/cache/stats - 缓存统计                         ║")
+	fmt.Println("║    POST /api/cache/clear - 清除缓存                         ║")
+	fmt.Println("║    GET  /output/:file    - 获取输出文件                     ║")
+	fmt.Println("="*80)
+	fmt.Println()
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

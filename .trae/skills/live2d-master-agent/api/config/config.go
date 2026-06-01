@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Config struct {
@@ -12,11 +13,19 @@ type Config struct {
 	Python   PythonConfig   `json:"python"`
 	Output   OutputConfig   `json:"output"`
 	ComfyUI  ComfyUIConfig  `json:"comfyui"`
+	Cache    CacheConfig    `json:"cache"`
 }
 
 type ServerConfig struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host                string        `json:"host"`
+	Port                int           `json:"port"`
+	MaxRequestBodySize  int64         `json:"max_request_body_size"`
+	MaxHeaderBytes      int           `json:"max_header_bytes"`
+	ReadTimeout         time.Duration `json:"read_timeout"`
+	WriteTimeout        time.Duration `json:"write_timeout"`
+	ReadHeaderTimeout   time.Duration `json:"read_header_timeout"`
+	IdleTimeout         time.Duration `json:"idle_timeout"`
+	AllowedOrigins      []string      `json:"allowed_origins"`
 }
 
 type SDWebUIConfig struct {
@@ -40,13 +49,27 @@ type ComfyUIConfig struct {
 	Enabled      bool   `json:"enabled"`
 }
 
+type CacheConfig struct {
+	Enabled     int `json:"enabled"`
+	MaxEntries  int `json:"max_entries"`
+	MaxSizeMB   int `json:"max_size_mb"`
+	TTLSeconds  int `json:"ttl_seconds"`
+}
+
 func DefaultConfig() *Config {
 	baseDir, _ := filepath.Abs(filepath.Join(".."))
 	
 	return &Config{
 		Server: ServerConfig{
-			Host: "0.0.0.0",
-			Port: 8080,
+			Host:                "0.0.0.0",
+			Port:                8080,
+			MaxRequestBodySize:  10 * 1024 * 1024, // 10MB
+			MaxHeaderBytes:      1 * 1024 * 1024,  // 1MB
+			ReadTimeout:         30 * time.Second,
+			WriteTimeout:        30 * time.Second,
+			ReadHeaderTimeout:   5 * time.Second,
+			IdleTimeout:         120 * time.Second,
+			AllowedOrigins:      []string{},
 		},
 		SDWebUI: SDWebUIConfig{
 			BaseURL: "http://127.0.0.1:7860",
@@ -64,6 +87,12 @@ func DefaultConfig() *Config {
 		ComfyUI: ComfyUIConfig{
 			BaseDir: filepath.Join(baseDir, "comfyui"),
 			Enabled: false,
+		},
+		Cache: CacheConfig{
+			Enabled:    1,
+			MaxEntries: 100,
+			MaxSizeMB:  100,
+			TTLSeconds: 3600, // 1小时
 		},
 	}
 }
