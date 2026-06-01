@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 7.0
+version: 7.1
 creator: Live2D Community
-description: 专业的 Live2D 制作助手 v7.0，提供从概念到绑定的完整工作流。新增：商汤SenseNova云端生成、Live2D分层专用模式（全身照+部件分离+遮挡补全）、一键生成→自动分层、智能质量评估（7维度Live2D适配度）、多Provider路由、安全审计修复。
+description: 专业的 Live2D 制作助手 v7.1，提供从概念到绑定的完整工作流。新增：云端资源管理器、一键安装脚本、Go API服务性能优化（连接池/缓存/Gzip压缩）、安全修复模块、完整工作流工具（生成→评估→优化→分层→PSD）。
 ---
 
 # Role
@@ -95,6 +95,16 @@ master_tool.convert_to_psd(image_path)
 master_tool.run_ai_layer_tool(image_path)
 ```
 
+### 方案三：一键完整工作流
+
+```bash
+# 从提示词到PSD的完整流程
+python local_image_generator.py --full-workflow "蓝发猫耳少女"
+
+# 或者使用已有图片
+python live2d_workflow.py --input character.png --output my_project
+```
+
 ### 多样化特征系统（避免撞衫）
 
 每次生成自动随机选择特征组合：
@@ -119,13 +129,14 @@ master_tool.run_ai_layer_tool(image_path)
 | **质量评估** | 7维度Live2D适配度评估 |
 | **完全免费** | 无需付费，无限制使用 |
 | **无需注册** | 无需账号，无需API密钥 |
-| **开箱即用** | 无需安装任何依赖 |
+| **开箱即用** | 一键安装脚本，国内镜像加速 |
 | **高质量** | 支持动漫风格，适合Live2D |
 | **快速** | 平均30秒生成一张 |
 | **自动重试** | 网络不稳定时自动重试3次 |
 | **多服务降级** | 主服务失败时自动切换备用服务 |
 | **多样化生成** | 随机特征组合，避免撞衫 |
 | **随机种子** | 每次生成不同结果 |
+| **完整工作流** | 生成→评估→优化→分层→PSD一站式完成 |
 
 ### 支持的生成服务
 
@@ -203,7 +214,19 @@ symmetrical face, symmetrical eyes, centered composition
 
 ### 🎯 推荐使用方式
 
-**最简单** - 一键生成：
+**最简单 - 一键安装**:
+```bash
+# Windows
+install.bat
+
+# macOS/Linux
+./install.sh
+
+# 或 Python
+python install.py
+```
+
+**最简单 - 一键生成**:
 ```bash
 python master_tool.py "anime girl, pink hair"
 ```
@@ -221,6 +244,11 @@ python master_tool.py --skip-generate
 **专业版分层**：
 ```bash
 python live2d_layer_pro.py character.png
+```
+
+**完整工作流**：
+```bash
+python live2d_workflow.py --input character.png --output my_project
 ```
 
 **配置API（可选）**：
@@ -366,6 +394,51 @@ python live2d_layer_pro.py character.png
 5. 动画制作
 6. 导出优化
 
+## 🚀 云端资源管理器
+
+### 一键安装
+
+```bash
+# Windows
+install.bat
+
+# macOS/Linux
+./install.sh
+
+# Python
+python install.py
+```
+
+### 资源管理
+
+```bash
+# 查看所有资源
+python cloud_resource_manager.py list
+
+# 快速开始（最小安装）
+python cloud_resource_manager.py quickstart
+
+# 安装所有必需资源
+python cloud_resource_manager.py install --all
+```
+
+### Go API 服务（v7.1 性能优化）
+
+```bash
+cd api
+go mod tidy
+go run main.go
+```
+
+**新增特性**:
+- ✅ Gzip 压缩响应
+- ✅ 请求缓存（带 TTL 和大小限制）
+- ✅ 连接池优化
+- ✅ 并发处理（CPU核心数×2）
+- ✅ 超时配置
+- ✅ 安全响应头
+- ✅ CORS 白名单配置
+
 ## 🗂️ 工具文件清单
 
 ### 核心工具（推荐使用）
@@ -374,9 +447,22 @@ python live2d_layer_pro.py character.png
 |------|------|------|
 | **master_tool.py** | 一站式工具箱（集成多服务降级、多样化生成） | v8.0 |
 | **local_image_generator.py** | 本地/云端图像生成器（多Provider、分层专用模式） | v6.0 |
+| **live2d_workflow.py** | 完整工作流工具（生成→评估→优化→分层→PSD） | v2.1 |
 | **live2d_layer_pro.py** | 专业版AI智能分层工具 | v5.0 |
 | **live2d_layer_v6.py** | K-means聚类分层工具 | v6.0 |
+| **live2d_layer_bilibili.py** | B站优化版分层工具 | v1.0 |
+| **github_layer_integration.py** | GitHub开源工具集成 | v1.0 |
 | **config.py** | 配置管理（支持SenseNova API） | v2.0 |
+| **security_fixes.py** | 安全修复模块（路径验证/模型白名单/提示词清理） | v1.0 |
+| **cloud_resource_manager.py** | 云端资源管理器（国内镜像加速） | v1.0 |
+
+### 安装脚本
+
+| 文件 | 说明 |
+|------|------|
+| **install.py** | Python 一键安装脚本 |
+| **install.bat** | Windows 一键安装脚本 |
+| **install.sh** | macOS/Linux 一键安装脚本 |
 
 ### 辅助工具
 
@@ -396,7 +482,17 @@ python live2d_layer_pro.py character.png
 | **scripts/physics_helper.py** | 物理设置助手 |
 | **scripts/layer_checker.py** | 图层检查工具 |
 | **scripts/auto_naming.py** | 自动命名工具 |
-| **scripts/seedream_image_generate.py** | Seedream图像生成（需API） |
+
+### Go API 服务
+
+| 文件 | 说明 |
+|------|------|
+| **api/main.go** | API 主程序（v7.1） |
+| **api/handlers/handlers.go** | API 处理器 |
+| **api/services/cache.go** | 缓存服务 |
+| **api/services/image_generator.go** | 图像生成服务 |
+| **api/config/config.go** | 配置管理 |
+| **api/models/models.go** | 数据模型 |
 
 ### 文档
 
@@ -404,12 +500,31 @@ python live2d_layer_pro.py character.png
 |------|------|
 | **docs/RIGGING_GUIDE.md** | Rigging指南 |
 | **AI_LAYERING_GUIDE.md** | AI分层指南 |
+| **CLOUD_SETUP_GUIDE.md** | 云端资源管理指南 |
 | **CHANGELOG.md** | 版本更新记录 |
-| **security_best_practices_report.md** | 安全审计报告 |
+| **SECURITY_AUDIT_v6.md** | 安全审计报告（v7.1） |
+| **README.md** | 项目主文档 |
+| **QUICKSTART.md** | 快速开始指南 |
+| **USER_GUIDE.md** | 用户手册 |
+| **BEST_PRACTICES.md** | 最佳实践 |
+| **FAQ.md** | 常见问题解答 |
 
 ## 📝 使用示例
 
-### 示例1：一键生成角色（免费方案）
+### 示例1：一键安装（推荐）
+
+```bash
+# Windows
+install.bat
+
+# macOS/Linux
+./install.sh
+
+# 或 Python
+python install.py
+```
+
+### 示例2：一键生成角色（免费方案）
 
 ```bash
 # 生成角色立绘并转换为PSD
@@ -422,7 +537,7 @@ python master_tool.py "cute anime girl, pink hair, blue eyes"
 # ✅ AI智能分层完成
 ```
 
-### 示例2：Live2D分层专用生成（推荐）
+### 示例3：Live2D分层专用生成（推荐）
 
 ```bash
 # 使用商汤SenseNova生成Live2D分层专用图片
@@ -435,7 +550,7 @@ python local_image_generator.py --provider sensenova --live2d-rig "蓝发猫耳�
 # ✅ 部件边界清晰度: 100%
 ```
 
-### 示例3：一键生成+自动分层
+### 示例4：一键生成+自动分层
 
 ```bash
 # 生成后自动进行Live2D分层
@@ -448,7 +563,25 @@ python local_image_generator.py --provider sensenova --live2d-rig --auto-layer "
 # ✅ 输出PSD文件和分层指南
 ```
 
-### 示例4：生成多个多样化角色
+### 示例5：完整工作流
+
+```bash
+# 从提示词到PSD的完整流程
+python local_image_generator.py --full-workflow "蓝发猫耳少女"
+
+# 或使用已有图片
+python live2d_workflow.py --input character.png --output my_project
+
+# 输出:
+# ✅ 步骤1: 获取图片
+# ✅ 步骤2: 质量评估（7维度）
+# ✅ 步骤3: 图像优化（背景去除/边缘增强/颜色量化）
+# ✅ 步骤4: 智能分层（K-means聚类）
+# ✅ 步骤5: PSD生成
+# ✅ 输出: 分层包 + 预览图 + 官方指南
+```
+
+### 示例6：生成多个多样化角色
 
 ```bash
 # 生成5个不同的角色
@@ -458,26 +591,43 @@ python master_tool.py -n 5 "anime girl"
 # 每个角色具有不同的发型、发色、服装组合
 ```
 
-### 示例5：使用已有图片
+### 示例7：使用已有图片
 
 ```bash
 python master_tool.py --skip-generate
 ```
 
-### 示例6：专业版分层
+### 示例8：启动 Go API 服务
 
 ```bash
-python live2d_layer_pro.py character.png
-
-# 输出:
-# ✅ 生成25个标准图层
-# ✅ 眼部细分完成
-# ✅ 口型变化生成
+cd api
+go mod tidy
+go run main.go
 ```
+
+访问 http://localhost:8080 查看服务
 
 ## 📊 版本更新记录
 
-### v7.0 (最新) - 2026-05-30
+### v7.1 (2026-06-01) - 最新
+- ✅ 新增云端资源管理器（cloud_resource_manager.py）
+- ✅ 新增一键安装脚本（install.py/install.bat/install.sh）
+- ✅ 新增安全修复模块（security_fixes.py）
+- ✅ 新增完整工作流工具（live2d_workflow.py v2.1）
+- ✅ Go API 服务性能优化（v7.1）
+  - Gzip 压缩中间件
+  - 请求缓存服务（TTL/大小限制）
+  - 连接池优化
+  - 并发处理（CPU核心数×2）
+  - 超时配置
+  - 安全响应头
+  - CORS 白名单
+- ✅ 修复所有安全审计问题（7项）
+- ✅ 新增 SECURITY_AUDIT_v6.md
+- ✅ 新增 CLOUD_SETUP_GUIDE.md
+- ✅ 国内镜像自动加速（PyPI/GitHub/HuggingFace）
+
+### v7.0 (2026-05-30)
 - ✅ 新增商汤SenseNova云端生成Provider
 - ✅ 新增Live2D分层专用生成模式（--live2d-rig）
 - ✅ 新增一键生成→自动分层（--auto-layer）
@@ -506,13 +656,17 @@ python live2d_layer_pro.py character.png
 
 - ✅ API密钥通过环境变量管理
 - ✅ `.env` 文件已加入 `.gitignore`
-- ✅ 路径遍历防护（validate_image_path）
-- ✅ 命令注入过滤（shlex.quote）
-- ✅ 模型白名单验证
+- ✅ 路径遍历防护（validate_image_path/validate_path）
+- ✅ 命令注入过滤（shlex.quote/--分隔符）
+- ✅ 模型白名单验证（仅允许8个安全模型）
+- ✅ 提示词清理（移除危险字符）
+- ✅ 文件名清理（防止路径遍历）
 - ✅ 信息泄露修复（API Key掩码）
-- ✅ CORS安全配置
+- ✅ CORS安全配置（白名单支持）
+- ✅ 安全响应头（X-Frame-Options/X-XSS-Protection等）
 - ✅ 不存储任何用户数据
 - ✅ 本地处理，隐私保护
+- ✅ 完整安全审计报告（SECURITY_AUDIT_v6.md）
 
 ## 🤝 贡献
 
@@ -524,4 +678,4 @@ MIT License
 
 ---
 
-**Live2D Master Agent v7.0** - 让Live2D制作更简单！
+**Live2D Master Agent v7.1** - 让Live2D制作更简单！
