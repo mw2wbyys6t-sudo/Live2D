@@ -107,6 +107,26 @@ class CloudResourceManager:
             priority=1,
             install_script="pip install requests>=2.31.0",
         ),
+        "urllib3": Resource(
+            id="urllib3",
+            name="urllib3",
+            description="HTTP 请求库依赖",
+            resource_type=ResourceType.PYTHON_PACKAGE,
+            size_mb=3,
+            required=True,
+            priority=1,
+            install_script="pip install urllib3>=2.0.0",
+        ),
+        "opencv_python": Resource(
+            id="opencv_python",
+            name="OpenCV-Python",
+            description="计算机视觉库（用于边缘检测）",
+            resource_type=ResourceType.PYTHON_PACKAGE,
+            size_mb=70,
+            required=False,
+            priority=3,
+            install_script="pip install opencv-python>=4.8.0",
+        ),
         "psd_tools": Resource(
             id="psd_tools",
             name="PSD Tools",
@@ -146,6 +166,16 @@ class CloudResourceManager:
             required=False,
             priority=3,
             install_script="pip install rembg[cpu]>=2.0.0",
+        ),
+        "onnxruntime": Resource(
+            id="onnxruntime",
+            name="ONNX Runtime",
+            description="ONNX 运行时（rembg 依赖）",
+            resource_type=ResourceType.PYTHON_PACKAGE,
+            size_mb=100,
+            required=False,
+            priority=3,
+            install_script="pip install onnxruntime>=1.14.0",
         ),
         "diffusers": Resource(
             id="diffusers",
@@ -569,6 +599,71 @@ class CloudResourceManager:
         except KeyboardInterrupt:
             print("\n\n已取消")
 
+    def full_auto_install(self):
+        """完全自动化安装 - 一键到位，无需任何交互"""
+        print("\n" + "=" * 100)
+        print("🚀 Live2D Master Agent - 完全自动化安装")
+        print("=" * 100)
+        print("\n📦 正在安装完整功能包（推荐）...")
+        print("   这将包含：")
+        print("   - ✅ 基础依赖（Pillow, NumPy, Requests, urllib3）")
+        print("   - ✅ PSD 处理库")
+        print("   - ✅ 专业分层工具（scipy, scikit-learn, rembg）")
+        print("   - ✅ OpenCV 边缘检测库")
+        print("   - ✅ rembg 轻量AI模型（用于背景去除）")
+        print("\n⏳ 开始安装...\n")
+
+        # 安装所有核心和推荐的 Python 依赖
+        success = True
+
+        # 第一阶段：必需依赖
+        print("\n" + "-" * 50)
+        print("阶段 1/3: 安装基础依赖")
+        print("-" * 50)
+        for res_id in ["pillow", "numpy", "urllib3", "requests"]:
+            if not self.install_resource(self.RESOURCES[res_id]):
+                success = False
+
+        # 第二阶段：推荐增强功能
+        print("\n" + "-" * 50)
+        print("阶段 2/3: 安装推荐增强库")
+        print("-" * 50)
+        for res_id in ["psd_tools", "scipy", "scikit_learn", "onnxruntime", "rembg", "opencv_python"]:
+            self.install_resource(self.RESOURCES[res_id])  # 即使失败也继续
+
+        # 第三阶段：轻量模型
+        print("\n" + "-" * 50)
+        print("阶段 3/3: 下载轻量AI模型")
+        print("-" * 50)
+        self.install_resource(self.RESOURCES["rembg_u2netp"])  # 即使失败也继续
+
+        # 自动创建 .env 文件（如果不存在）
+        env_example = self.base_dir / ".env.example"
+        env_file = self.base_dir / ".env"
+        if env_example.exists() and not env_file.exists():
+            print("\n📝 自动创建配置文件...")
+            try:
+                import shutil
+                shutil.copy(env_example, env_file)
+                print(f"   ✓ 已创建 .env 文件")
+                print(f"   💡 请记得填入您的 API Key！")
+            except Exception as e:
+                print(f"   ⚠️  无法创建 .env 文件: {e}")
+
+        # 完成总结
+        print("\n" + "=" * 100)
+        print("✅ 安装完成！")
+        print("=" * 100)
+        print("\n🎉 您现在可以使用 Live2D Master Agent 的全部功能！")
+        print("\n📖 快速开始命令：")
+        print("   1. 查看帮助: python local_image_generator.py --help")
+        print("   2. 生成测试角色: python local_image_generator.py --live2d-rig 'blue hair girl'")
+        print("   3. 完整工作流测试: python live2d_workflow.py --help")
+        print("\n⚙️  API 配置（可选）:")
+        print("   编辑 .env 文件，填入商汤 SenseNova API Key 可获得更好的效果")
+        print("\n" + "=" * 100 + "\n")
+        return success
+
 
 def main():
     """主函数"""
@@ -610,6 +705,9 @@ def main():
     # quickstart 命令
     subparsers.add_parser("quickstart", help="快速开始 - 最小安装")
     
+    # full-auto 命令（推荐）
+    subparsers.add_parser("full-auto", help="完全自动化安装 - 一键到位，推荐！")
+    
     args = parser.parse_args()
     
     manager = CloudResourceManager()
@@ -618,6 +716,8 @@ def main():
         manager.print_resource_list()
     elif args.command == "quickstart":
         manager.quick_start()
+    elif args.command == "full-auto":
+        manager.full_auto_install()
     elif args.command == "install":
         if args.all:
             manager.install_all()

@@ -6,7 +6,7 @@
 # 快速安装:
 #   python install.py
 # 或
-#   python cloud_resource_manager.py quickstart
+#   python cloud_resource_manager.py full-auto
 #
 
 # ====== 核心依赖 (必需) ======
@@ -15,19 +15,23 @@ numpy>=1.24.0
 requests>=2.31.0
 urllib3>=2.0.0
 
-# ====== 推荐依赖 (建议安装) ======
+# ====== 推荐依赖 (强烈建议安装 - 用于完整功能) ======
 # PSD 文件处理
 psd-tools>=1.9.0
 
-# 分层工具增强
+# 质量评估和分层工具
 scipy>=1.10.0
 scikit-learn>=1.3.0
 
-# ====== 可选依赖 ======
 # AI 背景去除工具
-# rembg[cpu]>=2.0.0
+onnxruntime>=1.14.0
+rembg[cpu]>=2.0.0
 
-# 本地 Stable Diffusion 生成
+# 计算机视觉（边缘检测等）
+opencv-python>=4.8.0
+
+# ====== 可选依赖 ======
+# 本地 Stable Diffusion 生成（可选，需要大显存）
 # diffusers>=0.20.0
 # transformers>=4.30.0
 # torch>=2.0.0

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Live2D Master Agent - 一键安装脚本
-这个脚本会引导用户完成完整的安装过程
+这个脚本会自动完成所有前置依赖的安装，无需任何交互
 """
 
 import os
@@ -12,9 +12,9 @@ from pathlib import Path
 
 def print_banner():
     """打印横幅"""
-    print("\n" + "=" * 80)
-    print("🎨 Live2D Master Agent - 一键安装")
-    print("=" * 80 + "\n")
+    print("\n" + "=" * 100)
+    print("🎨 Live2D Master Agent - 一键自动安装")
+    print("=" * 100 + "\n")
 
 
 def check_python_version():
@@ -29,7 +29,7 @@ def check_python_version():
         print("   ❌ Python 版本过低，需要 3.8+")
         return False
     
-    print("   ✓ Python 版本符合要求")
+    print("   ✅ Python 版本符合要求")
     return True
 
 
@@ -56,35 +56,20 @@ def main():
         print(f"\n📝 切换到项目目录: {script_dir}")
         os.chdir(script_dir)
     
-    print("\n" + "=" * 80)
-    print("🚀 开始安装")
-    print("=" * 80)
-    
-    # 调用资源管理器的快速开始模式
+    # 调用资源管理器的完全自动安装模式（无需交互）
     try:
         from cloud_resource_manager import CloudResourceManager
         manager = CloudResourceManager()
-        manager.quick_start()
+        success = manager.full_auto_install()
+        return 0 if success else 1
     except KeyboardInterrupt:
         print("\n\n已取消安装")
         return 1
     except Exception as e:
         print(f"\n❌ 安装出错: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
-    
-    print("\n" + "=" * 80)
-    print("✨ 安装完成！")
-    print("=" * 80)
-    print("\n🎉 您现在可以开始使用 Live2D Master Agent 了！")
-    print("\n📖 快速开始:")
-    print("   python local_image_generator.py --help")
-    print("\n🧪 测试完整工作流:")
-    print("   python live2d_workflow.py --help")
-    print("\n💡 提示:")
-    print("   如果需要云端生成，请确保已在 .env 文件中配置 API Key")
-    print("\n")
-    
-    return 0
 
 
 if __name__ == "__main__":
