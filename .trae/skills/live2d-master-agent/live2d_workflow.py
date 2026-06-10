@@ -251,12 +251,18 @@ class Live2DWorkflow:
         self.layers: List[Dict] = []
 
     def run_full_workflow(self, prompt: str,
-                          input_image: Optional[str] = None) -> Optional[str]:
+                          input_image: Optional[str] = None,
+                          deploy_desktop: bool = False) -> Optional[str]:
         """运行完整工作流
         返回最终PSD文件路径
+        
+        Args:
+            prompt: 角色描述提示词
+            input_image: 现有图片路径（可选）
+            deploy_desktop: 是否部署为桌面桌宠
         """
         print("=" * 80)
-        print("🎬 Live2D Master Workflow v2.0 - 完整工作流")
+        print("🎬 Live2D Master Workflow v2.1 - 完整工作流")
         print("=" * 80)
 
         # 步骤1：生成/获取图片
@@ -303,16 +309,51 @@ class Live2DWorkflow:
         print("📦 步骤 5/5: 生成PSD文件")
         print("=" * 80)
         psd_path = self._create_psd(layer_dir)
+        
+        # 步骤6：桌面桌宠部署（可选）
+        pet_path = None
+        if deploy_desktop:
+            print("\n" + "=" * 80)
+            print("🐱 步骤 6/6: 桌面桌宠部署")
+            print("=" * 80)
+            pet_path = self._deploy_desktop_pet(layer_dir)
+
         if psd_path:
             print(f"\n🎉 完整工作流完成！")
             print(f"📦 最终PSD文件: {psd_path}")
             print(f"📁 输出目录: {layer_dir}")
+            if pet_path:
+                print(f"🐱 桌宠部署包: {pet_path}")
+                print(f"💡 运行桌宠: python {pet_path}/run_pet.py")
             print("\n💡 使用提示:")
             print("   - 在Live2D Cubism Editor中选择 'File > Import PSD'")
             print("   - 导入时勾选 'Create ArtMeshes'")
             print("   - 按照分层指南排列图层顺序")
 
         return psd_path
+
+    def _deploy_desktop_pet(self, layer_dir: str) -> Optional[str]:
+        """部署为桌面桌宠
+        将分层后的图片转换为可执行的桌面宠物
+        """
+        try:
+            from live2d_desktop_pet import DesktopPetAnimator
+            print(f"🚀 正在创建桌面桌宠...")
+            print(f"📁 来源: {layer_dir}")
+            
+            pet_output_dir = Path(layer_dir).parent / "desktop_pet"
+            animator = DesktopPetAnimator(layer_dir, str(pet_output_dir))
+            pet_path = animator.create_pet_package()
+            
+            print(f"✅ 桌面桌宠创建成功！")
+            return pet_path
+            
+        except ImportError:
+            print("❌ 无法导入桌面桌宠模块")
+            return None
+        except Exception as e:
+            print(f"❌ 桌面桌宠部署失败: {e}")
+            return None
 
     def _generate_character(self, prompt: str) -> Optional[str]:
         """生成角色图片（使用SenseNova）
@@ -804,7 +845,7 @@ class Live2DWorkflow:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Live2D Master Workflow - 端到端完整工作流 v1.0",
+        description="Live2D Master Workflow - 端到端完整工作流 v2.1",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -819,6 +860,12 @@ def main():
 
   # 指定输出目录
   python live2d_workflow.py "蓝发猫耳少女" --output my_output
+  
+  # 完整工作流 + 桌面桌宠部署
+  python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
+  
+  # 使用现有图片 + 桌面桌宠部署
+  python live2d_workflow.py --input character.png --deploy-desktop
 """,
     )
     parser.add_argument("prompt", nargs="?", default="蓝发猫耳少女", help="角色描述提示词")
@@ -826,6 +873,7 @@ def main():
     parser.add_argument("--k", type=int, default=8, help="颜色聚类数量（默认8）")
     parser.add_argument("--output", type=str, default="./output", help="输出目录")
     parser.add_argument("--provider", type=str, default="sensenova", help="生成Provider（sensenova/local）")
+    parser.add_argument("--deploy-desktop", action="store_true", help="部署为桌面桌宠")
 
     args = parser.parse_args()
 
@@ -838,6 +886,7 @@ def main():
     result = workflow.run_full_workflow(
         prompt=args.prompt,
         input_image=args.input,
+        deploy_desktop=args.deploy_desktop,
     )
 
     if not result:

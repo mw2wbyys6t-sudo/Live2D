@@ -30,6 +30,9 @@ rembg[cpu]>=2.0.0
 # 计算机视觉（边缘检测等）
 opencv-python>=4.8.0
 
+# 桌面桌宠功能（v7.1新功能）
+pygame>=2.5.0
+
 # ====== 可选依赖 ======
 # 本地 Stable Diffusion 生成（可选，需要大显存）
 # diffusers>=0.20.0

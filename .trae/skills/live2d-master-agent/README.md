@@ -5,8 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
-[![Version](https://img.shields.io/badge/version-v6.2-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--05--29-orange.svg)]()
+[![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--05--30-orange.svg)]()
 
 ---
 
@@ -15,6 +15,8 @@
 **3分钟创建专业Live2D角色！** 无需付费，一键生成，立即使用。
 
 集成 [See-through](https://github.com/shitagaki-lab/see-through) (SIGGRAPH 2026) 专业级AI分层工具，提供从图像生成到PSD分层的完整工作流。
+
+**🔥 v7.1 新增：桌面桌宠功能！** 无需Live2D软件，一键将角色部署为桌面宠物，支持动画、表情和交互！
 
 ---
 
@@ -53,6 +55,23 @@ python master_tool.py --see-through
 
 **就是这么快！** ⚡
 
+### 第五步：桌面桌宠（v7.1新功能）
+
+```bash
+# 一键创建桌面宠物
+python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
+
+# 运行桌宠
+cd output/desktop_pet
+python run_pet.py
+```
+
+**桌宠功能：**
+- ✅ 动画身体摆动
+- ✅ 表情切换（微笑、眨眼、害羞等）
+- ✅ 鼠标交互（点击、拖拽）
+- ✅ 自动移动
+
 ---
 
 ## 🎯 核心功能
@@ -84,6 +103,14 @@ python master_tool.py --see-through
 - 角色生成：2-3小时 → 30秒（**提升240倍+**）
 - PSD分层：1-2小时 → See-through 10秒（**提升360倍+**）
 - 总流程：4-5小时 → 3分钟（**提升100倍+**）
+
+### 🐱 桌面桌宠（v7.1新功能）
+- **无需Live2D软件**：脱离原生Live2D Cubism Editor，一键部署
+- **能动的Live2D形象**：身体摆动、眨眼、呼吸动画
+- **表情系统**：支持正常、开心、害羞、惊讶、困倦等表情
+- **交互响应**：点击互动、拖拽移动、悬停跟随
+- **一键部署**：自动生成桌宠运行包，双击即可运行
+- **跨平台支持**：支持Windows（批处理）和Mac/Linux
 
 ---
 
@@ -243,6 +270,25 @@ python live2d_layer_v6.py test_character.png test_output
 python config_api.py
 ```
 
+### 🐱 桌面桌宠使用
+
+```bash
+# 方式1：完整工作流 + 桌面部署
+python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
+
+# 方式2：使用现有图片创建桌宠
+python live2d_workflow.py --input character.png --deploy-desktop
+
+# 方式3：仅创建桌宠（从分层目录）
+python live2d_desktop_pet.py --layers-dir layers_12345 --output my_pet
+
+# 方式4：从PSD文件创建桌宠
+python live2d_desktop_pet.py --psd layers.psd --output my_pet
+
+# 运行桌宠
+python live2d_desktop_pet.py --run my_pet
+```
+
 ---
 
 ## 🛠️ 系统要求
@@ -343,5 +389,5 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v6.2（See-through集成+图片生成优化）*
-*最后更新: 2026-05-29*
+*版本: v7.1（桌面桌宠功能+See-through集成）*
+*最后更新: 2026-05-30*
