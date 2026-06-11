@@ -30,6 +30,14 @@ def validate_path(path: str, base_dir: Optional[str] = None) -> Tuple[bool, str]
         if char in path:
             return False, f"路径包含非法字符: {char}"
     
+    # 检查路径遍历攻击 (..)
+    if '..' in path:
+        return False, "路径包含非法的 '..' 遍历序列"
+    
+    # 检查绝对路径攻击
+    if path.startswith('/'):
+        return False, "不允许使用绝对路径"
+    
     # 检查路径前缀攻击
     if path.startswith('-'):
         return False, "路径不能以 '-' 开头"

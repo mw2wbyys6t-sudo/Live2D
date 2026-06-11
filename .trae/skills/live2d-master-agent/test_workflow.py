@@ -94,7 +94,7 @@ def test_security_functions() -> bool:
     
     TEST_RESULTS["total_tests"] += 1
     try:
-        from security_fixes import validate_path, sanitize_prompt, validate_file_upload
+        from security_fixes import validate_path, sanitize_prompt, validate_image_path
         
         # 测试路径验证
         ok, msg = validate_path("./test.png", "/workspace")
@@ -107,8 +107,8 @@ def test_security_functions() -> bool:
         clean = sanitize_prompt("test; rm -rf /")
         assert ";" not in clean, f"危险字符未被清理: {clean}"
         
-        # 测试文件上传验证
-        ok, msg = validate_file_upload("test.exe", 1024)
+        # 测试图像路径验证（替代 validate_file_upload）
+        ok, msg = validate_image_path("test.exe")
         assert ok == False, f"危险文件扩展名未被阻止"
         
         TEST_RESULTS["passed"] += 1

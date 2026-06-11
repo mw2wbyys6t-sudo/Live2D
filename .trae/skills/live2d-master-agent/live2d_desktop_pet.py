@@ -172,13 +172,13 @@ class DesktopPetAnimator:
                     "eye_blink": {"interval": 3000, "duration": 200},
                     "breath": {"amplitude": 2, "speed": 0.015},
                 },
-                "expressions": {
-                    "normal": {"mouth_open": False, "eye_squint": False},
-                    "happy": {"mouth_open": True, "eye_squint": False, "blush": True},
-                    "shy": {"mouth_open": False, "eye_squint": True, "blush": True},
-                    "surprised": {"mouth_open": True, "eye_squint": False, "eyebrow_raise": True},
-                    "sleepy": {"eye_squint": True, "mouth_open": True},
-                },
+            },
+            "expressions": {
+                "normal": {"mouth_open": False, "eye_squint": False},
+                "happy": {"mouth_open": True, "eye_squint": False, "blush": True},
+                "shy": {"mouth_open": False, "eye_squint": True, "blush": True},
+                "surprised": {"mouth_open": True, "eye_squint": False, "eyebrow_raise": True},
+                "sleepy": {"eye_squint": True, "mouth_open": True},
             },
             "interaction": {
                 "click_response": "happy",
