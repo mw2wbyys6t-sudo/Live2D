@@ -69,7 +69,7 @@ const RESOLUTION_MAP: Record<ResolutionPreset, { width: number; height: number }
   'portrait-2048x3072': { width: 2048, height: 3072 },
   'landscape-768x512': { width: 768, height: 512 },
   'landscape-1024x768': { width: 1024, height: 768 },
-  'landscape-1536x1026': { width: 1536, height: 1024 },
+  'landscape-1536x1024': { width: 1536, height: 1024 },
   'landscape-3072x2048': { width: 3072, height: 2048 },
 };
 
