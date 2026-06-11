@@ -1,0 +1,61 @@
+{
+  "start_time": "2026-06-11T06:43:42.629646",
+  "end_time": "2026-06-11T06:43:44.037160",
+  "total_tests": 18,
+  "passed": 18,
+  "failed": 0,
+  "skipped": 0,
+  "issues": [],
+  "modules_tested": [
+    {
+      "name": "live2d_workflow",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "live2d_desktop_pet",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "local_image_generator",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "master_tool",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "cloud_resource_manager",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "security_fixes",
+      "status": "passed",
+      "required": true
+    },
+    {
+      "name": "live2d_layer_v6",
+      "status": "passed",
+      "required": false
+    },
+    {
+      "name": "live2d_layer_pro",
+      "status": "passed",
+      "required": false
+    },
+    {
+      "name": "live2d_image_processor",
+      "status": "passed",
+      "required": false
+    },
+    {
+      "name": "live2d_layer_bilibili",
+      "status": "passed",
+      "required": false
+    }
+  ]
+}
