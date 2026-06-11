@@ -354,6 +354,212 @@ def test_master_tool() -> bool:
         return False
 
 
+def test_dependency_checker() -> bool:
+    """测试依赖检查器"""
+    log("\n" + "="*60)
+    log("测试依赖检查器")
+    log("="*60)
+    
+    TEST_RESULTS["total_tests"] += 1
+    try:
+        from dependency_checker import check_dependencies, ensure_dependencies, REQUIRED_MODULES
+        
+        # 测试检查依赖功能
+        results, missing = check_dependencies()
+        assert isinstance(results, dict), "check_dependencies 返回类型错误"
+        assert isinstance(missing, list), "check_dependencies 返回类型错误"
+        log(f"依赖检查完成，类别数: {len(results)}", "INFO")
+        
+        # 测试REQUIRED_MODULES结构
+        assert "core" in REQUIRED_MODULES, "缺少core类别"
+        assert "desktop_pet" in REQUIRED_MODULES, "缺少desktop_pet类别"
+        
+        # 测试ensure_dependencies功能
+        result = ensure_dependencies(["core"])
+        assert isinstance(result, bool), "ensure_dependencies 返回类型错误"
+        
+        TEST_RESULTS["passed"] += 1
+        log("依赖检查器测试通过", "PASS")
+        return True
+    except Exception as e:
+        TEST_RESULTS["failed"] += 1
+        log(f"依赖检查器测试失败: {e}", "FAIL")
+        traceback.print_exc()
+        return False
+
+
+def test_os_detection() -> bool:
+    """测试操作系统检测"""
+    log("\n" + "="*60)
+    log("测试操作系统检测")
+    log("="*60)
+    
+    TEST_RESULTS["total_tests"] += 1
+    try:
+        from cloud_resource_manager import CloudResourceManager, OSType
+        
+        # 测试detect_os方法
+        os_type = CloudResourceManager.detect_os()
+        assert os_type in [OSType.WINDOWS, OSType.MACOS, OSType.LINUX, OSType.UNKNOWN], "未知操作系统类型"
+        log(f"检测到操作系统: {os_type.value}", "INFO")
+        
+        # 测试get_os_name方法
+        os_name = CloudResourceManager.get_os_name(os_type)
+        assert isinstance(os_name, str), "get_os_name 返回类型错误"
+        assert len(os_name) > 0, "操作系统名称为空"
+        log(f"操作系统名称: {os_name}", "INFO")
+        
+        # 测试SYSTEM_DEPENDENCIES配置
+        assert OSType.LINUX in CloudResourceManager.SYSTEM_DEPENDENCIES, "缺少Linux系统依赖配置"
+        assert OSType.MACOS in CloudResourceManager.SYSTEM_DEPENDENCIES, "缺少macOS系统依赖配置"
+        assert OSType.WINDOWS in CloudResourceManager.SYSTEM_DEPENDENCIES, "缺少Windows系统依赖配置"
+        
+        TEST_RESULTS["passed"] += 1
+        log("操作系统检测测试通过", "PASS")
+        return True
+    except Exception as e:
+        TEST_RESULTS["failed"] += 1
+        log(f"操作系统检测测试失败: {e}", "FAIL")
+        traceback.print_exc()
+        return False
+
+
+def test_pet_animations() -> bool:
+    """测试桌宠动画功能"""
+    log("\n" + "="*60)
+    log("测试桌宠动画功能")
+    log("="*60)
+    
+    TEST_RESULTS["total_tests"] += 1
+    try:
+        from live2d_desktop_pet import DesktopPetAnimator
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layers_dir = Path(tmpdir) / "test_layers"
+            layers_dir.mkdir()
+            output_dir = Path(tmpdir) / "test_output"
+            
+            # 创建测试图层
+            from PIL import Image
+            for name in ["脸_基础", "头发_刘海", "左眼_眼珠", "右眼_眼珠", "嘴巴_上嘴唇"]:
+                img = Image.new('RGBA', (100, 100), (255, 200, 180, 255))
+                img.save(layers_dir / f"{name}.png")
+            
+            # 测试分类功能
+            animator = DesktopPetAnimator(str(layers_dir), str(output_dir))
+            classified = animator.classify_layers()
+            
+            # 验证分类结果
+            assert "face" in classified or len(classified) > 0, "图层分类失败"
+            log(f"分类组数: {len(classified)}", "INFO")
+            
+            # 测试渲染功能
+            state = {
+                "body_angle": 0,
+                "eye_blink": False,
+                "expression": "normal",
+            }
+            frame = animator.render_frame(classified, state)
+            assert frame is not None, "渲染失败"
+            assert frame.mode == "RGBA", "渲染图像模式错误"
+            
+            TEST_RESULTS["passed"] += 1
+            log("桌宠动画功能测试通过", "PASS")
+            return True
+    except Exception as e:
+        TEST_RESULTS["failed"] += 1
+        log(f"桌宠动画功能测试失败: {e}", "FAIL")
+        traceback.print_exc()
+        return False
+
+
+def test_edge_cases() -> bool:
+    """测试边缘情况"""
+    log("\n" + "="*60)
+    log("测试边缘情况")
+    log("="*60)
+    
+    TEST_RESULTS["total_tests"] += 1
+    try:
+        # 测试空图层目录
+        from live2d_desktop_pet import DesktopPetAnimator
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layers_dir = Path(tmpdir) / "empty_layers"
+            layers_dir.mkdir()
+            output_dir = Path(tmpdir) / "test_output"
+            
+            animator = DesktopPetAnimator(str(layers_dir), str(output_dir))
+            assert len(animator.layers) == 0, "空目录应该没有图层"
+            
+            # 测试空渲染
+            classified = animator.classify_layers()
+            state = {"body_angle": 0, "eye_blink": False, "expression": "normal"}
+            frame = animator.render_frame(classified, state)
+            assert frame is None, "空图层应该返回None"
+        
+        TEST_RESULTS["passed"] += 1
+        log("边缘情况测试通过", "PASS")
+        return True
+    except Exception as e:
+        TEST_RESULTS["failed"] += 1
+        log(f"边缘情况测试失败: {e}", "FAIL")
+        traceback.print_exc()
+        return False
+
+
+def test_config_validation() -> bool:
+    """测试配置验证"""
+    log("\n" + "="*60)
+    log("测试配置验证")
+    log("="*60)
+    
+    TEST_RESULTS["total_tests"] += 1
+    try:
+        import json
+        
+        # 测试动画配置生成
+        from live2d_desktop_pet import DesktopPetAnimator
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layers_dir = Path(tmpdir) / "test_layers"
+            layers_dir.mkdir()
+            output_dir = Path(tmpdir) / "test_output"
+            
+            from PIL import Image
+            img = Image.new('RGBA', (100, 100), (255, 200, 180, 255))
+            img.save(layers_dir / "test.png")
+            
+            animator = DesktopPetAnimator(str(layers_dir), str(output_dir))
+            config = animator.create_animation_config()
+            
+            # 验证配置结构
+            assert "version" in config, "缺少version字段"
+            assert "name" in config, "缺少name字段"
+            assert "animations" in config, "缺少animations字段"
+            assert "expressions" in config, "缺少expressions字段"
+            assert "interaction" in config, "缺少interaction字段"
+            
+            # 验证动画配置
+            assert "idle" in config["animations"], "缺少idle动画"
+            assert "body_swing" in config["animations"]["idle"], "缺少body_swing配置"
+            assert "eye_blink" in config["animations"]["idle"], "缺少eye_blink配置"
+            
+            # 验证表情配置
+            assert "normal" in config["expressions"], "缺少normal表情"
+            assert "happy" in config["expressions"], "缺少happy表情"
+            assert "shy" in config["expressions"], "缺少shy表情"
+        
+        TEST_RESULTS["passed"] += 1
+        log("配置验证测试通过", "PASS")
+        return True
+    except Exception as e:
+        TEST_RESULTS["failed"] += 1
+        log(f"配置验证测试失败: {e}", "FAIL")
+        traceback.print_exc()
+        return False
+
+
 def run_all_tests():
     """运行所有测试"""
     log("\n" + "="*70)
@@ -401,6 +607,15 @@ def run_all_tests():
     test_image_generator()
     test_cloud_resources()
     test_master_tool()
+    
+    # 3. 新增测试：依赖检查和系统检测
+    test_dependency_checker()
+    test_os_detection()
+    
+    # 4. 新增测试：动画功能和边缘情况
+    test_pet_animations()
+    test_edge_cases()
+    test_config_validation()
     
     # 结束测试
     TEST_RESULTS["end_time"] = datetime.now().isoformat()

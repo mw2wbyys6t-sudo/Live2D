@@ -71,8 +71,57 @@ class Resource:
     notes: str = ""
 
 
+class OSType(Enum):
+    """操作系统类型"""
+    WINDOWS = "windows"
+    MACOS = "macos"
+    LINUX = "linux"
+    UNKNOWN = "unknown"
+
+
 class CloudResourceManager:
     """云端资源管理器"""
+
+    # 系统依赖命令（按操作系统分类）
+    SYSTEM_DEPENDENCIES = {
+        OSType.LINUX: {
+            "description": "Linux 系统依赖",
+            "package_manager": "apt-get",
+            "install_command": "sudo apt-get update && sudo apt-get install -y",
+            "packages": [
+                "libsdl2-dev",
+                "libsdl2-image-dev",
+                "libsdl2-mixer-dev",
+                "libsdl2-ttf-dev",
+                "libjpeg-dev",
+                "zlib1g-dev",
+                "portaudio19-dev",
+                "python3-dev",
+                "python3-pip",
+            ],
+        },
+        OSType.MACOS: {
+            "description": "macOS 系统依赖",
+            "package_manager": "brew",
+            "install_command": "brew install",
+            "packages": [
+                "sdl2",
+                "sdl2_image",
+                "sdl2_mixer",
+                "sdl2_ttf",
+                "portaudio",
+            ],
+        },
+        OSType.WINDOWS: {
+            "description": "Windows 系统依赖",
+            "package_manager": "choco",
+            "install_command": "choco install",
+            "packages": [
+                "python",
+                "git",
+            ],
+        },
+    }
 
     # 资源清单
     RESOURCES = {
@@ -270,6 +319,30 @@ class CloudResourceManager:
     # 下载状态跟踪
     download_status: Dict[str, DownloadStatus] = field(default_factory=dict)
 
+    @staticmethod
+    def detect_os() -> OSType:
+        """检测当前操作系统类型"""
+        sys_platform = sys.platform.lower()
+        if sys_platform.startswith("win"):
+            return OSType.WINDOWS
+        elif sys_platform.startswith("darwin"):
+            return OSType.MACOS
+        elif sys_platform.startswith("linux"):
+            return OSType.LINUX
+        else:
+            return OSType.UNKNOWN
+
+    @staticmethod
+    def get_os_name(os_type: OSType) -> str:
+        """获取操作系统名称"""
+        os_names = {
+            OSType.WINDOWS: "Windows",
+            OSType.MACOS: "macOS",
+            OSType.LINUX: "Linux",
+            OSType.UNKNOWN: "未知系统",
+        }
+        return os_names.get(os_type, "未知系统")
+
     def __init__(self, base_dir: Optional[str] = None):
         self.base_dir = Path(base_dir) if base_dir else Path(__file__).parent
         self.cache_dir = self.base_dir / ".cache" / "cloud_resources"
@@ -278,6 +351,79 @@ class CloudResourceManager:
         # 状态文件
         self.status_file = self.cache_dir / "download_status.json"
         self._load_status()
+
+    def install_system_dependencies(self, os_type: OSType = None) -> bool:
+        """安装系统级依赖"""
+        if os_type is None:
+            os_type = self.detect_os()
+
+        if os_type == OSType.UNKNOWN:
+            print("⚠️  无法识别操作系统，跳过系统依赖安装")
+            return False
+
+        print(f"\n{'=' * 100}")
+        print(f"🔧 安装 {self.get_os_name(os_type)} 系统依赖")
+        print(f"{'=' * 100}")
+
+        deps = self.SYSTEM_DEPENDENCIES.get(os_type)
+        if not deps:
+            print(f"⚠️  没有为 {self.get_os_name(os_type)} 配置系统依赖")
+            return False
+
+        print(f"\n📋 需要安装的系统包:")
+        for pkg in deps["packages"]:
+            print(f"   • {pkg}")
+
+        # 检查包管理器是否可用
+        package_manager = deps["package_manager"]
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["which" if os_type != OSType.WINDOWS else "where", package_manager],
+                capture_output=True,
+                text=True,
+                shell=os_type == OSType.WINDOWS,
+            )
+            if result.returncode != 0:
+                print(f"\n⚠️  未找到包管理器 {package_manager}")
+                print(f"   请手动安装 {', '.join(deps['packages'])}")
+                return False
+
+            print(f"\n✅ 找到包管理器: {package_manager}")
+
+        except Exception as e:
+            print(f"\n⚠️  无法检查包管理器: {e}")
+            return False
+
+        # 执行安装
+        print(f"\n🚀 开始安装系统依赖...")
+        install_cmd = f"{deps['install_command']} {' '.join(deps['packages'])}"
+
+        try:
+            import subprocess
+            result = subprocess.run(
+                install_cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+            )
+
+            if result.returncode == 0:
+                print("✅ 系统依赖安装成功！")
+                return True
+            else:
+                print(f"❌ 安装失败:")
+                print(f"   STDOUT: {result.stdout[:500]}")
+                print(f"   STDERR: {result.stderr[:500]}")
+                print(f"\n💡 请手动执行以下命令:")
+                print(f"   {install_cmd}")
+                return False
+
+        except Exception as e:
+            print(f"❌ 安装错误: {e}")
+            print(f"\n💡 请手动执行以下命令:")
+            print(f"   {install_cmd}")
+            return False
 
     def _load_status(self):
         """加载下载状态"""
@@ -604,6 +750,12 @@ class CloudResourceManager:
         print("\n" + "=" * 100)
         print("🚀 Live2D Master Agent - 完全自动化安装")
         print("=" * 100)
+
+        # 检测操作系统
+        os_type = self.detect_os()
+        os_name = self.get_os_name(os_type)
+        print(f"\n🖥️  检测到操作系统: {os_name}")
+
         print("\n📦 正在安装完整功能包（推荐）...")
         print("   这将包含：")
         print("   - ✅ 基础依赖（Pillow, NumPy, Requests, urllib3）")
@@ -611,29 +763,37 @@ class CloudResourceManager:
         print("   - ✅ 专业分层工具（scipy, scikit-learn, rembg）")
         print("   - ✅ OpenCV 边缘检测库")
         print("   - ✅ rembg 轻量AI模型（用于背景去除）")
+        print("   - ⚙️  系统级依赖（根据操作系统自动安装）")
         print("\n⏳ 开始安装...\n")
 
         # 安装所有核心和推荐的 Python 依赖
         success = True
 
-        # 第一阶段：必需依赖
+        # 阶段 0：安装系统依赖（仅 Linux 需要）
+        if os_type == OSType.LINUX:
+            print("\n" + "-" * 50)
+            print("阶段 0/4: 安装系统级依赖")
+            print("-" * 50)
+            self.install_system_dependencies(os_type)
+
+        # 阶段 1：必需依赖
         print("\n" + "-" * 50)
-        print("阶段 1/3: 安装基础依赖")
+        print(f"阶段 {1 if os_type == OSType.LINUX else 1}/4: 安装基础依赖")
         print("-" * 50)
         for res_id in ["pillow", "numpy", "urllib3", "requests"]:
             if not self.install_resource(self.RESOURCES[res_id]):
                 success = False
 
-        # 第二阶段：推荐增强功能
+        # 阶段 2：推荐增强功能
         print("\n" + "-" * 50)
-        print("阶段 2/3: 安装推荐增强库")
+        print(f"阶段 {2 if os_type == OSType.LINUX else 2}/4: 安装推荐增强库")
         print("-" * 50)
         for res_id in ["psd_tools", "scipy", "scikit_learn", "onnxruntime", "rembg", "opencv_python"]:
             self.install_resource(self.RESOURCES[res_id])  # 即使失败也继续
 
-        # 第三阶段：轻量模型
+        # 阶段 3：轻量模型
         print("\n" + "-" * 50)
-        print("阶段 3/3: 下载轻量AI模型")
+        print(f"阶段 {3 if os_type == OSType.LINUX else 3}/4: 下载轻量AI模型")
         print("-" * 50)
         self.install_resource(self.RESOURCES["rembg_u2netp"])  # 即使失败也继续
 

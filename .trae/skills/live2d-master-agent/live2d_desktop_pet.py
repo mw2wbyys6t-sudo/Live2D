@@ -685,10 +685,41 @@ class PetRunner:
         # 鼠标状态
         self.mouse_x = 0
         self.mouse_y = 0
+        self.mouse_over = False
         
         # 自动移动
         self.auto_move_timer = 0
         self.auto_move_interval = 10000
+        
+        # 视线跟随
+        self.eye_offset_x = 0
+        self.eye_offset_y = 0
+        self.target_eye_offset_x = 0
+        self.target_eye_offset_y = 0
+        self.eye_smoothing = 0.1
+        
+        # 身体动画
+        self.body_angle = 0
+        self.body_speed = 0.02
+        self.breath_offset = 0
+        self.breath_speed = 0.015
+        
+        # 头部倾斜
+        self.head_tilt = 0
+        self.head_tilt_speed = 0.01
+        
+        # 心跳动画
+        self.heart_visible = False
+        self.heart_timer = 0
+        
+        # 跳跃动画
+        self.jumping = False
+        self.jump_height = 0
+        self.jump_speed = 0
+        
+        # 上次点击时间（用于双击检测）
+        self.last_click_time = 0
+        self.double_click_threshold = 300
     
     def load_frames(self):
         """加载动画帧"""
@@ -745,6 +776,8 @@ class PetRunner:
     
     def handle_events(self):
         """处理事件"""
+        current_time = pygame.time.get_ticks()
+        
         for event in pygame.event.get():
             if event.type == QUIT:
                 self.running = False
@@ -759,7 +792,13 @@ class PetRunner:
                     if self.is_click_on_pet(mouse_x, mouse_y):
                         self.dragging = True
                         self.drag_offset = (mouse_x - self.x, mouse_y - self.y)
-                        self.on_click()
+                        
+                        # 检测双击
+                        if current_time - self.last_click_time < self.double_click_threshold:
+                            self.on_double_click()
+                        else:
+                            self.on_click()
+                        self.last_click_time = current_time
             
             elif event.type == MOUSEBUTTONUP:
                 if event.button == 1:
@@ -767,6 +806,10 @@ class PetRunner:
             
             elif event.type == MOUSEMOTION:
                 self.mouse_x, self.mouse_y = pygame.mouse.get_pos()
+                
+                # 检测鼠标是否悬停在宠物上
+                self.mouse_over = self.is_click_on_pet(self.mouse_x, self.mouse_y)
+                
                 if self.dragging:
                     self.x = self.mouse_x - self.drag_offset[0]
                     self.y = self.mouse_y - self.drag_offset[1]
@@ -784,11 +827,28 @@ class PetRunner:
         """处理点击事件"""
         print("✨ 宠物被点击了！")
         self.set_expression("happy")
+        self.heart_visible = True
+        self.heart_timer = pygame.time.get_ticks()
+        self.start_jump()
+    
+    def on_double_click(self):
+        """处理双击事件"""
+        print("😲 宠物被双击了！")
+        self.set_expression("surprised")
+        self.heart_visible = True
+        self.heart_timer = pygame.time.get_ticks()
     
     def set_expression(self, expression: str):
         """设置表情"""
         self.expression = expression
         self.expression_timer = pygame.time.get_ticks()
+    
+    def start_jump(self):
+        """开始跳跃动画"""
+        if not self.jumping:
+            self.jumping = True
+            self.jump_speed = 12
+            print("🐾 宠物跳起来了！")
     
     def update(self, current_time: int):
         """更新状态"""
@@ -806,6 +866,70 @@ class PetRunner:
             screen_info = pygame.display.Info()
             self.target_x = random.randint(0, screen_info.current_w - self.screen_width)
             self.target_y = random.randint(0, screen_info.current_h - self.screen_height)
+        
+        # 平滑移动到目标位置
+        self.x += (self.target_x - self.x) * 0.02
+        self.y += (self.target_y - self.y) * 0.02
+        
+        # 更新身体动画
+        self.body_angle = random.sin(current_time * self.body_speed) * 0.1
+        self.breath_offset = random.sin(current_time * self.breath_speed) * 2
+        
+        # 更新视线跟随
+        self.update_eye_tracking()
+        
+        # 更新心跳显示
+        if self.heart_visible and current_time - self.heart_timer > 1000:
+            self.heart_visible = False
+        
+        # 更新跳跃动画
+        self.update_jump()
+        
+        # 更新头部倾斜（根据鼠标位置）
+        self.update_head_tilt()
+    
+    def update_eye_tracking(self):
+        """更新视线跟随"""
+        # 计算鼠标相对于宠物中心的位置
+        pet_center_x = self.x + self.screen_width // 2
+        pet_center_y = self.y + self.screen_height // 2
+        
+        # 计算偏移量（限制范围）
+        dx = (self.mouse_x - pet_center_x) / 400
+        dy = (self.mouse_y - pet_center_y) / 400
+        
+        # 限制最大偏移
+        max_offset = 8
+        self.target_eye_offset_x = max(-max_offset, min(max_offset, dx * max_offset))
+        self.target_eye_offset_y = max(-max_offset, min(max_offset, dy * max_offset))
+        
+        # 平滑过渡
+        self.eye_offset_x += (self.target_eye_offset_x - self.eye_offset_x) * self.eye_smoothing
+        self.eye_offset_y += (self.target_eye_offset_y - self.eye_offset_y) * self.eye_smoothing
+    
+    def update_jump(self):
+        """更新跳跃动画"""
+        if self.jumping:
+            self.jump_height += self.jump_speed
+            self.jump_speed -= 0.5  # 重力
+            
+            if self.jump_height <= 0:
+                self.jump_height = 0
+                self.jumping = False
+                self.jump_speed = 0
+    
+    def update_head_tilt(self):
+        """更新头部倾斜"""
+        # 根据鼠标位置计算头部倾斜角度
+        pet_center_x = self.x + self.screen_width // 2
+        pet_center_y = self.y + self.screen_height // 2
+        
+        dx = self.mouse_x - pet_center_x
+        dy = self.mouse_y - pet_center_y
+        
+        # 计算倾斜角度
+        target_tilt = (dx / 200) * 0.1
+        self.head_tilt += (target_tilt - self.head_tilt) * 0.05
     
     def render(self, screen):
         """渲染"""
@@ -817,13 +941,59 @@ class PetRunner:
             frame = self.frames[self.current_frame]
             # 调整大小以适应窗口
             frame = pygame.transform.smoothscale(frame, (self.screen_width, self.screen_height))
-            screen.blit(frame, (0, 0))
+            
+            # 应用身体摆动
+            if self.body_angle != 0:
+                frame = pygame.transform.rotate(frame, self.body_angle * 180 / 3.14159)
+            
+            # 应用呼吸效果
+            if self.breath_offset != 0:
+                frame = pygame.transform.scale(frame, (self.screen_width, int(self.screen_height + self.breath_offset)))
+            
+            # 应用头部倾斜
+            if self.head_tilt != 0:
+                frame = pygame.transform.rotate(frame, self.head_tilt * 180 / 3.14159)
+            
+            # 计算绘制位置（考虑跳跃）
+            draw_y = int(-self.jump_height)
+            
+            # 应用视线偏移
+            draw_x = int(self.eye_offset_x)
+            
+            screen.blit(frame, (draw_x, draw_y))
+        
+        # 绘制心跳图标
+        if self.heart_visible:
+            self.draw_heart(screen)
         
         # 更新显示
         pygame.display.flip()
         
-        # 更新窗口位置
-        pygame.display.set_window_position(self.x, self.y)
+        # 更新窗口位置（考虑跳跃）
+        pygame.display.set_window_position(int(self.x), int(self.y - self.jump_height))
+    
+    def draw_heart(self, screen):
+        """绘制心跳图标"""
+        # 心跳动画效果
+        scale = 1 + abs(random.sin(pygame.time.get_ticks() * 0.01)) * 0.3
+        
+        # 创建心跳形状
+        heart_color = (255, 100, 100)
+        heart_size = int(20 * scale)
+        
+        # 计算位置（头顶上方）
+        x = self.screen_width // 2
+        y = 30
+        
+        # 绘制心形
+        pygame.draw.polygon(screen, heart_color, [
+            (x, y + heart_size // 2),
+            (x - heart_size // 2, y),
+            (x - heart_size // 2, y + heart_size // 3),
+            (x, y + heart_size),
+            (x + heart_size // 2, y + heart_size // 3),
+            (x + heart_size // 2, y),
+        ])
 
 
 def main():
