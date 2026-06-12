@@ -7,7 +7,8 @@
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
 [![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
 [![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
-skill存储的链接:https://github.com/mw2wbyys6t-sudo/Live2D/blob/main/.trae/skills/live2d-master-agent/SKILL.md
+--
+[skill存储的链接]:https://github.com/mw2wbyys6t-sudo/Live2D/blob/main/.trae/skills/live2d-master-agent/SKILL.md
 ---
 
 ## ✨ 一句话介绍
