@@ -20,33 +20,74 @@
 
 ---
 
-## 🚀 3分钟快速开始
+## 🚀 3分钟快速开始（Agent模式）
 
 ### 第一步：安装
 
 ```bash
 git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
 cd Live2D
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### 第二步：生成角色
+> **Windows用户注意**：如果 `pip install` 报错，请使用 `python -m pip install -r requirements.txt`
+
+### 第二步：启动Agent
+
+```bash
+python live2d_agent.py
+```
+
+然后直接告诉Agent你想要什么：
+
+```
+🎨 Live2D Master Agent v7.1
+你的Live2D制作助手 - 告诉我你想要什么
+
+📋 我可以帮你：
+  [1] 🎨 生成角色形象
+  [2] 📐 图片分层
+  [3] 🐱 部署桌面宠物
+  [4] 🚀 完整工作流
+  [5] ⚙️  设置
+  [6] ❓ 帮助
+
+💡 你也可以直接输入自然语言，例如："帮我做一个银发巫女"
+
+📝 你想做什么？ 帮我做一个粉色头发的猫耳少女
+```
+
+Agent会自动完成生成→分层→桌宠部署的整个流程！
+
+---
+
+## 🛠️ 高级用法（命令行模式）
+
+如果你更喜欢直接命令行操作：
+
+### 生成角色
 
 ```bash
 python master_tool.py "cute anime girl, pink hair"
 ```
 
-### 第三步：专业分层（推荐）
+### 图片分层
 
 ```bash
-# 安装 See-through（一次性）
-python install_comfyui_advanced.py
-
-# 查看 See-through 使用指南
-python master_tool.py --see-through
+python live2d_workflow.py --input your_image.png --output my_project
 ```
 
-### 第四步：完成！
+### 部署桌宠
+
+```bash
+python live2d_desktop_pet.py --layers-dir my_project/layers_xxx --output my_pet
+```
+
+### 完整工作流
+
+```bash
+python live2d_agent.py --workflow "粉色头发的猫耳少女"
+```
 
 系统会自动：
 - ✅ 生成高质量角色立绘
