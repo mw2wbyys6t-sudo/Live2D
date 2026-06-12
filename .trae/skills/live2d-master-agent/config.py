@@ -16,6 +16,13 @@ import atexit
 from pathlib import Path
 from typing import Optional, Dict, Set
 
+# 导入加密存储模块
+try:
+    from secure_storage import SecureStorage, EncryptedConfig
+    _ENCRYPTION_AVAILABLE = True
+except ImportError:
+    _ENCRYPTION_AVAILABLE = False
+
 
 class SecureConfig:
     """
@@ -50,6 +57,9 @@ class SecureConfig:
         if not self._config_loaded:
             self._secrets: Dict[str, str] = {}  # 私有字典存储敏感信息
             self._config: Dict[str, str] = {}   # 普通配置
+            self._encrypted_config: Optional[EncryptedConfig] = None
+            if _ENCRYPTION_AVAILABLE:
+                self._encrypted_config = EncryptedConfig()
             self._load_config()
             self._config_loaded = True
             # 注册退出清理函数
@@ -134,14 +144,48 @@ class SecureConfig:
         安全获取密钥
         
         优先级:
-        1. 私有字典（最安全）
-        2. 环境变量（兼容性）
+        1. 加密存储（最安全）
+        2. 私有字典
+        3. 环境变量（兼容性）
         """
-        # 首先检查私有字典
+        provider = None
+        if key == 'SENSENOVA_API_KEY':
+            provider = 'sensenova'
+        elif key == 'ARK_API_KEY':
+            provider = 'ark'
+        
+        # 首先检查加密存储
+        if provider and self._encrypted_config:
+            encrypted_key = self._encrypted_config.get_api_key(provider)
+            if encrypted_key:
+                return encrypted_key
+        
+        # 然后检查私有字典
         if key in self._secrets:
             return self._secrets[key]
+        
         # 回退到环境变量（兼容旧代码）
         return os.environ.get(key) or None
+    
+    def store_api_key_encrypted(self, provider: str, api_key: str) -> bool:
+        """
+        加密存储API密钥
+        
+        Args:
+            provider: 提供商名称 (sensenova/ark)
+            api_key: API密钥
+        
+        Returns:
+            是否成功
+        """
+        if not self._encrypted_config:
+            print("⚠️  加密存储不可用，请安装 cryptography 库")
+            return False
+        
+        success = self._encrypted_config.store_api_key(provider, api_key)
+        if success:
+            print(f"✅ {provider} API密钥已加密存储")
+        return success
     
     def _secure_cleanup(self):
         """
@@ -149,6 +193,10 @@ class SecureConfig:
         
         这是防止内存泄露导致密钥暴露的最后一道防线
         """
+        # 清除加密配置缓存
+        if self._encrypted_config:
+            self._encrypted_config.clear_cache()
+        
         # 覆盖内存中的密钥值
         for key in list(self._secrets.keys()):
             self._secrets[key] = "0" * len(self._secrets[key])
