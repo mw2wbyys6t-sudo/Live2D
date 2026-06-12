@@ -41,9 +41,16 @@ git clone https://github.com/mw2wbyys6t-sudo/Live2D.git ~/.trae/skills/live2d-ma
 
 ### 方式二：作为独立 Agent 使用（CMD/PowerShell/Terminal）
 
+**适用于：Windows CMD、PowerShell、Mac/Linux Terminal**
+
+> 由于终端环境通常不支持中文输入，Agent 已全面适配英文界面，同时保留中文识别能力。
+
 ```bash
+# 1. 克隆仓库
 git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
 cd Live2D
+
+# 2. 安装依赖
 python -m pip install -r requirements.txt
 ```
 
@@ -59,35 +66,53 @@ python -m pip install -r requirements.txt
 python live2d_agent.py
 ```
 
+### 终端使用说明
+
+**终端兼容性提示**：
+- CMD / PowerShell / Terminal 等终端环境**不支持中文输入**
+- Agent 已全面适配英文界面，所有菜单和提示均为英文
+- 你可以使用英文命令或数字菜单进行操作
+- 支持中文关键词作为备用识别（如果你在支持中文的环境中）
+
 ### 交互方式
 
-由于终端/CMD/PowerShell 可能不支持中文输入，Agent 支持以下方式：
+Agent 支持多种交互方式，适配不同使用场景：
 
-**方式1：数字菜单（推荐终端使用）**
+**方式1：数字菜单（推荐终端/CMD/PowerShell使用）**
 ```
-🎨 Live2D Master Agent v7.1
+============================================================
 
-[1] Generate Character
-[2] Layer Separation
-[3] Desktop Pet
-[4] Full Workflow
-[5] Settings
-[6] Help
-[0] Exit
+     Live2D Master Agent v7.1
+     Your Live2D Assistant - Tell me what you want
 
-Enter your choice (1-6): 1
-Enter character description: cute anime girl, pink hair
+============================================================
+
+[1] Generate Character  - Generate a character from description
+[2] Layer Separation    - Split image into Live2D layers
+[3] Desktop Pet         - Deploy as animated desktop pet
+[4] Full Workflow       - Generate + Layer + Pet in one go
+[5] Settings            - API keys, output directory
+[6] Help                - Usage guide
+[0] Exit                - Quit
+
+Tip: You can also type English commands directly:
+     "generate a cat girl" / "layer my image" / "deploy pet"
+
+Enter your choice (0-6 or command): 1
+Describe your character (e.g., silver hair witch, purple eyes, kimono): cute anime girl, pink hair
 ```
 
-**方式2：英文命令**
+**方式2：英文自然语言命令（支持中文识别）**
 ```
-📝 What do you want? generate a cat girl with pink hair
-📝 What do you want? layer my image
-📝 What do you want? deploy pet
-📝 What do you want? full workflow
+Enter your choice (0-6 or command): generate a cat girl with pink hair
+Enter your choice (0-6 or command): layer my image
+Enter your choice (0-6 or command): deploy pet
+Enter your choice (0-6 or command): full workflow
 ```
 
-**方式3：快速模式（无需交互）**
+> **注意**：Agent 界面为英文以确保终端兼容性，但支持识别中文关键词。如果你在支持中文输入的环境（如 Trae IDE 内置终端），也可以输入中文描述。
+
+**方式3：快速模式（无需交互，适合脚本调用）**
 ```bash
 # Generate character
 python live2d_agent.py --quick "cute anime girl, pink hair"
@@ -129,7 +154,7 @@ python live2d_desktop_pet.py --layers-dir my_project/layers_xxx --output my_pet
 ### 完整工作流
 
 ```bash
-python live2d_agent.py --workflow "粉色头发的猫耳少女"
+python live2d_agent.py --workflow "cat girl, pink hair, green eyes"
 ```
 
 系统会自动：
@@ -143,7 +168,7 @@ python live2d_agent.py --workflow "粉色头发的猫耳少女"
 
 ```bash
 # 从分层结果创建桌面宠物
-python live2d_desktop_pet.py --layers ./output/layers/ --pet-name "我的桌宠"
+python live2d_desktop_pet.py --layers ./output/layers/ --pet-name "MyPet"
 
 # 桌宠功能:
 # - 身体摆动、眨眼、呼吸动画
@@ -358,7 +383,7 @@ python config_api.py
 
 ```bash
 # 方式1：完整工作流 + 桌面部署
-python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
+python live2d_workflow.py "cat girl with blue hair" --deploy-desktop
 
 # 方式2：使用现有图片创建桌宠
 python live2d_workflow.py --input character.png --deploy-desktop
@@ -397,10 +422,13 @@ git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
 cd Live2D
 
 # 安装依赖
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
-# 开始使用
-python master_tool.py "你的角色描述"
+# 启动 Agent（推荐）
+python live2d_agent.py
+
+# 或直接使用命令行
+python master_tool.py "your character description"
 
 # 可选：安装 See-through（专业分层）
 python install_comfyui_advanced.py
