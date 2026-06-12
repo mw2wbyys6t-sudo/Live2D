@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Live2D Master Agent - 交互式CLI入口
-用户只需运行这个脚本，Agent会引导完成所有操作
+Live2D Master Agent - Interactive CLI Entry Point
+Just run this script and the Agent will guide you through all operations
 
-使用方法:
+Usage:
     python live2d_agent.py
 
-支持自然语言对话，例如:
-    - "我想做一个猫耳少女"
-    - "帮我生成一个机甲角色"
-    - "我要部署桌面宠物"
-    - "使用我提供的图片"
+Supports natural language conversation, e.g.:
+    - "I want a cat girl"
+    - "Generate a mecha character"
+    - "Deploy desktop pet"
+    - "Use my image"
+
+Note: Agent interface is in English for terminal compatibility.
+You can describe characters in any language (English recommended for terminals).
 """
 
 import sys
@@ -52,11 +55,11 @@ Tip: You can also type English commands directly:
 
 
 def get_input(prompt: str = "\nEnter your choice (0-6 or command): ") -> str:
-    """获取用户输入"""
+    """Get user input"""
     try:
         return input(prompt).strip()
     except (EOFError, KeyboardInterrupt):
-        print("\n👋 再见！")
+        print("\n👋 Goodbye!")
         sys.exit(0)
 
 
@@ -201,239 +204,239 @@ def handle_layer_image(image_path: str = None):
 
 
 def handle_pet_from_layer():
-    """从最新的分层结果部署桌宠"""
-    # 找到最新的分层目录
+    """Deploy desktop pet from latest layer output"""
+    # Find latest layer directory
     output_dir = Path('output')
     layer_dirs = list(output_dir.glob('workflow/layers_*'))
-    
+
     if not layer_dirs:
-        print("❌ 没有找到分层结果")
+        print("❌ No layer results found")
         return
-    
+
     latest_layer = max(layer_dirs, key=lambda p: p.stat().st_mtime)
-    
-    pet_name = get_input("给桌宠起个名字（默认：我的桌宠）：").strip()
+
+    pet_name = get_input("Name your pet (default: MyPet): ").strip()
     if not pet_name:
-        pet_name = "我的桌宠"
-    
-    print(f"\n🐱 正在部署桌宠：{pet_name}")
-    print("⏳ 生成动画帧...\n")
-    
+        pet_name = "MyPet"
+
+    print(f"\n🐱 Deploying pet: {pet_name}")
+    print("⏳ Generating animation frames...\n")
+
     import subprocess
     result = subprocess.run(
         [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', f'output/pet_{pet_name}'],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode == 0:
-        print(f"\n✅ 桌宠 '{pet_name}' 部署完成！")
-        print(f"📁 位置：output/pet_{pet_name}/")
-        print(f"🚀 运行：python output/pet_{pet_name}/run_pet.py")
+        print(f"\n✅ Pet '{pet_name}' deployed!")
+        print(f"📁 Location: output/pet_{pet_name}/")
+        print(f"🚀 Run: python output/pet_{pet_name}/run_pet.py")
     else:
-        print("\n❌ 桌宠部署失败")
+        print("\n❌ Pet deployment failed")
 
 
 def handle_workflow():
-    """处理完整工作流"""
-    print("\n🚀 完整工作流（描述 → 生成 → 分层 → 桌宠）")
+    """Handle full workflow"""
+    print("\n🚀 Full Workflow (Describe → Generate → Layer → Pet)")
     print("-" * 50)
-    
-    description = get_input("请描述你想要的角色：")
+
+    description = get_input("Describe your character: ")
     if not description:
-        print("❌ 描述不能为空")
+        print("❌ Description cannot be empty")
         return
-    
-    pet_name = get_input("给桌宠起个名字（默认：我的桌宠）：").strip()
+
+    pet_name = get_input("Name your pet (default: MyPet): ").strip()
     if not pet_name:
-        pet_name = "我的桌宠"
-    
-    print(f"\n🚀 开始完整工作流...")
-    print(f"📝 角色描述：{description}")
-    print(f"🐱 桌宠名字：{pet_name}")
-    print("\n⏳ 步骤1/4：生成角色...")
-    
+        pet_name = "MyPet"
+
+    print(f"\n🚀 Starting full workflow...")
+    print(f"📝 Character: {description}")
+    print(f"🐱 Pet name: {pet_name}")
+    print("\n⏳ Step 1/4: Generating character...")
+
     import subprocess
-    
-    # 步骤1：生成
+
+    # Step 1: Generate
     result = subprocess.run(
         [sys.executable, 'master_tool.py', description],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode != 0:
-        print("\n❌ 角色生成失败")
+        print("\n❌ Character generation failed")
         return
-    
-    # 找到最新生成的图片
+
+    # Find latest generated image
     output_dir = Path('output')
     images = list(output_dir.glob('*.png')) + list(output_dir.glob('*.jpg'))
     if not images:
-        print("❌ 未找到生成的图片")
+        print("❌ No generated images found")
         return
     latest_image = max(images, key=lambda p: p.stat().st_mtime)
-    
-    print("\n⏳ 步骤2/4：图像优化...")
-    print("⏳ 步骤3/4：智能分层...")
-    
-    # 步骤2-3：分层
+
+    print("\n⏳ Step 2/4: Image optimization...")
+    print("⏳ Step 3/4: Smart layering...")
+
+    # Step 2-3: Layer
     result = subprocess.run(
         [sys.executable, 'live2d_workflow.py', '--input', str(latest_image), '--output', 'output/workflow'],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode != 0:
-        print("\n❌ 分层失败")
+        print("\n❌ Layer separation failed")
         return
-    
-    # 找到分层目录
+
+    # Find layer directory
     layer_dirs = list(output_dir.glob('workflow/layers_*'))
     if not layer_dirs:
-        print("❌ 未找到分层结果")
+        print("❌ No layer results found")
         return
     latest_layer = max(layer_dirs, key=lambda p: p.stat().st_mtime)
-    
-    print("\n⏳ 步骤4/4：部署桌宠...")
-    
-    # 步骤4：桌宠
+
+    print("\n⏳ Step 4/4: Deploying pet...")
+
+    # Step 4: Pet
     result = subprocess.run(
         [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', f'output/pet_{pet_name}'],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode == 0:
         print("\n" + "=" * 50)
-        print("🎉 完整工作流完成！")
+        print("🎉 Full workflow complete!")
         print("=" * 50)
-        print(f"🎨 角色图片：{latest_image}")
-        print(f"📐 分层结果：{latest_layer}")
-        print(f"🐱 桌宠位置：output/pet_{pet_name}/")
-        print(f"🚀 运行命令：python output/pet_{pet_name}/run_pet.py")
+        print(f"🎨 Character image: {latest_image}")
+        print(f"📐 Layer result: {latest_layer}")
+        print(f"🐱 Pet location: output/pet_{pet_name}/")
+        print(f"🚀 Run command: python output/pet_{pet_name}/run_pet.py")
         print("=" * 50)
     else:
-        print("\n❌ 桌宠部署失败")
+        print("\n❌ Pet deployment failed")
 
 
 def handle_settings():
-    """处理设置"""
-    print("\n⚙️ 设置")
+    """Handle settings"""
+    print("\n⚙️ Settings")
     print("-" * 50)
     print("""
-[1] 设置商汤SenseNova API密钥（可选，用于高质量生成）
-[2] 设置输出目录
-[3] 返回主菜单
+[1] Set SenseNova API key (optional, for high quality generation)
+[2] Set output directory
+[3] Back to main menu
     """)
-    
-    choice = get_input("请选择：")
-    
+
+    choice = get_input("Select: ")
+
     if choice == '1':
-        key = get_input("请输入商汤SenseNova API密钥：").strip()
+        key = get_input("Enter SenseNova API key: ").strip()
         if key:
-            # 保存到 .env 文件
+            # Save to .env file
             with open('.env', 'a', encoding='utf-8') as f:
                 f.write(f"\nSENSENOVA_API_KEY={key}\n")
-            print("✅ API密钥已保存")
-            # 设置权限（Unix）
+            print("✅ API key saved")
+            # Set permission (Unix)
             try:
                 os.chmod('.env', 0o600)
             except:
                 pass
     elif choice == '2':
-        dir_path = get_input("请输入输出目录路径（默认：./output）：").strip()
+        dir_path = get_input("Enter output directory (default: ./output): ").strip()
         if dir_path:
             os.makedirs(dir_path, exist_ok=True)
             with open('.env', 'a', encoding='utf-8') as f:
                 f.write(f"\nOUTPUT_DIR={dir_path}\n")
-            print(f"✅ 输出目录已设置为：{dir_path}")
+            print(f"✅ Output directory set to: {dir_path}")
 
 
 def handle_help():
-    """显示帮助"""
+    """Show help"""
     print("""
-📖 Live2D Master Agent 使用指南
+📖 Live2D Master Agent Guide
 
-🎯 快速开始：
-   直接输入你想要的角色描述，例如：
-   - "帮我做一个粉色头发的猫耳少女"
-   - "生成一个机甲风格的少年角色"
-   - "我要一个穿和服的巫女"
+🎯 Quick Start:
+   Just type your character description, e.g.:
+   - "cute cat girl with pink hair"
+   - "mecha style boy character"
+   - "witch in kimono"
 
-📋 功能菜单：
-   [1] 生成角色 - AI生成角色立绘
-   [2] 图片分层 - 将图片分成Live2D图层
-   [3] 部署桌宠 - 从分层结果生成桌面宠物
-   [4] 完整工作流 - 从描述到桌宠一键完成
-   [5] 设置 - 配置API密钥和输出目录
+📋 Menu Options:
+   [1] Generate Character - AI generate character art
+   [2] Layer Separation - Split image into Live2D layers
+   [3] Desktop Pet - Deploy as animated desktop pet
+   [4] Full Workflow - One-click from description to pet
+   [5] Settings - Configure API key and output directory
 
-💡 提示：
-   - 不需要API密钥也可以使用（使用免费在线服务）
-   - 提供API密钥可以获得更高质量的生成结果
-   - 生成的文件保存在 output/ 目录
+💡 Tips:
+   - No API key needed (uses free online services)
+   - API key provides higher quality generation
+   - Output files saved to output/ directory
 
-🔧 常见问题：
-   Q: 生成失败怎么办？
-   A: 检查网络连接，或安装本地模型（pip install diffusers transformers torch）
-   
-   Q: 如何获得商汤API密钥？
-   A: 访问 https://platform.sensenova.cn 注册获取
+🔧 FAQ:
+   Q: Generation failed?
+   A: Check network, or install local model (pip install diffusers transformers torch)
+
+   Q: How to get SenseNova API key?
+   A: Visit https://platform.sensenova.cn to register
 """)
 
 
 def main():
-    """主函数"""
+    """Main function"""
     parser = argparse.ArgumentParser(description='Live2D Master Agent')
-    parser.add_argument('--quick', '-q', help='快速模式：直接生成角色（例如：-q "猫耳少女"）')
-    parser.add_argument('--layer', '-l', help='快速分层：指定图片路径')
-    parser.add_argument('--pet', '-p', help='快速部署桌宠：指定分层目录')
-    parser.add_argument('--workflow', '-w', help='完整工作流：指定角色描述')
+    parser.add_argument('--quick', '-q', help='Quick mode: generate character (e.g., -q "cat girl")')
+    parser.add_argument('--layer', '-l', help='Quick layer: specify image path')
+    parser.add_argument('--pet', '-p', help='Quick deploy: specify layer directory')
+    parser.add_argument('--workflow', '-w', help='Full workflow: specify character description')
     args = parser.parse_args()
-    
-    # 快速模式
+
+    # Quick modes
     if args.quick:
-        print(f"🚀 快速生成：{args.quick}")
+        print(f"🚀 Quick generate: {args.quick}")
         import subprocess
         subprocess.run([sys.executable, 'master_tool.py', args.quick])
         return
-    
+
     if args.layer:
         handle_layer_image(args.layer)
         return
-    
+
     if args.pet:
         handle_pet_from_path(args.pet)
         return
-    
+
     if args.workflow:
         description = args.workflow
-        pet_name = "我的桌宠"
-        print(f"🚀 完整工作流：{description}")
-        # 简化版完整工作流
+        pet_name = "MyPet"
+        print(f"🚀 Full workflow: {description}")
+        # Simplified full workflow
         import subprocess
         subprocess.run([sys.executable, 'master_tool.py', description])
         return
-    
-    # 交互式模式
+
+    # Interactive mode
     print_banner()
-    
+
     while True:
         print_menu()
         user_input = get_input()
-        
+
         if not user_input:
             continue
-        
+
         intent = detect_intent(user_input)
-        
+
         if intent == 'exit':
-            print("\n👋 感谢使用 Live2D Master Agent，再见！")
+            print("\n👋 Thanks for using Live2D Master Agent. Goodbye!")
             break
         elif intent == 'generate':
-            # 如果用户输入包含描述，直接使用
+            # If user input contains description, use it directly
             if len(user_input) > 10 and not user_input.isdigit():
-                print(f"\n🎨 生成角色：{user_input}")
+                print(f"\n🎨 Generating character: {user_input}")
                 import subprocess
                 subprocess.run([sys.executable, 'master_tool.py', user_input])
             else:
@@ -449,30 +452,30 @@ def main():
         elif intent == 'help':
             handle_help()
         else:
-            print("\n🤔 我不太明白你的意思...")
-            print("你可以：")
-            print("  - 直接描述角色（例如：'粉色头发的少女'）")
-            print("  - 输入数字选择功能（1-6）")
-            print("  - 输入 '帮助' 查看详细说明")
+            print("\n🤔 I didn't understand...")
+            print("You can:")
+            print("  - Describe a character (e.g., 'pink hair girl')")
+            print("  - Enter number to select function (1-6)")
+            print("  - Type 'help' for detailed guide")
 
 
 def handle_pet_from_path(layer_path: str):
-    """从指定路径部署桌宠"""
+    """Deploy desktop pet from specified path"""
     if not os.path.exists(layer_path):
-        print(f"❌ 路径不存在：{layer_path}")
+        print(f"❌ Path not found: {layer_path}")
         return
-    
-    pet_name = get_input("给桌宠起个名字（默认：我的桌宠）：").strip() or "我的桌宠"
-    
+
+    pet_name = get_input("Name your pet (default: MyPet): ").strip() or "MyPet"
+
     import subprocess
     result = subprocess.run(
         [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', layer_path, '--output', f'output/pet_{pet_name}'],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode == 0:
-        print(f"\n✅ 桌宠 '{pet_name}' 部署完成！")
+        print(f"\n✅ Pet '{pet_name}' deployed!")
 
 
 if __name__ == '__main__':
