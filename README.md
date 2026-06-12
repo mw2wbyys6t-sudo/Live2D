@@ -390,4 +390,4 @@ MIT License - 详见 [LICENSE](LICENSE)
 **让Live2D制作更简单！** 🎨
 
 *版本: v7.1（桌面桌宠功能+See-through集成）*
-*最后更新: 2026-05-30*
+*最后更新: 2026-06-12*
