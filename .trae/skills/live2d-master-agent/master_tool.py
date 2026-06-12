@@ -480,6 +480,110 @@ def validate_image_path(image_path):
     return True, None
 
 
+class Live2DTool:
+    """Live2D工具类 - 提供面向对象的API接口
+
+    封装了图像生成、分层、PSD转换等核心功能。
+
+    示例:
+        tool = Live2DTool()
+        image_path = tool.generate("蓝发猫耳少女")
+        layers = tool.layer(image_path)
+        psd_path = tool.to_psd(layers)
+    """
+
+    def __init__(self, output_dir: str = "./output"):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.last_image = None
+        self.last_layers = None
+
+    def generate(self, prompt: str, **kwargs) -> Optional[str]:
+        """生成角色图片
+
+        Args:
+            prompt: 角色描述提示词
+            **kwargs: 传递给generate_image的参数
+
+        Returns:
+            生成的图片路径
+        """
+        image_path, _ = generate_image(
+            prompt,
+            self.output_dir,
+            **kwargs
+        )
+        if image_path:
+            self.last_image = image_path
+        return image_path
+
+    def layer(self, image_path: Optional[str] = None, **kwargs) -> Optional[Dict]:
+        """对图片进行分层处理
+
+        Args:
+            image_path: 图片路径（默认使用最后生成的图片）
+            **kwargs: 额外参数
+
+        Returns:
+            分层结果字典
+        """
+        path = image_path or self.last_image
+        if not path:
+            print("❌ 没有可用的图片，请先调用generate()")
+            return None
+
+        results = run_layering_pipeline(path, self.output_dir)
+        self.last_layers = results
+        return results
+
+    def to_psd(self, layer_dir: Optional[str] = None) -> Optional[str]:
+        """将分层结果转换为PSD
+
+        Args:
+            layer_dir: 分层目录路径（默认使用最后分层的目录）
+
+        Returns:
+            PSD文件路径
+        """
+        if layer_dir:
+            return convert_to_psd(layer_dir)
+        elif self.last_layers and self.last_layers.get('psd'):
+            return self.last_layers['psd']
+        else:
+            print("❌ 没有可用的分层结果，请先调用layer()")
+            return None
+
+    def validate(self, image_path: Optional[str] = None) -> Tuple[bool, str]:
+        """验证图片的Live2D兼容性
+
+        Args:
+            image_path: 图片路径（默认使用最后生成的图片）
+
+        Returns:
+            (是否兼容, 验证报告)
+        """
+        path = image_path or self.last_image
+        if not path:
+            return False, "没有可用的图片"
+
+        try:
+            from live2d_image_processor import check_live2d_compatibility
+            result = check_live2d_compatibility(path)
+            score = result.get('score', 0)
+            issues = result.get('issues', [])
+            is_valid = score >= 0.6
+            report = f"兼容性评分: {score}\n" + "\n".join(issues)
+            return is_valid, report
+        except ImportError:
+            return False, "live2d_image_processor未安装"
+        except Exception as e:
+            return False, f"验证失败: {e}"
+
+    def get_latest(self) -> Optional[str]:
+        """获取最新生成的图片路径"""
+        return get_latest_image(self.output_dir)
+
+
 def show_help():
     """显示帮助信息"""
     print("""

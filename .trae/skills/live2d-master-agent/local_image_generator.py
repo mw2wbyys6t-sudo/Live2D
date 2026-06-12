@@ -2217,7 +2217,15 @@ class SenseNovaProvider:
         return best
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("SENSENOVA_API_KEY")
+        # 优先使用传入的key，其次从SecureConfig读取，最后回退到os.environ
+        if api_key:
+            self.api_key = api_key
+        else:
+            try:
+                from config import config
+                self.api_key = config.sensenova_api_key
+            except Exception:
+                self.api_key = os.environ.get("SENSENOVA_API_KEY")
         self.base_url = base_url or self.DEFAULT_BASE_URL
         self.client = None
         self._init_client()
@@ -2531,9 +2539,13 @@ class ProviderRouter:
                 except ImportError:
                     pass
             elif name == "sensenova":
-                # 检查 API Key
-                if os.environ.get("SENSENOVA_API_KEY"):
-                    available.append(name)
+                # 检查 API Key（从SecureConfig读取，不依赖os.environ）
+                try:
+                    from config import config
+                    if config.has_sensenova_key:
+                        available.append(name)
+                except Exception:
+                    pass
         return available
 
     @classmethod

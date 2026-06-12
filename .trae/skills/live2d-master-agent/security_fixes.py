@@ -260,6 +260,50 @@ def secure_subprocess_args(args: list) -> list:
     return secure_args
 
 
+class SecurityFixes:
+    """安全修复模块 - 提供面向对象的安全工具接口
+
+    封装了所有安全验证和修复功能，方便在代码中统一调用。
+
+    示例:
+        security = SecurityFixes()
+        is_valid, msg = security.validate_path("./image.png")
+        is_safe = security.validate_model_id("Linaqruf/anything-v3.0")
+        clean_prompt = security.sanitize_prompt(user_input)
+    """
+
+    def __init__(self):
+        pass
+
+    def validate_path(self, path: str, base_dir: Optional[str] = None) -> Tuple[bool, str]:
+        """安全路径验证 - 防止路径遍历攻击"""
+        return validate_path(path, base_dir)
+
+    def validate_image_path(self, image_path: str) -> Tuple[bool, str]:
+        """验证图片路径（增强版）"""
+        return validate_image_path(image_path)
+
+    def validate_model_id(self, model_id: str) -> Tuple[bool, str]:
+        """验证模型ID（白名单验证）"""
+        return validate_model_id(model_id)
+
+    def sanitize_prompt(self, prompt: str, max_length: int = 4000) -> str:
+        """清理提示词，防止命令注入"""
+        return sanitize_prompt(prompt, max_length)
+
+    def sanitize_filename(self, filename: str) -> str:
+        """清理文件名，防止路径遍历"""
+        return sanitize_filename(filename)
+
+    def validate_directory(self, directory: str, create_if_not_exists: bool = False) -> Tuple[bool, str]:
+        """验证目录路径"""
+        return validate_directory(directory, create_if_not_exists)
+
+    def secure_subprocess_args(self, args: list) -> list:
+        """安全处理子进程参数"""
+        return secure_subprocess_args(args)
+
+
 # ==================== 使用示例 ====================
 if __name__ == "__main__":
     print("🔒 安全验证模块测试")

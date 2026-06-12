@@ -59,7 +59,7 @@ class Live2DWorkflow:
         "art_mesh_margin": 1,        # 默认1px边距
     }
 
-    # ====== Live2D官方标准图层顺序（从后往前，49层） ======
+    # ====== Live2D官方标准图层顺序（从后往前，52层） ======
     LIVE2D_LAYER_ORDER = [
         # 背景层
         "背景",
@@ -698,7 +698,7 @@ class Live2DWorkflow:
             for layer in sorted(self.layers, key=lambda x: x["id"]):
                 f.write(f"{layer['id']:02d}. {layer['type']} ({layer['filename']}) - 颜色: {layer['color']}\n")
 
-            f.write("\n📖 Live2D官方标准图层顺序（49层，从后往前）\n")
+            f.write("\n📖 Live2D官方标准图层顺序（52层，从后往前）\n")
             f.write("-" * 80 + "\n")
             for i, layer_name in enumerate(self.LIVE2D_LAYER_ORDER, 1):
                 f.write(f"{i:02d}. {layer_name}\n")
@@ -724,56 +724,121 @@ class Live2DWorkflow:
 
         print(f"📖 官方分层指南已保存: {guide_path}")
 
-    def _create_psd(self, layer_dir: str) -> Optional[str]:
-        """创建PSD文件 - 增强版
-        支持 psd-tools 或 imageio 库，确保兼容性
+    def validate_psd_structure(self, psd_path: str) -> Tuple[bool, str]:
+        """验证PSD文件结构是否符合Live2D官方标准
+
+        Returns:
+            (是否有效, 验证报告)
+        """
+        report = []
+        is_valid = True
+
+        try:
+            from psd_tools import PSDImage
+            psd = PSDImage.open(psd_path)
+
+            # 检查尺寸
+            std = self.PSD_STANDARD
+            if psd.height < std["height_min"] or psd.height > std["height_max"]:
+                report.append(f"⚠️ 高度 {psd.height}px 不在标准范围 {std['height_min']}-{std['height_max']}px")
+                is_valid = False
+            else:
+                report.append(f"✅ 高度: {psd.height}px")
+
+            # 检查颜色模式
+            if psd.color_mode != std["color_mode"]:
+                report.append(f"⚠️ 颜色模式 {psd.color_mode} 不是标准 {std['color_mode']}")
+                is_valid = False
+            else:
+                report.append(f"✅ 颜色模式: {psd.color_mode}")
+
+            # 检查图层
+            layer_count = len(list(psd))
+            if layer_count < 10:
+                report.append(f"⚠️ 图层数量 {layer_count} 过少（建议≥10层）")
+                is_valid = False
+            else:
+                report.append(f"✅ 图层数量: {layer_count}")
+
+            # 检查图层命名
+            unnamed = [l.name for l in psd if not l.name or l.name.startswith("图层")]
+            if unnamed:
+                report.append(f"⚠️ 有 {len(unnamed)} 个未命名图层")
+                is_valid = False
+            else:
+                report.append("✅ 所有图层已命名")
+
+        except ImportError:
+            report.append("⚠️ psd-tools 未安装，无法验证PSD结构")
+            is_valid = False
+        except Exception as e:
+            report.append(f"❌ 验证失败: {e}")
+            is_valid = False
+
+        return is_valid, "\n".join(report)
+
+    def create_layered_psd(self, layer_dir: str, output_path: Optional[str] = None) -> Optional[str]:
+        """从分层目录创建Live2D标准PSD文件
+
+        Args:
+            layer_dir: 分层PNG文件所在目录
+            output_path: 输出PSD路径（可选）
+
+        Returns:
+            PSD文件路径
         """
         layer_path = Path(layer_dir)
-        
-        # 方法1：尝试使用 psd-tools
+        if not layer_path.exists():
+            print(f"❌ 分层目录不存在: {layer_dir}")
+            return None
+
+        layer_files = sorted(layer_path.glob("*.png"))
+        non_original_files = [f for f in layer_files if "原图" not in str(f)]
+
+        if not non_original_files:
+            print("❌ 没有找到有效的分层文件")
+            return None
+
+        # 确定输出路径
+        if output_path is None:
+            output_path = str(layer_path / "live2d_model.psd")
+
+        # 方法1：使用 psd-tools
         try:
-            from psd_tools import PSDImage, Layer
+            from psd_tools import PSDImage
             print("🎨 使用 psd-tools 生成PSD...")
-            
-            layer_files = sorted(layer_path.glob("*.png"))
-            non_original_files = [f for f in layer_files if "原图" not in str(f)]
-            
-            if not non_original_files:
-                return None
 
             first_img = Image.open(str(non_original_files[0]))
             width, height = first_img.size
 
             psd = PSDImage.new(width, height, color_mode="RGBA")
 
-            # 添加图层（从后往前，最后面的图层最先添加）
+            # 按Live2D标准顺序添加图层（从后往前）
             for layer_file in reversed(non_original_files):
                 img = Image.open(str(layer_file)).convert("RGBA")
-                layer = Layer.frompil(img, name=layer_file.stem)
-                psd.append(layer)
+                psd.append(img, name=layer_file.stem)
 
-            psd_path = layer_path / "layers.psd"
-            psd.save(psd_path)
+            psd.save(output_path)
+            print(f"✅ PSD文件生成成功: {output_path}")
+            return output_path
 
-            print(f"✅ PSD文件生成成功: {psd_path}")
-            return str(psd_path)
-            
         except ImportError:
-            print("⚠️ psd-tools 未安装，尝试备用方法...")
+            print("⚠️ psd-tools 未安装，使用备用方法...")
         except Exception as e:
             print(f"⚠️ psd-tools 生成失败: {e}")
-        
-        # 方法2：生成PNG包 + PSD说明
-        print("📦 生成PNG分层包...")
+
+        # 方法2：生成PNG包 + 合成预览
+        print("📦 生成PNG分层包和预览...")
         self._create_layer_package(layer_path)
-        
-        # 方法3：尝试使用 pillow 简单方法（实际还是PNG，但保存为psd后缀）
-        try:
-            self._create_simple_psd(layer_path)
-        except Exception as e:
-            print(f"⚠️ 简单PSD生成失败: {e}")
-            
-        return layer_dir
+        self._create_simple_psd(layer_path)
+
+        return output_path if Path(output_path).exists() else str(layer_path)
+
+    def _create_psd(self, layer_dir: str) -> Optional[str]:
+        """创建PSD文件 - 增强版（内部调用create_layered_psd）
+        支持 psd-tools 或 imageio 库，确保兼容性
+        """
+        return self.create_layered_psd(layer_dir)
         
     def _create_layer_package(self, layer_path: Path):
         """创建PNG分层包和官方标准说明

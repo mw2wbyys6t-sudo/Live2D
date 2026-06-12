@@ -196,13 +196,49 @@ class DesktopPetAnimator:
         print(f"✅ 动画配置已保存: {config_path}")
         return config
     
+    def update_animation_state(self, frame_idx: int = 0) -> Dict:
+        """更新并返回动画状态，供外部驱动动画使用"""
+        state = self.animation_state.copy()
+        # 身体摆动（更大的频率让摆动在60帧内完成多个周期）
+        state["body_angle"] = np.sin(frame_idx * 0.1) * np.pi / 12
+        # 呼吸效果（独立的正弦波，频率稍低）
+        state["breath_offset"] = np.sin(frame_idx * 0.05) * 3
+
+        # 眨眼逻辑
+        state["eye_blink_timer"] += 16
+        if state["eye_blink_timer"] > 300 and random.random() < 0.02:
+            state["eye_blink"] = True
+            state["eye_blink_timer"] = 0
+        if state["eye_blink_timer"] < 8:
+            state["eye_blink"] = True
+        else:
+            state["eye_blink"] = False
+
+        # 表情随机变化
+        state["expression_timer"] += 16
+        if state["expression_timer"] > 5000:
+            expressions = ["normal", "happy", "shy", "normal", "normal"]
+            state["expression"] = random.choice(expressions)
+            state["expression_timer"] = 0
+
+        return state
+
     def render_frame(self, classified_layers: Dict, state: Dict) -> Image.Image:
         """渲染单帧动画"""
-        # 获取参考图尺寸
+        # 获取参考图尺寸（优先从self.layers，否则从classified_layers）
         first_layer = next(iter(self.layers.values()), None)
+        if not first_layer and classified_layers:
+            # 从classified_layers获取第一个图层
+            for group in classified_layers.values():
+                if isinstance(group, list) and len(group) > 0:
+                    first_layer = group[0][1] if isinstance(group[0], tuple) else group[0]
+                    break
+                elif isinstance(group, Image.Image):
+                    first_layer = group
+                    break
         if not first_layer:
             return None
-        
+
         width, height = first_layer.size
         composite = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         
@@ -560,7 +596,8 @@ class PetRunner:
             screen.blit(frame, (0, 0))
         
         pygame.display.flip()
-        pygame.display.set_window_position(self.x, self.y)
+        # 使用环境变量设置窗口位置（跨平台兼容）
+        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{self.x},{self.y}"
 
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
