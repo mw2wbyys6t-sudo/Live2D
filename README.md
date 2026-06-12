@@ -6,7 +6,7 @@
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
 [![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--05--30-orange.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
 
 ---
 
