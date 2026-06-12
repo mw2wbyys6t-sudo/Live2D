@@ -30,12 +30,12 @@ func NewHandler(cfg *config.Config, imageGenerator *services.ImageGenerator, cac
 		cache:          cache,
 		startTime:      time.Now(),
 	}
-	
+
 	// 启动缓存清理守护进程
 	if cache != nil {
 		cache.StartCleanupDaemon(5 * time.Minute)
 	}
-	
+
 	return h
 }
 
@@ -88,7 +88,7 @@ func (h *Handler) GetSystemStatus(c *gin.Context) {
 
 	// 缓存服务状态
 	if h.cache != nil {
-		cacheStats := h.cache.Stats()
+		_ = h.cache.Stats() // 调用Stats保持接口一致性
 		services = append(services, models.ServiceStatus{
 			Name:        "request_cache",
 			Available:   true,
@@ -121,7 +121,7 @@ func (h *Handler) GenerateImage(c *gin.Context) {
 	// 尝试从缓存获取
 	var result *models.GenerateImageResponse
 	var fromCache bool
-	
+
 	if h.cache != nil && req.Seed != 0 {
 		result, fromCache = h.cache.Get(req.Prompt, req.Width, req.Height, req.Seed, req.ModelID)
 	}
@@ -149,11 +149,11 @@ func (h *Handler) GenerateImage(c *gin.Context) {
 		Message: "图片生成成功",
 		Data:    result,
 	}
-	
+
 	if fromCache {
 		response.Message = "图片生成成功（来自缓存）"
 		response.Data = map[string]interface{}{
-			"result":    result,
+			"result":     result,
 			"from_cache": true,
 		}
 	}

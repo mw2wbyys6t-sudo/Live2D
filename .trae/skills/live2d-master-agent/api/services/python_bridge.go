@@ -1,12 +1,15 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"live2d-api/config"
@@ -37,26 +40,104 @@ func validatePath(path string) error {
 	return nil
 }
 
+// executePythonScript 安全执行Python脚本（带沙箱隔离）
+func (pb *PythonBridge) executePythonScript(scriptPath string, args []string, timeout time.Duration) ([]byte, error) {
+	// 验证脚本路径安全
+	if err := validatePath(scriptPath); err != nil {
+		return nil, fmt.Errorf("脚本路径验证失败: %v", err)
+	}
+
+	// 检查脚本是否存在
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("脚本不存在: %s", scriptPath)
+	}
+
+	// 构建完整参数
+	fullArgs := append([]string{scriptPath}, args...)
+
+	// 创建带超时的上下文
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// 创建命令
+	cmd := exec.CommandContext(ctx, pb.cfg.Python.PythonPath, fullArgs...)
+	cmd.Dir = pb.cfg.Python.ScriptsDir
+
+	// 设置环境变量（只传递必要的变量，不传递敏感信息）
+	cmd.Env = []string{
+		"PYTHONIOENCODING=utf-8",
+		"PYTHONPATH=" + pb.cfg.Python.ScriptsDir,
+		"HOME=" + os.Getenv("HOME"),
+		"PATH=" + os.Getenv("PATH"),
+		"LANG=" + os.Getenv("LANG"),
+	}
+
+	// Linux/Unix: 使用资源限制
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true, // 创建新的进程组，便于终止子进程
+		}
+	}
+
+	// 执行命令
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		// 超时终止进程组
+		if cmd.Process != nil {
+			syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		return nil, fmt.Errorf("脚本执行超时（限制%d秒）", int(timeout.Seconds()))
+	}
+	if err != nil {
+		// 对输出进行脱敏处理
+		sanitizedOutput := sanitizeOutput(string(output))
+		return nil, fmt.Errorf("脚本执行失败: %v\n输出: %s", err, sanitizedOutput)
+	}
+
+	return output, nil
+}
+
+// sanitizeOutput 对输出进行脱敏处理，防止泄露敏感信息
+func sanitizeOutput(output string) string {
+	// 定义敏感信息模式
+	patterns := []string{
+		`sk-[a-zA-Z0-9]{20,}`,                // API密钥
+		`api[_-]?key["\s]*[:=]["\s]*[^\s"]+`, // API Key
+		`secret["\s]*[:=]["\s]*[^\s"]+`,      // Secret
+		`password["\s]*[:=]["\s]*[^\s"]+`,    // Password
+		`token["\s]*[:=]["\s]*[^\s"]+`,       // Token
+	}
+
+	result := output
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		result = re.ReplaceAllString(result, "[REDACTED]")
+	}
+	return result
+}
+
 // GenerateImageViaPython 通过 Python 脚本生成图片
 func (pb *PythonBridge) GenerateImageViaPython(prompt string, width, height, seed int) (string, error) {
 	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "master_tool.py")
 
 	args := []string{
-		scriptPath,
 		"--width", fmt.Sprintf("%d", width),
 		"--height", fmt.Sprintf("%d", height),
 	}
 
 	if prompt != "" {
-		args = append(args, prompt)
+		// 安全处理提示词：防止被解析为命令行选项
+		if strings.HasPrefix(prompt, "-") {
+			prompt = " " + prompt
+		}
+		// 使用 -- 分隔选项和位置参数
+		args = append(args, "--", prompt)
 	}
 
-	cmd := exec.Command(pb.cfg.Python.PythonPath, args...)
-	cmd.Dir = pb.cfg.Python.ScriptsDir
-
-	output, err := cmd.CombinedOutput()
+	// 执行脚本（5分钟超时）
+	output, err := pb.executePythonScript(scriptPath, args, 5*time.Minute)
 	if err != nil {
-		return "", fmt.Errorf("Python脚本执行失败: %v\n输出: %s", err, string(output))
+		return "", err
 	}
 
 	// 解析输出找到生成的图片路径

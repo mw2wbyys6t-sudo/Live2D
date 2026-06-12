@@ -2402,9 +2402,22 @@ class SenseNovaProvider:
         seed: Optional[int],
         output_dir: str
     ) -> str:
-        """使用 requests 直接调用 API"""
+        """使用 requests 直接调用 API（带重试和错误处理）"""
         import requests
         import base64
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+
+        # 创建带重试的session
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -2419,25 +2432,40 @@ class SenseNovaProvider:
             "response_format": "b64_json"
         }
 
-        resp = requests.post(
-            f"{self.base_url}/images/generations",
-            headers=headers,
-            json=payload,
-            timeout=120
-        )
-        resp.raise_for_status()
+        try:
+            resp = session.post(
+                f"{self.base_url}/images/generations",
+                headers=headers,
+                json=payload,
+                timeout=120
+            )
+            resp.raise_for_status()
 
-        data = resp.json()
-        image_data = base64.b64decode(data["data"][0]["b64_json"])
+            data = resp.json()
+            image_data = base64.b64decode(data["data"][0]["b64_json"])
 
-        timestamp = int(time.time())
-        filename = f"sensenova_{timestamp}.png"
-        image_path = os.path.join(output_dir, filename)
+            timestamp = int(time.time())
+            filename = f"sensenova_{timestamp}.png"
+            image_path = os.path.join(output_dir, filename)
 
-        with open(image_path, "wb") as f:
-            f.write(image_data)
+            with open(image_path, "wb") as f:
+                f.write(image_data)
 
-        return image_path
+            return image_path
+
+        except requests.exceptions.Timeout:
+            raise RuntimeError("API请求超时（120秒），请检查网络连接或稍后重试")
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError("无法连接到API服务器，请检查网络连接")
+        except requests.exceptions.HTTPError as e:
+            if resp.status_code == 401:
+                raise RuntimeError("API密钥无效或已过期，请检查SENSENOVA_API_KEY")
+            elif resp.status_code == 429:
+                raise RuntimeError("API请求过于频繁，请稍后再试")
+            else:
+                raise RuntimeError(f"API请求失败: {e}")
+        finally:
+            session.close()
 
     @staticmethod
     def get_setup_guide() -> str:

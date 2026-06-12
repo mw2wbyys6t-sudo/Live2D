@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/gzip"
@@ -52,7 +53,7 @@ func main() {
 	// 创建路由
 	r := gin.Default()
 
-	// ========== 性能优化中间件 ==========
+	// ========== 安全中间件 ==========
 
 	// Gzip 压缩中间件（提升响应速度）
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -80,6 +81,12 @@ func main() {
 		c.Next()
 	})
 
+	// 输入验证中间件 - 防止恶意请求
+	r.Use(validateRequestMiddleware())
+
+	// 速率限制中间件 - 防止API滥用
+	r.Use(rateLimitMiddleware(cfg))
+
 	// CORS 中间件
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
@@ -105,7 +112,7 @@ func main() {
 	// 创建图像生成服务（带缓存）
 	imageService := services.NewImageGenerator(cfg)
 	cacheService := services.NewRequestCache(cfg.Cache)
-	
+
 	// 创建处理器
 	h := handlers.NewHandler(cfg, imageService, cacheService)
 
@@ -157,16 +164,17 @@ func setupRoutes(r *gin.Engine, h *handlers.Handler) {
 }
 
 func printServerInfo(cfg *config.Config, addr string) {
-	fmt.Println("\n" + "="*80)
+	separator := strings.Repeat("=", 80)
+	fmt.Println("\n" + separator)
 	fmt.Println("║     🎨 Live2D Master Agent API v7.1 (Go Edition)           ║")
 	fmt.Println("║     高性能优化版本 - 支持连接池、并发处理、请求缓存          ║")
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Printf("║  服务地址: http://%s\n", addr)
 	fmt.Printf("║  输出目录: %s\n", cfg.Output.BaseDir)
 	fmt.Printf("║  Python:   %s\n", cfg.Python.PythonPath)
 	fmt.Printf("║  最大并发: %d\n", runtime.NumCPU()*2)
 	fmt.Printf("║  缓存大小: %dMB\n", cfg.Cache.MaxSizeMB)
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Println("║  API 端点:                                                   ║")
 	fmt.Println("║    GET  /api/health      - 健康检查                         ║")
 	fmt.Println("║    GET  /api/status      - 系统状态                         ║")
@@ -179,7 +187,7 @@ func printServerInfo(cfg *config.Config, addr string) {
 	fmt.Println("║    GET  /api/cache/stats - 缓存统计                         ║")
 	fmt.Println("║    POST /api/cache/clear - 清除缓存                         ║")
 	fmt.Println("║    GET  /output/:file    - 获取输出文件                     ║")
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Println()
 }
 
@@ -190,4 +198,96 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// ========== 安全中间件实现 ==========
+
+// validateRequestMiddleware 输入验证中间件
+func validateRequestMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 验证Content-Type
+		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
+			contentType := c.ContentType()
+			if contentType != "application/json" && contentType != "multipart/form-data" {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"error": "Content-Type必须是application/json或multipart/form-data",
+				})
+				return
+			}
+		}
+
+		// 验证请求路径 - 防止路径遍历
+		requestPath := c.Request.URL.Path
+		if strings.Contains(requestPath, "..") || strings.Contains(requestPath, "//") {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": "非法的请求路径",
+			})
+			return
+		}
+
+		// 验证User-Agent - 防止简单的爬虫
+		userAgent := c.Request.UserAgent()
+		if userAgent == "" && c.Request.Method != "OPTIONS" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": "缺少User-Agent头",
+			})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// rateLimitMiddleware 速率限制中间件
+func rateLimitMiddleware(cfg *config.Config) gin.HandlerFunc {
+	// 使用内存存储请求计数（生产环境应使用Redis）
+	type clientInfo struct {
+		count     int
+		resetTime time.Time
+	}
+	clients := make(map[string]*clientInfo)
+
+	// 清理过期客户端的goroutine
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			now := time.Now()
+			for ip, info := range clients {
+				if now.After(info.resetTime) {
+					delete(clients, ip)
+				}
+			}
+		}
+	}()
+
+	return func(c *gin.Context) {
+		// 获取客户端IP
+		clientIP := c.ClientIP()
+
+		now := time.Now()
+		info, exists := clients[clientIP]
+
+		if !exists || now.After(info.resetTime) {
+			// 新客户端或已过期，重置计数
+			clients[clientIP] = &clientInfo{
+				count:     1,
+				resetTime: now.Add(1 * time.Minute),
+			}
+			c.Next()
+			return
+		}
+
+		// 检查是否超过限制（每分钟60请求）
+		if info.count >= 60 {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error":       "请求过于频繁，请稍后再试",
+				"retry_after": int(info.resetTime.Sub(now).Seconds()),
+			})
+			return
+		}
+
+		info.count++
+		c.Next()
+	}
 }
