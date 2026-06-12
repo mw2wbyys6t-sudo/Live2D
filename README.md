@@ -1,4 +1,4 @@
-# 🎨 Live2D Master Agent
+# 🎨 Live2D Master 
 
 > **专业的AI辅助Live2D制作助手 - 从概念到绑定的完整工作流**
 
