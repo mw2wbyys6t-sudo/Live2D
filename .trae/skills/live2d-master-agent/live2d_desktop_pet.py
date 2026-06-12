@@ -168,9 +168,9 @@ class DesktopPetAnimator:
             "layer_groups": self.layer_groups,
             "animations": {
                 "idle": {
-                    "body_swing": {"amplitude": 3, "speed": 0.02},
+                    "body_swing": {"amplitude": 5, "speed": 0.03},
                     "eye_blink": {"interval": 3000, "duration": 200},
-                    "breath": {"amplitude": 2, "speed": 0.015},
+                    "breath": {"amplitude": 3, "speed": 0.02},
                 },
             },
             "expressions": {
@@ -206,10 +206,13 @@ class DesktopPetAnimator:
         width, height = first_layer.size
         composite = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         
-        # 计算身体摆动
+        # 计算身体摆动（放大偏移量，确保可见）
         body_angle = state["body_angle"]
-        body_offset_x = int(body_angle * 3)
-        body_offset_y = int(body_angle * 2)
+        body_offset_x = int(body_angle * 30)  # 水平摆动，放大偏移
+        body_offset_y = int(body_angle * 20)  # 垂直摆动
+
+        # 计算呼吸效果（独立的垂直偏移）
+        breath_offset = int(state.get("breath_offset", 0))
         
         # 渲染顺序（从后往前）
         render_order = [
@@ -225,10 +228,10 @@ class DesktopPetAnimator:
                     # 根据图层组应用不同的动画效果
                     offset_x, offset_y = 0, 0
                     
-                    # 身体摆动
+                    # 身体摆动 + 呼吸
                     if group_name in ["body", "clothes", "shadow"]:
                         offset_x = body_offset_x
-                        offset_y = body_offset_y
+                        offset_y = body_offset_y + breath_offset
                     # 头发摆动幅度更大
                     elif group_name in ["hair_back", "hair_front"]:
                         offset_x = body_offset_x * 1.5
@@ -273,22 +276,38 @@ class DesktopPetAnimator:
         return composite
     
     def _apply_blink_effect(self, img: Image.Image) -> Image.Image:
-        """应用眨眼效果"""
-        # 简单实现：将眼睛图层缩小
+        """应用眨眼效果 - 在原位置将眼睛纵向压缩"""
         width, height = img.size
-        return img.resize((width, int(height * 0.2)), Image.Resampling.LANCZOS)
+        # 创建新画布，将眼睛图层纵向压缩到20%高度
+        new_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        compressed = img.resize((width, max(1, int(height * 0.2))), Image.Resampling.LANCZOS)
+        # 将压缩后的眼睛放回原位置（居中）
+        y_offset = int(height * 0.4)  # 眼睛居中位置
+        new_img.paste(compressed, (0, y_offset))
+        return new_img
     
     def _apply_happy_mouth(self, img: Image.Image) -> Image.Image:
-        """应用开心表情（微笑）"""
-        # 简单实现：稍微放大嘴巴
+        """应用开心表情（微笑）- 在原位置稍微放大嘴巴"""
         width, height = img.size
-        return img.resize((int(width * 1.1), int(height * 1.1)), Image.Resampling.LANCZOS)
-    
+        new_w, new_h = int(width * 1.1), int(height * 1.1)
+        new_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        # 居中放置
+        x_off = (width - new_w) // 2
+        y_off = (height - new_h) // 2
+        new_img.paste(resized, (x_off, y_off))
+        return new_img
+
     def _apply_surprised_mouth(self, img: Image.Image) -> Image.Image:
-        """应用惊讶表情"""
-        # 简单实现：放大嘴巴
+        """应用惊讶表情 - 在原位置放大嘴巴"""
         width, height = img.size
-        return img.resize((int(width * 1.2), int(height * 1.3)), Image.Resampling.LANCZOS)
+        new_w, new_h = int(width * 1.2), int(height * 1.3)
+        new_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        x_off = (width - new_w) // 2
+        y_off = (height - new_h) // 2
+        new_img.paste(resized, (x_off, y_off))
+        return new_img
     
     def _apply_blush_effect(self, img: Image.Image) -> Image.Image:
         """应用腮红效果"""
@@ -319,8 +338,10 @@ class DesktopPetAnimator:
         state = self.animation_state.copy()
         
         for frame_idx in range(frame_count):
-            # 更新动画状态
-            state["body_angle"] = np.sin(frame_idx * state["body_speed"]) * np.pi / 12
+            # 更新动画状态 - 使用更大的频率让摆动在60帧内完成多个周期
+            state["body_angle"] = np.sin(frame_idx * 0.1) * np.pi / 12
+            # 呼吸效果（独立的正弦波，频率稍低）
+            state["breath_offset"] = np.sin(frame_idx * 0.05) * 3
             
             # 眨眼逻辑
             state["eye_blink_timer"] += 16  # 约60fps
