@@ -14,6 +14,56 @@ from core.interfaces import WorkflowStep
 logger = logging.getLogger(__name__)
 
 
+class WorkflowContext:
+    """
+    工作流上下文 - 传递步骤间的数据和状态
+
+    提供字典式的数据存取，同时记录步骤执行历史。
+    """
+
+    def __init__(self, initial_data: Optional[Dict] = None):
+        self._data = initial_data or {}
+        self._history: List[Dict] = []
+
+    def get(self, key: str, default=None):
+        """获取上下文中的值"""
+        return self._data.get(key, default)
+
+    def set(self, key: str, value):
+        """设置上下文中的值"""
+        self._data[key] = value
+
+    def update(self, data: Dict):
+        """批量更新上下文"""
+        self._data.update(data)
+
+    def to_dict(self) -> Dict:
+        """导出为字典"""
+        return self._data.copy()
+
+    def log_step(self, step_name: str, success: bool, message: str = ""):
+        """记录步骤执行历史"""
+        self._history.append({
+            "step": step_name,
+            "success": success,
+            "message": message,
+            "timestamp": time.time(),
+        })
+
+    def get_history(self) -> List[Dict]:
+        """获取执行历史"""
+        return self._history.copy()
+
+    def __getitem__(self, key: str):
+        return self._data[key]
+
+    def __setitem__(self, key: str, value):
+        self._data[key] = value
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+
 class WorkflowEngine:
     """
     工作流引擎 - 编排和执行工作流步骤

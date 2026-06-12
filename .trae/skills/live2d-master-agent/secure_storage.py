@@ -134,6 +134,42 @@ class SecureStorage:
         except Exception:
             return None
     
+    def store_api_key(self, provider: str, api_key: str, filepath: Optional[str] = None) -> bool:
+        """
+        便捷方法：存储API密钥到加密文件
+
+        Args:
+            provider: 提供商名称
+            api_key: API密钥
+            filepath: 文件路径（默认使用 .env.encrypted）
+
+        Returns:
+            是否成功
+        """
+        if filepath is None:
+            filepath = str(Path(__file__).parent / ".env.encrypted")
+        data = self.decrypt_from_file(filepath) or {}
+        data[provider] = api_key
+        return self.encrypt_to_file(data, filepath)
+
+    def get_api_key(self, provider: str, filepath: Optional[str] = None) -> Optional[str]:
+        """
+        便捷方法：从加密文件获取API密钥
+
+        Args:
+            provider: 提供商名称
+            filepath: 文件路径（默认使用 .env.encrypted）
+
+        Returns:
+            API密钥，失败返回 None
+        """
+        if filepath is None:
+            filepath = str(Path(__file__).parent / ".env.encrypted")
+        data = self.decrypt_from_file(filepath)
+        if data and provider in data:
+            return data[provider]
+        return None
+
     def encrypt_to_file(self, data: dict, filepath: str) -> bool:
         """
         将字典加密保存到文件
