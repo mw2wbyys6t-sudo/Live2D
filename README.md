@@ -1,13 +1,13 @@
 # 🎨 Live2D Master 
 
-> **专业的AI辅助Live2D制作助手 - 从概念到绑定的完整工作流**
+> **专业的AI辅助Live2D制作助手 - 从概念到绑定的完整工作流,同时能够做到一键部署到桌面上**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
 [![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
 [![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
-
+skill存储的链接:https://github.com/mw2wbyys6t-sudo/Live2D/blob/main/.trae/skills/live2d-master-agent/SKILL.md
 ---
 
 ## ✨ 一句话介绍
@@ -19,7 +19,7 @@
 **🔥 v7.1 新增：桌面桌宠功能！** 无需Live2D软件，一键将角色部署为桌面宠物，支持动画、表情和交互！
 
 ---
-
+如下目前可见,是以一个范例:
 ## 🚀 3分钟快速开始
 
 ### 第一步：安装
