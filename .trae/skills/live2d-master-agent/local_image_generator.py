@@ -264,20 +264,23 @@ class PromptEngineer:
             "raw": text
         }
 
-        # 解析发色
-        for key, value in cls.CHARACTER_PATTERNS["hair_color"].items():
+        # 解析发色（优先匹配更长的键，避免短键误匹配）
+        hair_color_items = sorted(cls.CHARACTER_PATTERNS["hair_color"].items(), key=lambda x: len(x[0]), reverse=True)
+        for key, value in hair_color_items:
             if key in text or key in text_lower:
                 character["hair_color"] = value
                 break
 
-        # 解析发型
-        for key, value in cls.CHARACTER_PATTERNS["hair_style"].items():
+        # 解析发型（优先匹配更长的键）
+        hair_style_items = sorted(cls.CHARACTER_PATTERNS["hair_style"].items(), key=lambda x: len(x[0]), reverse=True)
+        for key, value in hair_style_items:
             if key in text or key in text_lower:
                 character["hair_style"] = value
                 break
 
-        # 解析眼睛颜色
-        for key, value in cls.CHARACTER_PATTERNS["eye_color"].items():
+        # 解析眼睛颜色（优先匹配更长的键）
+        eye_color_items = sorted(cls.CHARACTER_PATTERNS["eye_color"].items(), key=lambda x: len(x[0]), reverse=True)
+        for key, value in eye_color_items:
             if key in text or key in text_lower:
                 character["eye_color"] = value
                 break
