@@ -167,6 +167,28 @@ class SecureConfig:
         # 回退到环境变量（兼容旧代码）
         return os.environ.get(key) or None
     
+    def set(self, key: str, value: str) -> None:
+        """
+        安全设置配置值
+        
+        敏感键会存储在私有字典中，不会写入环境变量
+        """
+        if key in self._SENSITIVE_KEYS:
+            self._secrets[key] = value
+        else:
+            self._config[key] = value
+            os.environ[key] = value
+    
+    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        安全获取配置值
+        
+        敏感键优先从私有字典获取
+        """
+        if key in self._SENSITIVE_KEYS:
+            return self._secrets.get(key, default)
+        return self._config.get(key, os.environ.get(key, default))
+    
     def store_api_key_encrypted(self, provider: str, api_key: str) -> bool:
         """
         加密存储API密钥

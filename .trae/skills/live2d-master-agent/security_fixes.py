@@ -141,7 +141,7 @@ def sanitize_prompt(prompt: str, max_length: int = 4000) -> str:
     if len(prompt) > max_length:
         prompt = prompt[:max_length]
     
-    # 移除危险字符
+    # 移除危险字符和命令注入模式
     dangerous_patterns = [
         (';', ''),
         ('&', ''),
@@ -152,6 +152,28 @@ def sanitize_prompt(prompt: str, max_length: int = 4000) -> str:
         ('\\', ''),
         ('\n', ' '),
         ('\r', ' '),
+        ('rm -rf', ''),
+        ('rm -f', ''),
+        ('rm ', ''),
+        ('del ', ''),
+        ('rmdir ', ''),
+        ('format ', ''),
+        ('mkfs', ''),
+        ('dd if=', ''),
+        ('curl ', ''),
+        ('wget ', ''),
+        ('python ', ''),
+        ('bash ', ''),
+        ('sh ', ''),
+        ('cmd ', ''),
+        ('powershell ', ''),
+        ('eval(', ''),
+        ('exec(', ''),
+        ('system(', ''),
+        ('__import__', ''),
+        ('subprocess', ''),
+        ('os.system', ''),
+        ('os.popen', ''),
     ]
     
     for old, new in dangerous_patterns:
