@@ -83,16 +83,22 @@ python live2d_desktop_pet.py --layers ./output/my_project/layers/ --pet-name "�
 
 ## 专业分层
 
-### See-through AI分层（SIGGRAPH 2026级别）
-- LayerDiff 3D + Marigold Depth
-- 专为动漫角色设计
-- 透明背景 + 完美分层
+### 推荐：v6.0 K-means聚类分层（当前实现）
+- 基于 K-means 颜色聚类算法，自动识别角色部件
+- 支持自定义聚类数量（默认5层，可调整至15层+）
+- 输出透明背景PNG图层 + 分层指南
+- 适合大多数动漫角色，处理速度10-30秒
 
-### 内置备选工具
-- v6.0 分层工具（K-means聚类）- `live2d_layer_v6.py`
+```bash
+python live2d_layer_v6.py character.png --k 15
+```
+
+### 其他内置分层工具
 - v5.0 分层工具（简单颜色检测）- `live2d_layer_pro.py`
 - B站优化版分层 - `live2d_layer_bilibili.py`
 - 完整工作流 - `live2d_workflow.py`（生成→评估→优化→分层→PSD）
+
+> **注意**：See-through AI分层（LayerDiff 3D + Marigold Depth）为规划功能，当前版本以 K-means 聚类为主。可通过 `github_layer_integration.py` 集成外部 See-through 工具。
 
 ## Live2D桌面桌宠
 
@@ -121,8 +127,8 @@ go run main.go
 - 并发处理（CPU核心数×2）
 - 输入验证中间件
 - 速率限制（每IP每分钟60请求）
-- Python脚本沙箱执行
-- 输出脱敏
+- Python脚本沙箱执行（超时控制/环境变量过滤）
+- 输出脱敏（防止API密钥泄露）
 
 ## 安全增强（v7.1）
 
@@ -293,7 +299,7 @@ python test_deep_coverage.py
 - ✅ 推荐尺寸: 1024×1024 或 2048×2048
 - ✅ 最大文件大小: 50MB
 - ✅ 混合模式: 仅支持 Normal
-- ✅ 图层数量: 52层官方标准
+- ✅ 图层数量: 25-30层（含头发/眼睛/嘴巴等子部件细分），可扩展至52层标准
 
 ### 图层规范
 - ✅ 部件独立分层
