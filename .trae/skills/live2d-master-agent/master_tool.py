@@ -238,9 +238,157 @@ def get_latest_image(output_dir):
     return str(png_files[0]) if png_files else None
 
 
+def generate_image_pollinations(prompt, output_dir, width=512, height=768, seed=None):
+    """
+    使用 Pollinations.ai 免费在线生成图片
+    无需任何依赖，开箱即用
+    """
+    import urllib.request
+    import urllib.parse
+
+    print(f"\n🌐 使用 Pollinations.ai 免费生成...")
+    print(f"📝 提示词: {prompt[:100]}...")
+
+    if seed is None:
+        seed = random.randint(0, 999999999)
+
+    # 构建 Pollinations.ai URL
+    encoded_prompt = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true"
+
+    try:
+        output_path = os.path.join(output_dir, f"pollinations_{seed}.png")
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0'
+            }
+        )
+
+        print(f"⬇️  正在下载...")
+        with urllib.request.urlopen(req, timeout=120) as response:
+            with open(output_path, 'wb') as f:
+                f.write(response.read())
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            print(f"✅ 成功！使用 Pollinations.ai 免费生成")
+            print(f"📁 保存至: {output_path}")
+            return output_path, seed
+        else:
+            print("❌ 下载的文件无效")
+            return None, seed
+
+    except Exception as e:
+        print(f"❌ Pollinations.ai 生成失败: {e}")
+        return None, seed
+
+
+def generate_image_huggingface(prompt, output_dir, width=512, height=768, seed=None):
+    """
+    使用 Hugging Face Inference API 免费生成图片
+    无需 API Key，使用公开模型
+    """
+    import urllib.request
+    import urllib.parse
+    import json
+
+    print(f"\n🌐 使用 Hugging Face 免费生成...")
+    print(f"📝 提示词: {prompt[:100]}...")
+
+    if seed is None:
+        seed = random.randint(0, 999999999)
+
+    # 使用 Stable Diffusion 公开 API
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+    payload = json.dumps({"inputs": prompt, "parameters": {"seed": seed}}).encode('utf-8')
+
+    try:
+        output_path = os.path.join(output_dir, f"huggingface_{seed}.png")
+        req = urllib.request.Request(
+            api_url,
+            data=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        )
+
+        print(f"⬇️  正在请求 Hugging Face API...")
+        with urllib.request.urlopen(req, timeout=180) as response:
+            with open(output_path, 'wb') as f:
+                f.write(response.read())
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            print(f"✅ 成功！使用 Hugging Face 免费生成")
+            print(f"📁 保存至: {output_path}")
+            return output_path, seed
+        else:
+            print("❌ 下载的文件无效")
+            return None, seed
+
+    except Exception as e:
+        print(f"❌ Hugging Face 生成失败: {e}")
+        return None, seed
+
+
+def generate_image_deepai(prompt, output_dir, width=512, height=768, seed=None):
+    """
+    使用 DeepAI 免费生成图片
+    无需 API Key
+    """
+    import urllib.request
+    import urllib.parse
+
+    print(f"\n🌐 使用 DeepAI 免费生成...")
+    print(f"📝 提示词: {prompt[:100]}...")
+
+    if seed is None:
+        seed = random.randint(0, 999999999)
+
+    try:
+        output_path = os.path.join(output_dir, f"deepai_{seed}.png")
+
+        # DeepAI 文本生成图片 API（无需 key）
+        data = urllib.parse.urlencode({
+            'text': prompt,
+        }).encode('utf-8')
+
+        req = urllib.request.Request(
+            'https://api.deepai.org/api/text2img',
+            data=data,
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        )
+
+        print(f"⬇️  正在请求 DeepAI API...")
+        with urllib.request.urlopen(req, timeout=120) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            image_url = result.get('output_url')
+
+            if image_url:
+                img_req = urllib.request.Request(image_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(img_req, timeout=60) as img_response:
+                    with open(output_path, 'wb') as f:
+                        f.write(img_response.read())
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            print(f"✅ 成功！使用 DeepAI 免费生成")
+            print(f"📁 保存至: {output_path}")
+            return output_path, seed
+        else:
+            print("❌ 下载的文件无效")
+            return None, seed
+
+    except Exception as e:
+        print(f"❌ DeepAI 生成失败: {e}")
+        return None, seed
+
+
 def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=25, model_id=None, live2d_mode=True, reference_image=None, batch_size=1, use_smart=False, use_multistage=False):
     """
-    生成图片（使用自研本地生成器 v5.0）
+    生成图片（优先本地生成器，降级到在线免费方案）
     """
     print(f"\n🎨 正在生成图片...")
     print(f"📝 提示词: {prompt[:100]}...")
@@ -249,6 +397,7 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
     if seed is None:
         seed = random.randint(0, 999999999)
 
+    # 尝试1：本地 Stable Diffusion 生成（高质量）
     try:
         from local_image_generator import Live2DOptimizedGenerator, get_live2d_negative_prompt, get_default_negative_prompt
 
@@ -316,12 +465,34 @@ def generate_image(prompt, output_dir, seed=None, width=512, height=768, steps=2
                 print("\n✅ 成功！使用本地 Stable Diffusion v5.0")
                 return output_path, seed
 
-    except ImportError as e:
-        print(f"❌ 缺少依赖: {e}")
-        print(f"\n💡 请安装 diffusers:")
-        print(f"   pip install diffusers transformers torch accelerate")
+    except ImportError:
+        print("⚠️ 本地生成器未安装，自动切换到免费在线方案...")
     except Exception as e:
-        print(f"❌ 生成失败: {e}")
+        print(f"⚠️ 本地生成失败: {e}")
+
+    # 尝试2：Pollinations.ai 免费在线生成（降级方案1）
+    print("\n🔄 尝试免费在线生成方案...")
+    output_path, seed = generate_image_pollinations(prompt, output_dir, width, height, seed)
+    if output_path:
+        return output_path, seed
+
+    # 尝试3：Hugging Face 免费生成（降级方案2）
+    print("\n🔄 尝试 Hugging Face 免费生成...")
+    output_path, seed = generate_image_huggingface(prompt, output_dir, width, height, seed)
+    if output_path:
+        return output_path, seed
+
+    # 尝试4：DeepAI 免费生成（降级方案3）
+    print("\n🔄 尝试 DeepAI 免费生成...")
+    output_path, seed = generate_image_deepai(prompt, output_dir, width, height, seed)
+    if output_path:
+        return output_path, seed
+
+    print("\n❌ 所有生成方案均失败")
+    print("\n💡 解决方案:")
+    print("   1. 检查网络连接（在线生成需要网络）")
+    print("   2. 安装本地生成器: pip install diffusers transformers torch accelerate")
+    print("   3. 手动提供图片: python master_tool.py --skip-generate")
 
     return None, seed
 

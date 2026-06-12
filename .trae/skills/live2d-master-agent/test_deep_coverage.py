@@ -11,7 +11,7 @@ import time
 import shutil
 from pathlib import Path
 
-SKILL_DIR = '/workspace/live2d_v3/.trae/skills/live2d-master-agent'
+SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SKILL_DIR)
 sys.path.insert(0, SKILL_DIR)
 

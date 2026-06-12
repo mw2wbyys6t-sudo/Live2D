@@ -832,7 +832,10 @@ class Live2DWorkflow:
         self._create_layer_package(layer_path)
         self._create_simple_psd(layer_path)
 
-        return output_path if Path(output_path).exists() else str(layer_path)
+        # 如果output_path不存在（psd-tools未安装时），返回layer_path
+        if output_path and Path(output_path).exists():
+            return output_path
+        return str(layer_path)
 
     def _create_psd(self, layer_dir: str) -> Optional[str]:
         """创建PSD文件 - 增强版（内部调用create_layered_psd）

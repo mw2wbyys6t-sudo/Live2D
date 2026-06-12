@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 # 确保在项目根目录，并将 skill 目录加入 Python 路径
-SKILL_DIR = '/workspace/live2d_test/.trae/skills/live2d-master-agent'
+SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SKILL_DIR)
 sys.path.insert(0, SKILL_DIR)
 
