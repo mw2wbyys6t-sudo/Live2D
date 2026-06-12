@@ -20,9 +20,26 @@
 
 ---
 
-## 🚀 3分钟快速开始（Agent模式）
+## 📦 安装方式
 
-### 第一步：安装
+### 方式一：作为 Trae IDE Skill 使用（推荐）
+
+将本仓库克隆到 Trae IDE 的 skills 目录：
+
+```bash
+# Windows (PowerShell)
+$skillDir = "$env:USERPROFILE\.trae\skills\live2d-master-agent"
+New-Item -ItemType Directory -Force -Path $skillDir
+git clone https://github.com/mw2wbyys6t-sudo/Live2D.git $skillDir
+
+# Mac/Linux
+mkdir -p ~/.trae/skills/live2d-master-agent
+git clone https://github.com/mw2wbyys6t-sudo/Live2D.git ~/.trae/skills/live2d-master-agent
+```
+
+然后在 Trae IDE 中调用 `live2d-master-agent` skill 即可。
+
+### 方式二：作为独立 Agent 使用（CMD/PowerShell/Terminal）
 
 ```bash
 git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
@@ -32,36 +49,62 @@ python -m pip install -r requirements.txt
 
 > **Windows用户注意**：如果 `pip install` 报错，请使用 `python -m pip install -r requirements.txt`
 
-### 第二步：启动Agent
+---
+
+## 🚀 快速开始
+
+### 启动 Agent
 
 ```bash
 python live2d_agent.py
 ```
 
-然后直接告诉Agent你想要什么：
+### 交互方式
 
+由于终端/CMD/PowerShell 可能不支持中文输入，Agent 支持以下方式：
+
+**方式1：数字菜单（推荐终端使用）**
 ```
 🎨 Live2D Master Agent v7.1
-你的Live2D制作助手 - 告诉我你想要什么
 
-📋 我可以帮你：
-  [1] 🎨 生成角色形象
-  [2] 📐 图片分层
-  [3] 🐱 部署桌面宠物
-  [4] 🚀 完整工作流
-  [5] ⚙️  设置
-  [6] ❓ 帮助
+[1] Generate Character
+[2] Layer Separation
+[3] Desktop Pet
+[4] Full Workflow
+[5] Settings
+[6] Help
+[0] Exit
 
-💡 你也可以直接输入自然语言，例如："帮我做一个银发巫女"
-
-📝 你想做什么？ 帮我做一个粉色头发的猫耳少女
+Enter your choice (1-6): 1
+Enter character description: cute anime girl, pink hair
 ```
 
-Agent会自动完成生成→分层→桌宠部署的整个流程！
+**方式2：英文命令**
+```
+📝 What do you want? generate a cat girl with pink hair
+📝 What do you want? layer my image
+📝 What do you want? deploy pet
+📝 What do you want? full workflow
+```
+
+**方式3：快速模式（无需交互）**
+```bash
+# Generate character
+python live2d_agent.py --quick "cute anime girl, pink hair"
+
+# Full workflow
+python live2d_agent.py --workflow "cat girl, pink hair, green eyes"
+
+# Layer image
+python live2d_agent.py --layer "./my_character.png"
+
+# Deploy pet
+python live2d_agent.py --pet "./layers_output"
+```
 
 ---
 
-## 🛠️ 高级用法（命令行模式）
+## 🛠️ 命令行模式（高级用户）
 
 如果你更喜欢直接命令行操作：
 

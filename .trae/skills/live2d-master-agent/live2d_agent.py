@@ -25,35 +25,33 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def print_banner():
     """打印欢迎界面"""
-    print("""
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║     🎨 Live2D Master Agent v7.1                             ║
-║     你的Live2D制作助手 - 告诉我你想要什么                    ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+    print(r"""
+============================================================
+
+     Live2D Master Agent v7.1
+     Your Live2D Assistant - Tell me what you want
+
+============================================================
 """)
 
 
 def print_menu():
-    """打印主菜单"""
+    """打印主菜单（英文，兼容终端）"""
     print("""
-📋 我可以帮你：
+[1] Generate Character  - Generate a character from description
+[2] Layer Separation    - Split image into Live2D layers
+[3] Desktop Pet         - Deploy as animated desktop pet
+[4] Full Workflow       - Generate + Layer + Pet in one go
+[5] Settings            - API keys, output directory
+[6] Help                - Usage guide
+[0] Exit                - Quit
 
-  [1] 🎨 生成角色形象（告诉我你想要什么角色）
-  [2] 📐 图片分层（把你提供的图片分成Live2D图层）
-  [3] 🐱 部署桌面宠物（从分层结果生成可动的桌宠）
-  [4] 🚀 完整工作流（从描述到桌宠，一键完成）
-  [5] ⚙️  设置（API密钥、输出目录等）
-  [6] ❓ 帮助（查看使用说明）
-  [0] 🚪 退出
-
-💡 你也可以直接输入自然语言，例如："帮我做一个银发巫女"
+Tip: You can also type English commands directly:
+     "generate a cat girl" / "layer my image" / "deploy pet"
 """)
 
 
-def get_input(prompt: str = "
-📝 你想做什么？") -> str:
+def get_input(prompt: str = "\nEnter your choice (0-6 or command): ") -> str:
     """获取用户输入"""
     try:
         return input(prompt).strip()
@@ -64,126 +62,142 @@ def get_input(prompt: str = "
 
 def detect_intent(user_input: str) -> str:
     """
-    识别用户意图
-    返回: 'generate', 'layer', 'pet', 'workflow', 'settings', 'help', 'exit'
+    Detect user intent
+    Returns: 'generate', 'layer', 'pet', 'workflow', 'settings', 'help', 'exit'
+    Supports both English and Chinese keywords for terminal compatibility
     """
-    user_input_lower = user_input.lower()
-    
-    # 退出
-    if user_input in ['0', 'exit', 'quit', '退出', '再见', 'bye']:
+    user_input_lower = user_input.lower().strip()
+
+    # Exit
+    if user_input in ['0', 'exit', 'quit', 'q', 'bye', 'goodbye', '退出', '再见']:
         return 'exit'
-    
-    # 生成角色
-    if any(kw in user_input_lower for kw in ['生成', '创建', '做', '画', '生成角色', '1']):
+
+    # Generate character
+    if any(kw in user_input_lower for kw in [
+        'generate', 'create', 'make', 'draw', 'gen', 'g ', '生成', '创建', '做', '画', '生成角色', '1'
+    ]):
         return 'generate'
-    
-    # 分层
-    if any(kw in user_input_lower for kw in ['分层', '分割', '拆分', '图层', '2']):
+
+    # Layer separation
+    if any(kw in user_input_lower for kw in [
+        'layer', 'separate', 'split', 'layers', '分层', '分割', '拆分', '图层', '2'
+    ]):
         return 'layer'
-    
-    # 桌宠
-    if any(kw in user_input_lower for kw in ['桌宠', '宠物', '桌面', '部署', '3']):
+
+    # Desktop pet
+    if any(kw in user_input_lower for kw in [
+        'pet', 'desktop', 'deploy', '桌宠', '宠物', '桌面', '部署', '3'
+    ]):
         return 'pet'
-    
-    # 完整工作流
-    if any(kw in user_input_lower for kw in ['完整', '一键', '全部', 'workflow', '4']):
+
+    # Full workflow
+    if any(kw in user_input_lower for kw in [
+        'workflow', 'full', 'all', 'complete', '一键', '完整', '全部', '4'
+    ]):
         return 'workflow'
-    
-    # 设置
-    if any(kw in user_input_lower for kw in ['设置', '配置', 'api', '密钥', '5']):
+
+    # Settings
+    if any(kw in user_input_lower for kw in [
+        'settings', 'config', 'setup', 'key', 'api', '设置', '配置', '密钥', '5'
+    ]):
         return 'settings'
-    
-    # 帮助
-    if any(kw in user_input_lower for kw in ['帮助', 'help', '说明', '怎么用', '6']):
+
+    # Help
+    if any(kw in user_input_lower for kw in [
+        'help', 'h', 'how', 'usage', 'guide', '帮助', '说明', '怎么用', '6'
+    ]):
         return 'help'
-    
-    # 默认：如果包含角色描述特征，认为是生成请求
-    character_keywords = ['少女', '少年', '女孩', '男孩', '角色', '人物', 'anime', 'girl', 'boy', 'character']
+
+    # Default: if contains character description keywords, treat as generate
+    character_keywords = [
+        'anime', 'girl', 'boy', 'character', 'cat', 'maid', 'witch', 'knight',
+        '少女', '少年', '女孩', '男孩', '角色', '人物', '猫娘', '女仆', '巫女'
+    ]
     if any(kw in user_input_lower for kw in character_keywords):
         return 'generate'
-    
+
     return 'unknown'
 
 
 def handle_generate():
-    """处理角色生成请求"""
-    print("\n🎨 角色生成")
+    """Handle character generation request"""
+    print("\n🎨 Character Generation")
     print("-" * 50)
-    
-    description = get_input("请描述你想要的角色（例如：银发巫女，紫色眼睛，和服）：")
+
+    description = get_input("Describe your character (e.g., silver hair witch, purple eyes, kimono): ")
     if not description:
-        print("❌ 描述不能为空")
+        print("❌ Description cannot be empty")
         return
-    
-    print(f"\n🎯 正在生成角色：{description}")
-    print("⏳ 这可能需要一些时间...\n")
-    
-    # 调用 master_tool.py
+
+    print(f"\n🎯 Generating character: {description}")
+    print("⏳ This may take a while...\n")
+
+    # Call master_tool.py
     import subprocess
     result = subprocess.run(
         [sys.executable, 'master_tool.py', description],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode == 0:
-        print("\n✅ 角色生成完成！")
-        
-        # 询问是否继续分层
-        continue_layer = get_input("\n是否立即进行分层？[y/n]: ").lower()
-        if continue_layer in ['y', 'yes', '是']:
+        print("\n✅ Character generated successfully!")
+
+        # Ask if continue to layer separation
+        continue_layer = get_input("\nLayer separation now? [y/n]: ").lower()
+        if continue_layer in ['y', 'yes']:
             handle_layer_from_output()
     else:
-        print("\n❌ 生成失败，请检查网络连接或安装本地模型")
+        print("\n❌ Generation failed. Check network or install local model")
 
 
 def handle_layer_from_output():
-    """从输出目录找到最新图片并分层"""
+    """Find latest image in output dir and layer it"""
     output_dir = Path('output')
     if not output_dir.exists():
-        print("❌ 没有找到输出目录")
+        print("❌ Output directory not found")
         return
-    
-    # 找到最新的角色图片
+
+    # Find latest character image
     images = list(output_dir.glob('*.png')) + list(output_dir.glob('*.jpg'))
     if not images:
-        print("❌ 没有找到生成的图片")
+        print("❌ No generated images found")
         return
-    
+
     latest_image = max(images, key=lambda p: p.stat().st_mtime)
-    print(f"\n📐 对最新图片进行分层：{latest_image.name}")
-    
+    print(f"\n📐 Layering latest image: {latest_image.name}")
+
     handle_layer_image(str(latest_image))
 
 
 def handle_layer_image(image_path: str = None):
-    """处理图片分层"""
+    """Handle image layer separation"""
     if not image_path:
-        image_path = get_input("请输入图片路径：").strip().strip('"')
-    
+        image_path = get_input("Enter image path: ").strip().strip('"')
+
     if not os.path.exists(image_path):
-        print(f"❌ 文件不存在：{image_path}")
+        print(f"❌ File not found: {image_path}")
         return
-    
-    print(f"\n📐 正在分层：{image_path}")
-    print("⏳ 处理中...\n")
-    
+
+    print(f"\n📐 Layering: {image_path}")
+    print("⏳ Processing...\n")
+
     import subprocess
     result = subprocess.run(
         [sys.executable, 'live2d_workflow.py', '--input', image_path, '--output', 'output/workflow'],
         capture_output=False,
         text=True
     )
-    
+
     if result.returncode == 0:
-        print("\n✅ 分层完成！")
-        
-        # 询问是否部署桌宠
-        continue_pet = get_input("\n是否立即部署桌面宠物？[y/n]: ").lower()
-        if continue_pet in ['y', 'yes', '是']:
+        print("\n✅ Layer separation complete!")
+
+        # Ask if deploy desktop pet
+        continue_pet = get_input("\nDeploy desktop pet now? [y/n]: ").lower()
+        if continue_pet in ['y', 'yes']:
             handle_pet_from_layer()
     else:
-        print("\n❌ 分层失败")
+        print("\n❌ Layer separation failed")
 
 
 def handle_pet_from_layer():
