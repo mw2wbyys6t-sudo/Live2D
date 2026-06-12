@@ -146,7 +146,12 @@ def generate_random_features():
 
 
 def build_prompt(custom_prompt="", live2d_optimized=True, high_quality=True, use_structured=True):
-    """构建优化的多样化提示词 v6.0 - 支持结构化解析"""
+    """构建优化的多样化提示词 v6.0 - 支持结构化解析
+
+    Returns:
+        如果解析成功或随机生成成功，返回 (prompt, features) 元组
+        如果出错，返回 (prompt, {}) 或 ("", {})
+    """
 
     # v6.0: 优先使用结构化解析
     if use_structured and custom_prompt:

@@ -78,13 +78,22 @@ class WorkflowEngine:
     def __init__(self, name: str = "default"):
         self.name = name
         self._steps: List[WorkflowStep] = []
+        self.steps: List[Dict] = []  # 兼容外部访问
         self._max_retries: int = 3
         self._retry_delay: float = 1.0  # 初始重试延迟（秒）
         self._execution_log: List[Dict] = []
 
-    def add_step(self, step: WorkflowStep) -> 'WorkflowEngine':
-        """添加步骤（支持链式调用）"""
-        self._steps.append(step)
+    def add_step(self, step, name: Optional[str] = None) -> 'WorkflowEngine':
+        """添加步骤（支持链式调用，兼容函数和WorkflowStep对象）"""
+        if isinstance(step, WorkflowStep):
+            self._steps.append(step)
+        else:
+            # 兼容普通函数
+            self._steps.append(step)
+            if name:
+                self.steps.append({'func': step, 'name': name})
+            else:
+                self.steps.append({'func': step, 'name': getattr(step, '__name__', 'unknown')})
         return self
 
     def set_max_retries(self, max_retries: int) -> 'WorkflowEngine':
@@ -92,7 +101,14 @@ class WorkflowEngine:
         self._max_retries = max_retries
         return self
 
-    def execute(self, initial_context: Optional[Dict] = None) -> Dict:
+    def add_step(self, step_func, name: Optional[str] = None):
+        """添加工作流步骤"""
+        self.steps.append({
+            'func': step_func,
+            'name': name or step_func.__name__,
+        })
+
+    def execute(self, context: Optional[Dict] = None) -> Dict:
         """
         执行工作流
 

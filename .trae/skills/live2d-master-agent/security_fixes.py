@@ -272,6 +272,16 @@ class SecurityFixes:
         clean_prompt = security.sanitize_prompt(user_input)
     """
 
+    # 模型白名单 - 仅允许已验证的安全模型
+    MODEL_WHITELIST = {
+        "gpt-4o", "gpt-4o-mini", "gpt-4-turbo",
+        "claude-3-opus", "claude-3-sonnet", "claude-3-haiku",
+        "gemini-pro", "gemini-ultra",
+        "anything-v3", "anything-v5", "counterfeit-v3",
+        "meinaMix", "pastel-mix", "abyss-orange",
+        "shiitake-mix", "nova-anime",
+    }
+
     def __init__(self):
         pass
 
@@ -286,6 +296,10 @@ class SecurityFixes:
     def validate_model_id(self, model_id: str) -> Tuple[bool, str]:
         """验证模型ID（白名单验证）"""
         return validate_model_id(model_id)
+
+    def validate_model(self, model: str) -> bool:
+        """验证模型是否在白名单中（简化版）"""
+        return model in self.MODEL_WHITELIST
 
     def sanitize_prompt(self, prompt: str, max_length: int = 4000) -> str:
         """清理提示词，防止命令注入"""

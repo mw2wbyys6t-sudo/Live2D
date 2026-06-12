@@ -269,6 +269,14 @@ class SecureConfig:
         }
         return models.get(version, models["5.0"])
     
+    def _is_sensitive(self, key: str) -> bool:
+        """检查键名是否属于敏感信息"""
+        key_upper = key.upper()
+        for sensitive in self._SENSITIVE_KEYS:
+            if sensitive in key_upper:
+                return True
+        return False
+
     def validate_api_key(self, provider: str = "sensenova") -> bool:
         """
         验证API密钥格式

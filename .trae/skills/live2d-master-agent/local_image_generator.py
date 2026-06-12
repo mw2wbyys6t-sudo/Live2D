@@ -303,6 +303,14 @@ class PromptEngineer:
         return character
 
     @classmethod
+    def build_live2d_prompt(cls, character: Dict[str, str]) -> str:
+        """构建Live2D专用提示词（便捷方法）"""
+        prompt, _ = cls.build_prompt_from_character(
+            character, style="anime", live2d_mode=True, live2d_rigging=True
+        )
+        return prompt
+
+    @classmethod
     def build_prompt_from_character(cls, character: Dict[str, str],
                                      style: str = "anime",
                                      live2d_mode: bool = True,
@@ -516,6 +524,11 @@ class QualityAssessor:
         "background_purity": 0.10,      # 背景纯净度
         "occlusion_completeness": 0.10, # 遮挡区域完整性
     }
+
+    @classmethod
+    def assess_live2d_quality(cls, image_path: str) -> Dict[str, float]:
+        """评估图片Live2D适配度（便捷方法）"""
+        return cls.assess_image(image_path, live2d_mode=True, live2d_rigging=False)
 
     @staticmethod
     def assess_image(image_path: str, live2d_mode: bool = True, live2d_rigging: bool = False) -> Dict[str, float]:
