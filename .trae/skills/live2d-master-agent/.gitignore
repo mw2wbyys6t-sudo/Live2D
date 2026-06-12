@@ -1,5 +1,7 @@
 # 环境变量文件（包含敏感信息）
 .env
+.env.*
+*.encrypted
 
 # Python
 __pycache__/
@@ -34,3 +36,7 @@ install_log.txt
 # 临时文件
 *.tmp
 *.bak
+
+# Go编译产物
+api/live2d-api
+*.exe

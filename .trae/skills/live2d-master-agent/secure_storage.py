@@ -274,27 +274,25 @@ def decrypt_api_key(encrypted_key: str) -> Optional[str]:
 
 
 if __name__ == "__main__":
-    # 测试加密功能
+    # 测试加密功能（使用测试密钥，不使用真实密钥）
     storage = SecureStorage()
-    
-    test_key = "sk-9JrYWS8XkB3JcryclGXF6K89CgpOlJvI"
-    
+
+    test_key = "sk-test-abcdefghijklmnopqrstuvwx"  # 测试用密钥
+
     print("=== 加密测试 ===")
     encrypted = storage.encrypt(test_key)
-    print(f"原始密钥: {test_key[:20]}...")
     print(f"加密后: {encrypted[:50]}...")
-    
+
     decrypted = storage.decrypt(encrypted)
-    print(f"解密后: {decrypted[:20]}...")
     print(f"验证: {'✅ 成功' if decrypted == test_key else '❌ 失败'}")
-    
+
     print("\n=== 文件加密测试 ===")
-    config = EncryptedConfig()
-    config.store_api_key("sensenova", test_key)
-    
-    retrieved = config.get_api_key("sensenova")
+    enc_config = EncryptedConfig()
+    enc_config.store_api_key("test_provider", test_key)
+
+    retrieved = enc_config.get_api_key("test_provider")
     print(f"存储并读取: {'✅ 成功' if retrieved == test_key else '❌ 失败'}")
-    
+
     # 清理
-    config.clear_cache()
+    enc_config.clear_cache()
     print("✅ 缓存已清理")
