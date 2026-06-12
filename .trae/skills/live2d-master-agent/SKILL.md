@@ -398,7 +398,7 @@ python config_api.py
 
 **本地生成**:
 ```bash
-python install_comfyui.py
+python install_comfyui_advanced.py
 ```
 
 ## API 配置（可选增强）
@@ -583,7 +583,8 @@ go run main.go
 | **live2d_layer_v6.py** | K-means聚类分层工具 | v6.0 |
 | **live2d_layer_bilibili.py** | B站优化版分层工具 | v1.0 |
 | **github_layer_integration.py** | GitHub开源工具集成 | v1.0 |
-| **config.py** | 配置管理（支持SenseNova API） | v2.0 |
+| **live2d_desktop_pet.py** | Live2D桌面桌宠（动画、表情、交互） | v7.1 |
+| **config.py** | 配置管理（安全存储、加密） | v2.0 |
 | **security_fixes.py** | 安全修复模块（路径验证/模型白名单/提示词清理） | v1.0 |
 | **cloud_resource_manager.py** | 云端资源管理器（国内镜像加速） | v1.0 |
 
@@ -601,7 +602,7 @@ go run main.go
 |------|------|
 | **config_api.py** | API配置工具 |
 | **install_ai_models.py** | AI模型安装脚本 |
-| **install_comfyui.py** | ComfyUI安装脚本 |
+| **install_comfyui_advanced.py** | ComfyUI安装脚本 |
 | **comfyui_integration.py** | ComfyUI集成 |
 
 ### 脚本目录
@@ -630,15 +631,16 @@ go run main.go
 | 文件 | 说明 |
 |------|------|
 | **docs/RIGGING_GUIDE.md** | Rigging指南 |
-| **AI_LAYERING_GUIDE.md** | AI分层指南 |
-| **CLOUD_SETUP_GUIDE.md** | 云端资源管理指南 |
-| **CHANGELOG.md** | 版本更新记录 |
-| **SECURITY_AUDIT_v6.md** | 安全审计报告（v7.1） |
+| **docs/archive/AI_LAYERING_GUIDE.md** | AI分层指南 |
+| **docs/archive/CLOUD_SETUP_GUIDE.md** | 云端资源管理指南 |
+| **docs/archive/CHANGELOG.md** | 版本更新记录 |
+| **SECURITY.md** | 安全指南 |
+| **ARCHITECTURE.md** | 架构设计 |
 | **README.md** | 项目主文档 |
-| **QUICKSTART.md** | 快速开始指南 |
-| **USER_GUIDE.md** | 用户手册 |
-| **BEST_PRACTICES.md** | 最佳实践 |
-| **FAQ.md** | 常见问题解答 |
+| **docs/archive/QUICKSTART.md** | 快速开始指南 |
+| **docs/archive/USER_GUIDE.md** | 用户手册 |
+| **docs/archive/BEST_PRACTICES.md** | 最佳实践 |
+| **docs/archive/FAQ.md** | 常见问题解答 |
 
 ## 🎯 Live2D 实操详细帮助
 
@@ -1119,13 +1121,32 @@ go run main.go
 
 访问 http://localhost:8080 查看服务
 
+### 示例9：桌面桌宠部署
+
+```bash
+# 从分层结果创建桌面桌宠
+python live2d_desktop_pet.py --layers ./output/layers/ --pet-name "我的桌宠"
+
+# 桌宠功能:
+# - 身体摆动、眨眼、呼吸动画
+# - 表情切换（正常/开心/害羞/惊讶/困倦）
+# - 点击互动、拖拽移动
+# - 鼠标视线跟随
+# - 跳跃、心跳动画
+```
+
 ## 📊 版本更新记录
 
 ### v7.1 (2026-06-01) - 最新
+- ✅ 新增桌面桌宠功能（live2d_desktop_pet.py）- 无需Live2D软件，一键部署
 - ✅ 新增云端资源管理器（cloud_resource_manager.py）
 - ✅ 新增一键安装脚本（install.py/install.bat/install.sh）
 - ✅ 新增安全修复模块（security_fixes.py）
 - ✅ 新增完整工作流工具（live2d_workflow.py v2.1）
+- ✅ 新增核心接口模块（core/interfaces.py）- 依赖倒置原则
+- ✅ 新增工作流引擎（core/workflow_engine.py）- 链式调用、自动重试
+- ✅ 新增安全存储模块（secure_storage.py）- Fernet加密
+- ✅ 新增SecureConfig（config.py）- API密钥不泄露到环境变量
 - ✅ Go API 服务性能优化（v7.1）
   - Gzip 压缩中间件
   - 请求缓存服务（TTL/大小限制）
@@ -1134,9 +1155,11 @@ go run main.go
   - 超时配置
   - 安全响应头
   - CORS 白名单
+  - 输入验证中间件
+  - 速率限制中间件
+  - Python脚本沙箱执行
+  - 输出脱敏
 - ✅ 修复所有安全审计问题（7项）
-- ✅ 新增 SECURITY_AUDIT_v6.md
-- ✅ 新增 CLOUD_SETUP_GUIDE.md
 - ✅ 国内镜像自动加速（PyPI/GitHub/HuggingFace）
 
 ### v7.0 (2026-05-30)
@@ -1166,19 +1189,23 @@ go run main.go
 
 ## 🔒 安全声明
 
-- ✅ API密钥通过环境变量管理
-- ✅ `.env` 文件已加入 `.gitignore`
+- ✅ API密钥通过SecureConfig安全存储（不写入os.environ）
+- ✅ Fernet加密存储（AES-128-CBC + HMAC-SHA256）
+- ✅ `.env` 和 `.env.encrypted` 已加入 `.gitignore`
 - ✅ 路径遍历防护（validate_image_path/validate_path）
 - ✅ 命令注入过滤（shlex.quote/--分隔符）
 - ✅ 模型白名单验证（仅允许8个安全模型）
 - ✅ 提示词清理（移除危险字符）
 - ✅ 文件名清理（防止路径遍历）
-- ✅ 信息泄露修复（API Key掩码）
+- ✅ 信息泄露修复（API Key掩码 + 输出脱敏）
 - ✅ CORS安全配置（白名单支持）
 - ✅ 安全响应头（X-Frame-Options/X-XSS-Protection等）
+- ✅ Go后端输入验证中间件
+- ✅ Go后端速率限制（每IP每分钟60请求）
+- ✅ Python脚本沙箱执行（超时/环境变量过滤/进程组隔离）
+- ✅ 程序退出时自动清理内存中的密钥
 - ✅ 不存储任何用户数据
 - ✅ 本地处理，隐私保护
-- ✅ 完整安全审计报告（SECURITY_AUDIT_v6.md）
 
 ## 🤝 贡献
 

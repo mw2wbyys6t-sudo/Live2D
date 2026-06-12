@@ -6,7 +6,7 @@
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
 [![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--05--30-orange.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
 
 ---
 
@@ -58,12 +58,14 @@ python master_tool.py --see-through
 ### 第五步：桌面桌宠（v7.1新功能）
 
 ```bash
-# 一键创建桌面宠物
-python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
+# 从分层结果创建桌面宠物
+python live2d_desktop_pet.py --layers ./output/layers/ --pet-name "我的桌宠"
 
-# 运行桌宠
-cd output/desktop_pet
-python run_pet.py
+# 桌宠功能:
+# - 身体摆动、眨眼、呼吸动画
+# - 表情切换（正常/开心/害羞/惊讶/困倦）
+# - 点击互动、拖拽移动
+# - 鼠标视线跟随
 ```
 
 **桌宠功能：**
@@ -118,16 +120,14 @@ python run_pet.py
 
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
-| [📖 README.md](README.md) | 项目主文档 | ⭐⭐⭐⭐⭐ |
-| [🚀 QUICKSTART.md](QUICKSTART.md) | 3分钟快速入门 | ⭐⭐⭐⭐⭐ |
-| [📖 USER_GUIDE.md](USER_GUIDE.md) | 完整使用教程 | ⭐⭐⭐⭐ |
-| [📐 SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) | See-through集成指南 | ⭐⭐⭐⭐⭐ |
-| [📁 PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构说明 | ⭐⭐⭐ |
-| [❓ FAQ.md](FAQ.md) | 常见问题解答 | ⭐⭐⭐⭐ |
-| [💡 BEST_PRACTICES.md](BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
-| [⚠️ LIMITATIONS.md](LIMITATIONS.md) | 已知限制 | ⭐⭐⭐ |
-| [📋 CHANGELOG.md](CHANGELOG.md) | 更新日志 | ⭐⭐ |
-| [🔬 GITHUB_RESEARCH.md](GITHUB_RESEARCH.md) | GitHub研究报告 | ⭐⭐ |
+| [README.md](README.md) | 项目主文档 | ⭐⭐⭐⭐⭐ |
+| [SECURITY.md](SECURITY.md) | 安全指南 | ⭐⭐⭐⭐⭐ |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 架构设计 | ⭐⭐⭐⭐ |
+| [docs/RIGGING_GUIDE.md](docs/RIGGING_GUIDE.md) | Rigging指南 | ⭐⭐⭐⭐ |
+| [docs/archive/QUICKSTART.md](docs/archive/QUICKSTART.md) | 快速入门 | ⭐⭐⭐⭐ |
+| [docs/archive/USER_GUIDE.md](docs/archive/USER_GUIDE.md) | 完整教程 | ⭐⭐⭐⭐ |
+| [docs/archive/FAQ.md](docs/archive/FAQ.md) | 常见问题 | ⭐⭐⭐⭐ |
+| [docs/archive/BEST_PRACTICES.md](docs/archive/BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
 
 ---
 
@@ -150,10 +150,10 @@ python run_pet.py
 |------|------|------|
 | [master_tool.py](master_tool.py) | 一站式工具箱 | ⭐⭐⭐⭐⭐ |
 | [install_comfyui_advanced.py](install_comfyui_advanced.py) | **See-through一键安装** | ⭐⭐⭐⭐⭐ |
+| [live2d_desktop_pet.py](live2d_desktop_pet.py) | **桌面桌宠** | ⭐⭐⭐⭐⭐ |
 | [live2d_layer_v6.py](live2d_layer_v6.py) | K-means分层工具 | ⭐⭐⭐⭐ |
 | [live2d_layer_pro.py](live2d_layer_pro.py) | 颜色检测分层 | ⭐⭐⭐ |
 | [config_api.py](config_api.py) | API配置 | ⭐⭐⭐⭐ |
-| [create_test_image.py](create_test_image.py) | 测试图像生成 | ⭐⭐⭐ |
 
 ### 辅助脚本
 

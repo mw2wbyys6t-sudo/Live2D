@@ -17,7 +17,12 @@ output/
 temp/
 test_*.png
 test_layer_output/
+test_output/
 comfyui/
+
+# 测试报告（自动生成，不需要提交）
+test_report_*.json
+test_issues_*.md
 
 # IDE
 .vscode/
