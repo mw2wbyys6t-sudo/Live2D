@@ -88,7 +88,7 @@ func (h *Handler) GetSystemStatus(c *gin.Context) {
 
 	// 缓存服务状态
 	if h.cache != nil {
-		cacheStats := h.cache.Stats()
+		_ = h.cache.Stats() // 调用Stats保持接口一致性
 		services = append(services, models.ServiceStatus{
 			Name:        "request_cache",
 			Available:   true,

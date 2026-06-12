@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"time"
+	"strings"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -157,16 +157,17 @@ func setupRoutes(r *gin.Engine, h *handlers.Handler) {
 }
 
 func printServerInfo(cfg *config.Config, addr string) {
-	fmt.Println("\n" + "="*80)
+	separator := strings.Repeat("=", 80)
+	fmt.Println("\n" + separator)
 	fmt.Println("║     🎨 Live2D Master Agent API v7.1 (Go Edition)           ║")
 	fmt.Println("║     高性能优化版本 - 支持连接池、并发处理、请求缓存          ║")
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Printf("║  服务地址: http://%s\n", addr)
 	fmt.Printf("║  输出目录: %s\n", cfg.Output.BaseDir)
 	fmt.Printf("║  Python:   %s\n", cfg.Python.PythonPath)
 	fmt.Printf("║  最大并发: %d\n", runtime.NumCPU()*2)
 	fmt.Printf("║  缓存大小: %dMB\n", cfg.Cache.MaxSizeMB)
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Println("║  API 端点:                                                   ║")
 	fmt.Println("║    GET  /api/health      - 健康检查                         ║")
 	fmt.Println("║    GET  /api/status      - 系统状态                         ║")
@@ -179,7 +180,7 @@ func printServerInfo(cfg *config.Config, addr string) {
 	fmt.Println("║    GET  /api/cache/stats - 缓存统计                         ║")
 	fmt.Println("║    POST /api/cache/clear - 清除缓存                         ║")
 	fmt.Println("║    GET  /output/:file    - 获取输出文件                     ║")
-	fmt.Println("="*80)
+	fmt.Println(separator)
 	fmt.Println()
 }
 

@@ -128,6 +128,8 @@ python run_pet.py
 | [⚠️ LIMITATIONS.md](LIMITATIONS.md) | 已知限制 | ⭐⭐⭐ |
 | [📋 CHANGELOG.md](CHANGELOG.md) | 更新日志 | ⭐⭐ |
 | [🔬 GITHUB_RESEARCH.md](GITHUB_RESEARCH.md) | GitHub研究报告 | ⭐⭐ |
+| [🔒 SECURITY.md](SECURITY.md) | 安全指南 | ⭐⭐⭐⭐ |
+| [🏗️ ARCHITECTURE.md](ARCHITECTURE.md) | 架构设计文档 | ⭐⭐⭐ |
 
 ---
 
