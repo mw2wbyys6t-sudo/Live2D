@@ -116,19 +116,30 @@ class WorkflowEngine:
         context['_start_time'] = time.time()
 
         for step in self._steps:
-            step_name = step.get_name()
+            # 兼容 WorkflowStep 对象和普通函数
+            if isinstance(step, WorkflowStep):
+                step_name = step.get_name()
+                can_retry = step.can_retry()
+                run = step.execute
+            else:
+                step_name = getattr(step, '__name__', 'anonymous')
+                can_retry = False
+                run = step
+
             step_start = time.time()
             retries = 0
             success = False
 
-            while retries <= (self._max_retries if step.can_retry() else 0):
+            while retries <= (self._max_retries if can_retry else 0):
                 try:
-                    context = step.execute(context)
+                    result = run(context)
+                    if isinstance(result, dict):
+                        context = result
                     success = True
                     break
                 except Exception as e:
                     retries += 1
-                    if retries <= self._max_retries and step.can_retry():
+                    if retries <= self._max_retries and can_retry:
                         delay = self._retry_delay * (2 ** (retries - 1))
                         logger.warning(
                             f"步骤 '{step_name}' 执行失败 "
@@ -136,7 +147,7 @@ class WorkflowEngine:
                         )
                         time.sleep(delay)
                     else:
-                        logger.error(f"步骤 '{step_name}' 执行失败，已达最大重试次数: {e}")
+                        logger.error(f"步骤 '{step_name}' 执行失败: {e}")
                         context['_error'] = str(e)
                         context['_failed_step'] = step_name
                         break
