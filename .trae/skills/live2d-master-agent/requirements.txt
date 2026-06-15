@@ -1,45 +1,44 @@
 # Live2D Master Agent - Python Requirements
 #
-# 注意：推荐使用 install.py 或 cloud_resource_manager.py 来安装依赖
-# 这样会自动使用国内镜像加速下载
+# Installation:
+#   python -m pip install -r requirements.txt
 #
-# 快速安装:
-#   python install.py
-# 或
-#   python cloud_resource_manager.py full-auto
+# Windows users: If pip install fails, use:
+#   python -m pip install -r requirements.txt
 #
 
-# ====== 核心依赖 (必需) ======
+# ====== Core Dependencies (Required) ======
 Pillow>=10.0.0
 numpy>=1.24.0
 requests>=2.31.0
 urllib3>=2.0.0
 
-# ====== 推荐依赖 (强烈建议安装 - 用于完整功能) ======
-# PSD 文件处理
+# ====== Recommended Dependencies (Strongly advised for full features) ======
+# PSD file handling
 psd-tools>=1.9.0
 
-# 质量评估和分层工具
+# Quality assessment and layer separation
 scipy>=1.10.0
 scikit-learn>=1.3.0
 
-# AI 背景去除工具
+# Computer vision (edge detection, etc.)
+opencv-python>=4.8.0
+
+# Desktop pet rendering (v7.1 new feature)
+pygame>=2.5.0; python_version < "3.14"
+pygame-ce>=2.5.0; python_version >= "3.14"
+
+# AI background removal (optional, may need build tools)
 onnxruntime>=1.14.0
 rembg[cpu]>=2.0.0
 
-# 计算机视觉（边缘检测等）
-opencv-python>=4.8.0
-
-# 桌面桌宠功能（v7.1新功能）
-pygame>=2.5.0
-
-# ====== 可选依赖 ======
-# 本地 Stable Diffusion 生成（可选，需要大显存）
+# ====== Optional Dependencies ======
+# Local Stable Diffusion generation (requires large VRAM)
 # diffusers>=0.20.0
 # transformers>=4.30.0
 # torch>=2.0.0
 # accelerate>=0.20.0
 
-# Hugging Face 模型下载
+# Hugging Face model download
 # huggingface-hub>=0.17.0
 
