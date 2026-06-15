@@ -101,24 +101,17 @@ class WorkflowEngine:
         self._max_retries = max_retries
         return self
 
-    def add_step(self, step_func, name: Optional[str] = None):
-        """添加工作流步骤"""
-        self.steps.append({
-            'func': step_func,
-            'name': name or step_func.__name__,
-        })
-
     def execute(self, context: Optional[Dict] = None) -> Dict:
         """
         执行工作流
 
         Args:
-            initial_context: 初始上下文
+            context: 初始上下文
 
         Returns:
             最终上下文
         """
-        context = initial_context or {}
+        context = context or {}
         context['_engine'] = self.name
         context['_start_time'] = time.time()
 

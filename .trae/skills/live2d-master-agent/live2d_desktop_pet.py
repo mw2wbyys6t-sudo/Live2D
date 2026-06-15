@@ -574,7 +574,8 @@ class PetRunner:
     
     def update(self, current_time: int):
         """更新状态"""
-        self.current_frame = (self.current_frame + 1) % len(self.frames)
+        if self.frames:
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
         
         if current_time - self.expression_timer > 2000:
             self.expression = "normal"
@@ -850,8 +851,9 @@ class PetRunner:
     
     def update(self, current_time: int):
         """更新状态"""
-        # 动画帧更新
-        self.current_frame = (self.current_frame + 1) % len(self.frames)
+        # 动画帧更新（防止空列表导致ZeroDivisionError）
+        if self.frames:
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
         
         # 表情超时恢复
         if current_time - self.expression_timer > 2000:
@@ -880,8 +882,8 @@ class PetRunner:
         # 更新显示
         pygame.display.flip()
         
-        # 更新窗口位置
-        pygame.display.set_window_position(self.x, self.y)
+        # 更新窗口位置（使用环境变量方式，兼容所有pygame版本）
+        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{self.x},{self.y}"
 
 
 def main():

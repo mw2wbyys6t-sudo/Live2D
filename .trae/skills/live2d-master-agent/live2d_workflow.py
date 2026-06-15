@@ -34,8 +34,14 @@ import time
 import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from PIL import Image, ImageEnhance, ImageFilter
-import numpy as np
+
+try:
+    from PIL import Image, ImageEnhance, ImageFilter
+    import numpy as np
+except ImportError as e:
+    print(f"[ERROR] Missing required dependency: {e}")
+    print("Please install core dependencies: python -m pip install Pillow numpy")
+    sys.exit(1)
 
 
 class Live2DWorkflow:
