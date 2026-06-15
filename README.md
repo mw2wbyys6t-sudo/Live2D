@@ -5,10 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
-[![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
---
-skill存储的链接:https://github.com/mw2wbyys6t-sudo/Live2D/blob/main/.trae/skills/live2d-master-agent/SKILL.md
+[![Version](https://img.shields.io/badge/version-v7.2-green.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--06--15-orange.svg)]()
+
 ---
 
 ## ✨ 一句话介绍
@@ -20,7 +19,7 @@ skill存储的链接:https://github.com/mw2wbyys6t-sudo/Live2D/blob/main/.trae/s
 **🔥 v7.1 新增：桌面桌宠功能！** 无需Live2D软件，一键将角色部署为桌面宠物，支持动画、表情和交互！
 
 ---
-如下目前可见,是以一个范例:
+
 ## 🚀 3分钟快速开始
 
 ### 第一步：安装
@@ -62,9 +61,8 @@ python master_tool.py --see-through
 # 一键创建桌面宠物
 python live2d_workflow.py "蓝发猫耳少女" --deploy-desktop
 
-# 运行桌宠
-cd output/desktop_pet
-python run_pet.py
+# 运行桌宠（使用 --run 指定桌宠目录）
+python live2d_desktop_pet.py --run pet_output
 ```
 
 **桌宠功能：**
@@ -120,15 +118,15 @@ python run_pet.py
 | 文档 | 说明 | 优先级 |
 |------|------|--------|
 | [📖 README.md](README.md) | 项目主文档 | ⭐⭐⭐⭐⭐ |
-| [🚀 QUICKSTART.md](QUICKSTART.md) | 3分钟快速入门 | ⭐⭐⭐⭐⭐ |
-| [📖 USER_GUIDE.md](USER_GUIDE.md) | 完整使用教程 | ⭐⭐⭐⭐ |
-| [📐 SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) | See-through集成指南 | ⭐⭐⭐⭐⭐ |
-| [📁 PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构说明 | ⭐⭐⭐ |
-| [❓ FAQ.md](FAQ.md) | 常见问题解答 | ⭐⭐⭐⭐ |
-| [💡 BEST_PRACTICES.md](BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
-| [⚠️ LIMITATIONS.md](LIMITATIONS.md) | 已知限制 | ⭐⭐⭐ |
+| [🚀 QUICKSTART.md](docs/QUICKSTART.md) | 3分钟快速入门 | ⭐⭐⭐⭐⭐ |
+| [📖 USER_GUIDE.md](docs/USER_GUIDE.md) | 完整使用教程 | ⭐⭐⭐⭐ |
+| [📐 SEE_THROUGH_INTEGRATION.md](docs/SEE_THROUGH_INTEGRATION.md) | See-through集成指南 | ⭐⭐⭐⭐⭐ |
+| [📁 PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构说明 | ⭐⭐⭐ |
+| [❓ FAQ.md](docs/FAQ.md) | 常见问题解答 | ⭐⭐⭐⭐ |
+| [💡 BEST_PRACTICES.md](docs/BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
+| [⚠️ LIMITATIONS.md](docs/LIMITATIONS.md) | 已知限制 | ⭐⭐⭐ |
 | [📋 CHANGELOG.md](CHANGELOG.md) | 更新日志 | ⭐⭐ |
-| [🔬 GITHUB_RESEARCH.md](GITHUB_RESEARCH.md) | GitHub研究报告 | ⭐⭐ |
+| [🔬 GITHUB_RESEARCH.md](docs/GITHUB_RESEARCH.md) | GitHub研究报告 | ⭐⭐ |
 
 ---
 
@@ -143,6 +141,34 @@ python run_pet.py
 
 ---
 
+## 📁 项目结构
+
+本项目同时作为 **Trae IDE Skill** 和 **独立命令行工具** 使用。根目录下的 Python 脚本是轻量包装器，自动将调用转发到 `.trae/skills/live2d-master-agent/` 下的实际实现，因此你可以直接在仓库根目录运行所有命令，无需手动切换目录。
+
+```
+Live2D/
+├── master_tool.py              # 一站式工具箱（包装器）
+├── live2d_workflow.py          # 端到端工作流（包装器）
+├── live2d_desktop_pet.py       # 桌面桌宠（包装器）
+├── live2d_agent.py             # 交互式Agent（包装器）
+├── live2d_layer_v6.py          # K-means分层（包装器）
+├── live2d_layer_pro.py         # 颜色检测分层（包装器）
+├── config_api.py               # API配置（包装器）
+├── install_comfyui_advanced.py # See-through安装（包装器）
+├── create_test_image.py        # 测试图像生成
+├── requirements.txt            # Python 依赖
+├── scripts/                    # 辅助脚本
+├── docs/                       # 详细文档
+├── examples/                   # 使用案例
+├── prompts/                    # 提示词模板
+├── templates/                  # Live2D 模板
+├── web/                        # Next.js Web UI
+├── comfyui-connector/          # ComfyUI TypeScript 连接器
+└── .trae/skills/live2d-master-agent/   # 核心实现（Trae Skill）
+```
+
+---
+
 ## 🛠️ 工具列表
 
 ### 核心工具
@@ -150,6 +176,9 @@ python run_pet.py
 | 工具 | 说明 | 推荐度 |
 |------|------|------|
 | [master_tool.py](master_tool.py) | 一站式工具箱 | ⭐⭐⭐⭐⭐ |
+| [live2d_workflow.py](live2d_workflow.py) | **端到端完整工作流** | ⭐⭐⭐⭐⭐ |
+| [live2d_desktop_pet.py](live2d_desktop_pet.py) | **桌面桌宠** | ⭐⭐⭐⭐⭐ |
+| [live2d_agent.py](live2d_agent.py) | 交互式Agent（菜单驱动） | ⭐⭐⭐⭐ |
 | [install_comfyui_advanced.py](install_comfyui_advanced.py) | **See-through一键安装** | ⭐⭐⭐⭐⭐ |
 | [live2d_layer_v6.py](live2d_layer_v6.py) | K-means分层工具 | ⭐⭐⭐⭐ |
 | [live2d_layer_pro.py](live2d_layer_pro.py) | 颜色检测分层 | ⭐⭐⭐ |
@@ -188,7 +217,7 @@ python install_comfyui_advanced.py
 # 4. 导出PSD
 ```
 
-详细文档：[SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md)
+详细文档：[SEE_THROUGH_INTEGRATION.md](docs/SEE_THROUGH_INTEGRATION.md)
 
 ### 多样化特征系统
 每次生成自动随机组合 **94个特征**，确保每个角色独一无二！
@@ -379,16 +408,16 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 | 功能 | 链接 |
 |------|------|
-| 快速入门 | [QUICKSTART.md](QUICKSTART.md) |
-| See-through指南 | [SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) |
-| 常见问题 | [FAQ.md](FAQ.md) |
-| 项目结构 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) |
+| 快速入门 | [QUICKSTART.md](docs/QUICKSTART.md) |
+| See-through指南 | [SEE_THROUGH_INTEGRATION.md](docs/SEE_THROUGH_INTEGRATION.md) |
+| 常见问题 | [FAQ.md](docs/FAQ.md) |
+| 项目结构 | [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) |
 | 更新日志 | [CHANGELOG.md](CHANGELOG.md) |
-| 已知限制 | [LIMITATIONS.md](LIMITATIONS.md) |
+| 已知限制 | [LIMITATIONS.md](docs/LIMITATIONS.md) |
 
 ---
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v7.1（桌面桌宠功能+See-through集成）*
-*最后更新: 2026-06-12*
+*版本: v7.2（修复根目录路径问题+桌面桌宠功能+See-through集成）*
+*最后更新: 2026-06-15*

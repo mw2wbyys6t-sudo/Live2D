@@ -25,6 +25,7 @@ import random
 import re
 from pathlib import Path
 import argparse
+from typing import Optional, Dict, Tuple, List, Any
 
 # 多样化特征库 - 避免撞衫
 FEATURES = {
