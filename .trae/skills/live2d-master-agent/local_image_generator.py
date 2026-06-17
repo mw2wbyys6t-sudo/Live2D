@@ -45,6 +45,11 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
+def _get_project_root() -> Path:
+    """返回项目根目录。根目录包装器通过 LIVE2D_PROJECT_ROOT 指定。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 class ModelConfig:
     """模型配置 - 基于搜索研究的最佳模型选择"""
 
@@ -1534,7 +1539,7 @@ class Live2DOptimizedGenerator:
 
             # 保存图片
             if output_path is None:
-                output_dir = Path(__file__).parent / "output"
+                output_dir = _get_project_root() / "output"
                 output_dir.mkdir(exist_ok=True)
                 output_path = str(
                     output_dir / f"live2d_gen_{int(time.time())}_{seed}.png"
@@ -1934,7 +1939,7 @@ def main():
             from live2d_workflow import Live2DWorkflow
             
             workflow = Live2DWorkflow(
-                output_dir=args.output or "./outputs",
+                output_dir=args.output or str(_get_project_root() / "outputs"),
                 provider=args.provider,
                 k_clusters=args.layer_k or 12,
             )
@@ -1999,7 +2004,7 @@ def main():
             negative_prompt=negative,
             width=args.width,
             height=args.height,
-            output_dir=args.output or "./outputs",
+            output_dir=args.output or str(_get_project_root() / "outputs"),
         )
 
         # 质量评估
@@ -2166,7 +2171,7 @@ def main():
             try:
                 from github_layer_integration import GitHubLayerIntegration
                 print("\n🎨 使用 GitHub 开源分层工具进行智能分层...")
-                integration = GitHubLayerIntegration(output_dir=args.output or "./outputs")
+                integration = GitHubLayerIntegration(output_dir=args.output or str(_get_project_root() / "outputs"))
 
                 # 显示可用工具
                 available = integration.get_available_tools()

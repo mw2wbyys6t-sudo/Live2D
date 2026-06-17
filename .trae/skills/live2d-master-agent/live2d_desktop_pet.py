@@ -34,6 +34,12 @@ import random
 from pathlib import Path
 from typing import Dict, List, Optional
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。根目录包装器通过 LIVE2D_PROJECT_ROOT 指定。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 try:
     import pygame
     from pygame.locals import *
@@ -696,7 +702,7 @@ A: 可以通过拖拽调整位置，或修改配置文件中的初始位置
 
 ---
 
-Live2D Master Agent v7.1
+Live2D Master Agent v7.2
 '''
         
         readme_path = self.output_dir / "README.md"
@@ -908,19 +914,29 @@ def main():
     
     parser.add_argument("--layers-dir", type=str, help="分层图片目录")
     parser.add_argument("--psd", type=str, help="PSD文件路径")
-    parser.add_argument("--output", type=str, default="./pet_output", help="输出目录")
+    parser.add_argument("--output", type=str, default=None, help="输出目录（默认: 项目根目录/pet_output）")
     parser.add_argument("--run", type=str, help="运行已创建的桌宠")
-    
+
     args = parser.parse_args()
-    
+
+    project_root = _get_project_root()
+    output_dir = args.output
+    if output_dir is None:
+        output_dir = str(project_root / "pet_output")
+    elif not Path(output_dir).is_absolute():
+        output_dir = str(project_root / output_dir)
+
     if args.run:
         # 运行桌宠
-        if not os.path.exists(args.run):
-            print(f"❌ 桌宠目录不存在: {args.run}")
+        run_path = args.run
+        if not Path(run_path).is_absolute():
+            run_path = str(project_root / run_path)
+        if not os.path.exists(run_path):
+            print(f"❌ 桌宠目录不存在: {run_path}")
             return 1
-        
-        config_path = Path(args.run) / "animation_config.json"
-        frames_dir = Path(args.run) / "frames"
+
+        config_path = Path(run_path) / "animation_config.json"
+        frames_dir = Path(run_path) / "frames"
         
         if not config_path.exists() or not frames_dir.exists():
             print("❌ 桌宠文件不完整，请先创建桌宠")
@@ -937,7 +953,7 @@ def main():
     
     # 创建桌宠
     if args.layers_dir:
-        animator = DesktopPetAnimator(args.layers_dir, args.output)
+        animator = DesktopPetAnimator(args.layers_dir, output_dir)
         animator.create_pet_package()
     elif args.psd:
         # 从PSD提取图层
@@ -945,9 +961,9 @@ def main():
         try:
             from psd_tools import PSDImage
             psd = PSDImage.open(args.psd)
-            
+
             # 创建临时图层目录
-            layers_dir = Path(args.output) / "extracted_layers"
+            layers_dir = Path(output_dir) / "extracted_layers"
             layers_dir.mkdir(parents=True, exist_ok=True)
             
             # 导出每个图层

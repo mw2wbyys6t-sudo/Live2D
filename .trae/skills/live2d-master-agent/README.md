@@ -5,8 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
-[![Version](https://img.shields.io/badge/version-v7.1-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--06--12-orange.svg)]()
+[![Version](https://img.shields.io/badge/version-v7.2-green.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--06--17-orange.svg)]()
 
 ---
 
@@ -16,7 +16,7 @@
 
 集成 [See-through](https://github.com/shitagaki-lab/see-through) (SIGGRAPH 2026) 专业级AI分层工具，提供从图像生成到PSD分层的完整工作流。
 
-**🔥 v7.1 新增：桌面桌宠功能！** 无需Live2D软件，一键将角色部署为桌面宠物，支持动画、表情和交互！
+**🔥 v7.2 新增：桌面桌宠功能！** 无需Live2D软件，一键将角色部署为桌面宠物，支持动画、表情和交互！
 
 ---
 
@@ -233,10 +233,10 @@ python live2d_desktop_pet.py --layers ./output/layers/ --pet-name "MyPet"
 | [SECURITY.md](SECURITY.md) | 安全指南 | ⭐⭐⭐⭐⭐ |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 架构设计 | ⭐⭐⭐⭐ |
 | [docs/RIGGING_GUIDE.md](docs/RIGGING_GUIDE.md) | Rigging指南 | ⭐⭐⭐⭐ |
-| [docs/archive/QUICKSTART.md](docs/archive/QUICKSTART.md) | 快速入门 | ⭐⭐⭐⭐ |
-| [docs/archive/USER_GUIDE.md](docs/archive/USER_GUIDE.md) | 完整教程 | ⭐⭐⭐⭐ |
-| [docs/archive/FAQ.md](docs/archive/FAQ.md) | 常见问题 | ⭐⭐⭐⭐ |
-| [docs/archive/BEST_PRACTICES.md](docs/archive/BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
+| [QUICKSTART.md](../../../docs/QUICKSTART.md) | 快速入门 | ⭐⭐⭐⭐ |
+| [USER_GUIDE.md](../../../docs/USER_GUIDE.md) | 完整教程 | ⭐⭐⭐⭐ |
+| [FAQ.md](../../../docs/FAQ.md) | 常见问题 | ⭐⭐⭐⭐ |
+| [BEST_PRACTICES.md](../../../docs/BEST_PRACTICES.md) | 最佳实践 | ⭐⭐⭐ |
 
 ---
 

@@ -18,11 +18,17 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。根目录包装器通过 LIVE2D_PROJECT_ROOT 指定。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 class Live2DLayerToolPro:
     """Live2D专业版智能分层工具"""
     
     def __init__(self):
-        self.base_dir = Path(__file__).parent
+        self.base_dir = _get_project_root()
         self.output_dir = self.base_dir / "output"
         self.output_dir.mkdir(exist_ok=True)
         

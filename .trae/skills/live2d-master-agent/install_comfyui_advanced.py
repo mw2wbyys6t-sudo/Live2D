@@ -27,11 +27,17 @@ from pathlib import Path
 import argparse
 import time
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。根目录包装器通过 LIVE2D_PROJECT_ROOT 指定。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 class ComfyUIInstaller:
     """ComfyUI + See-through 安装器"""
 
     def __init__(self, interactive=True):
-        self.base_dir = Path(__file__).parent
+        self.base_dir = _get_project_root()
         self.comfyui_dir = self.base_dir / "comfyui"
         self.system = sys.platform
         self.interactive = interactive

@@ -8,9 +8,15 @@ import os
 import sys
 from pathlib import Path
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 def get_env_path() -> Path:
     """获取 .env 文件路径"""
-    return Path(__file__).parent / ".env"
+    return _get_project_root() / ".env"
 
 def load_config() -> dict:
     """加载现有配置"""

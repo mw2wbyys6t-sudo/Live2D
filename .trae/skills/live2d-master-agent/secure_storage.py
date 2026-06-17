@@ -147,7 +147,8 @@ class SecureStorage:
             是否成功
         """
         if filepath is None:
-            filepath = str(Path(__file__).parent / ".env.encrypted")
+            root = os.environ.get("LIVE2D_PROJECT_ROOT")
+            filepath = str(Path(root) / ".env.encrypted") if root else str(Path(__file__).parent / ".env.encrypted")
         data = self.decrypt_from_file(filepath) or {}
         data[provider] = api_key
         return self.encrypt_to_file(data, filepath)
@@ -164,7 +165,8 @@ class SecureStorage:
             API密钥，失败返回 None
         """
         if filepath is None:
-            filepath = str(Path(__file__).parent / ".env.encrypted")
+            root = os.environ.get("LIVE2D_PROJECT_ROOT")
+            filepath = str(Path(root) / ".env.encrypted") if root else str(Path(__file__).parent / ".env.encrypted")
         data = self.decrypt_from_file(filepath)
         if data and provider in data:
             return data[provider]
@@ -236,7 +238,8 @@ class EncryptedConfig:
     def __init__(self):
         self._storage = SecureStorage()
         self._cache: dict = {}
-        self._encrypted_file = Path(__file__).parent / ".env.encrypted"
+        root = os.environ.get("LIVE2D_PROJECT_ROOT")
+        self._encrypted_file = Path(root) / ".env.encrypted" if root else Path(__file__).parent / ".env.encrypted"
     
     def store_api_key(self, provider: str, api_key: str) -> bool:
         """

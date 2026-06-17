@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - 全面升级版
+Live2D Master Agent v7.2 - 全面升级版
 功能: 本地图片生成 + AI智能分层 + PSD转换
 
 核心：
@@ -23,6 +23,7 @@ import sys
 import time
 import random
 import re
+import json
 from pathlib import Path
 import argparse
 from typing import Optional, Dict, Tuple, List, Any
@@ -130,6 +131,16 @@ LIVE2D_NEGATIVE_PROMPT = """(lowres:1.4), (bad anatomy:1.4), (bad hands:1.3), (t
 (partial body:1.2), (cropped:1.2), (off-screen:1.2), (out of frame:1.2),
 (gradient shading:1.2), (soft shading:1.2), (painterly:1.2), (watercolor:1.2),
 (noise:1.2), (grainy:1.2), (pixelated:1.2), (compression artifacts:1.2)"""
+
+
+def _get_project_root() -> Path:
+    """返回项目根目录。
+
+    当通过根目录包装器运行时，LIVE2D_PROJECT_ROOT 指向仓库根目录，
+    输出文件会保存在根目录的 output/ 中；直接在 skill 目录运行时，
+    回退到脚本所在目录。
+    """
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
 
 
 def generate_random_features():
@@ -598,7 +609,7 @@ def create_psd_plan(image_path, output_dir):
         ]
 
         with open(plan_dir / "LAYER_GUIDE.txt", 'w', encoding='utf-8') as f:
-            f.write("Live2D PSD 分层指南 v8.0\n")
+            f.write("Live2D PSD 分层指南 v7.2\n")
             f.write("="*50 + "\n")
             f.write(f"图片尺寸: {img.size[0]}x{img.size[1]}\n")
             f.write(f"生成时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -669,7 +680,9 @@ class Live2DTool:
         psd_path = tool.to_psd(layers)
     """
 
-    def __init__(self, output_dir: str = "./output"):
+    def __init__(self, output_dir: Optional[str] = None):
+        if output_dir is None:
+            output_dir = str(_get_project_root() / "output")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.last_image = None
@@ -789,7 +802,7 @@ def show_help():
 def check_see_through_installed(comfyui_dir=None):
     """检查See-through是否已安装"""
     if comfyui_dir is None:
-        comfyui_dir = Path(__file__).parent / "comfyui"
+        comfyui_dir = _get_project_root() / "comfyui"
     if not comfyui_dir.exists():
         return False
     see_through_dir = comfyui_dir / 'custom_nodes' / 'ComfyUI-See-through'
@@ -837,7 +850,7 @@ See-through 是目前最先进的AI分层工具，已集成到本项目中！
 def run_see_through_suggestion(image_path, comfyui_dir=None):
     """建议使用See-through"""
     if comfyui_dir is None:
-        comfyui_dir = Path(__file__).parent / "comfyui"
+        comfyui_dir = _get_project_root() / "comfyui"
 
     if check_see_through_installed(comfyui_dir):
         print(f"""
@@ -870,7 +883,7 @@ def run_see_through_suggestion(image_path, comfyui_dir=None):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='Live2D Master Agent v8.0 - 全面升级版',
+        description='Live2D Master Agent v7.2 - 全面升级版',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -982,12 +995,12 @@ def main():
     )
     args = parser.parse_args()
 
-    base_dir = Path(__file__).parent
+    base_dir = _get_project_root()
     output_dir = base_dir / "output"
     output_dir.mkdir(exist_ok=True)
 
     print("\n" + "="*80)
-    print("🎨 Live2D Master Agent v8.0 - 全面升级版")
+    print("🎨 Live2D Master Agent v7.2 - 全面升级版")
     print("="*80)
     print("\n核心功能:")
     print("  🎯 自研本地生成器 v5.0")

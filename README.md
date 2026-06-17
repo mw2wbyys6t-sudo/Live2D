@@ -6,7 +6,7 @@
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Stars](https://img.shields.io/github/stars/mw2wbyys6t-sudo/Live2D)](https://github.com/mw2wbyys6t-sudo/Live2D/stargazers)
 [![Version](https://img.shields.io/badge/version-v7.2-green.svg)]()
-[![Last Update](https://img.shields.io/badge/last%20update-2026--06--15-orange.svg)]()
+[![Last Update](https://img.shields.io/badge/last%20update-2026--06--17-orange.svg)]()
 
 ---
 
@@ -155,13 +155,17 @@ Live2D/
 ├── live2d_layer_pro.py         # 颜色检测分层（包装器）
 ├── config_api.py               # API配置（包装器）
 ├── install_comfyui_advanced.py # See-through安装（包装器）
-├── create_test_image.py        # 测试图像生成
+├── create_test_image.py        # 测试图像生成（包装器）
+├── test_workflow.py            # 工作流测试（包装器）
+├── test_full_coverage.py       # 全覆盖测试（包装器）
+├── test_deep_coverage.py       # 深度测试（包装器）
 ├── requirements.txt            # Python 依赖
-├── scripts/                    # 辅助脚本
+├── scripts/                    # 辅助脚本（包装器）
 ├── docs/                       # 详细文档
 ├── examples/                   # 使用案例
 ├── prompts/                    # 提示词模板
 ├── templates/                  # Live2D 模板
+├── lib/                        # 共享 TypeScript 工作流库（Web UI 使用）
 ├── web/                        # Next.js Web UI
 ├── comfyui-connector/          # ComfyUI TypeScript 连接器
 └── .trae/skills/live2d-master-agent/   # 核心实现（Trae Skill）
@@ -192,6 +196,14 @@ Live2D/
 | [scripts/qa_engine_enhanced.py](scripts/qa_engine_enhanced.py) | 质量检查 |
 | [scripts/parameter_designer_enhanced.py](scripts/parameter_designer_enhanced.py) | 参数设计器 |
 | [scripts/physics_helper.py](scripts/physics_helper.py) | 物理设置 |
+
+### 测试脚本
+
+| 脚本 | 说明 |
+|------|------|
+| [test_workflow.py](test_workflow.py) | 工作流基础测试 |
+| [test_full_coverage.py](test_full_coverage.py) | 功能全覆盖测试 |
+| [test_deep_coverage.py](test_deep_coverage.py) | 30 项深度测试 |
 
 ---
 
@@ -419,5 +431,5 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v7.2（修复根目录路径问题+桌面桌宠功能+See-through集成）*
-*最后更新: 2026-06-15*
+*版本: v7.2（整理项目结构+修复根目录路径问题+桌面桌宠功能+See-through集成）*
+*最后更新: 2026-06-17*

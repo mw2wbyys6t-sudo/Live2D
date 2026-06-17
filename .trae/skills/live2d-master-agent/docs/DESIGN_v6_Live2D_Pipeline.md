@@ -33,9 +33,9 @@
 | ComfyUI集成 | `comfyui_integration.py` | v1.0 | ⭐⭐⭐⭐⭐ |
 | 质量评估 | `scripts/qa_engine_enhanced.py` | v1.0 | ⭐⭐⭐⭐⭐ |
 | 参数设计 | `scripts/parameter_designer_enhanced.py` | v1.0 | ⭐⭐⭐⭐⭐ |
-| 提示词工程 | `prompts/image_generation.md` | - | ⭐⭐⭐⭐ |
-| PSD结构模板 | `templates/psd_structure.md` | - | ⭐⭐⭐⭐⭐ |
-| Cubism参数模板 | `templates/cubism_params.md` | - | ⭐⭐⭐⭐⭐ |
+| 提示词工程 | [`prompts/image_generation.md`](../../../../prompts/image_generation.md) | - | ⭐⭐⭐⭐ |
+| PSD结构模板 | [`templates/psd_structure.md`](../../../../templates/psd_structure.md) | - | ⭐⭐⭐⭐⭐ |
+| Cubism参数模板 | [`templates/cubism_params.md`](../../../../templates/cubism_params.md) | - | ⭐⭐⭐⭐⭐ |
 | Go API服务 | `api/` | v7.0 | ⭐⭐⭐⭐ |
 
 ### 2.2 现有痛点
@@ -269,7 +269,7 @@ class PromptBuilderNode(BaseNode):
     """Prompt构建节点：将结构化信息转换为AI生成提示词"""
     
     TEMPLATES = {
-        "anime": "...",           # 复用 prompts/image_generation.md
+        "anime": "...",           # 复用 ../../../../prompts/image_generation.md
         "semi_realistic": "...",
         "vtuber": "...",
         "live2d_ready": "..."    # 复用 BEST_PRACTICES.md

@@ -4,6 +4,13 @@ out/
 __pycache__/
 *.pyc
 .env
-.env.local
+.env.*
+*.encrypted
 *.log
 .DS_Store
+Thumbs.db
+output/
+temp/
+*.tmp
+*.bak
+comfyui/

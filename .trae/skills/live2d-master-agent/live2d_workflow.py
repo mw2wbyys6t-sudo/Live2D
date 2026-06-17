@@ -44,6 +44,15 @@ except ImportError as e:
     sys.exit(1)
 
 
+def _get_project_root() -> Path:
+    """返回项目根目录。
+
+    根目录包装器会设置 LIVE2D_PROJECT_ROOT；在 skill 目录直接运行时回退到
+    脚本所在目录，保证两种使用方式都能正确找到输出路径。
+    """
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 class Live2DWorkflow:
     """Live2D完整工作流管理器 v2.1
     基于多维度信息整合优化：
@@ -817,14 +826,15 @@ class Live2DWorkflow:
             first_img = Image.open(str(non_original_files[0]))
             width, height = first_img.size
 
-            psd = PSDImage.new(width, height, color_mode="RGBA")
+            psd = PSDImage.new("RGB", (width, height))
 
             # 按Live2D标准顺序添加图层（从后往前）
             for layer_file in reversed(non_original_files):
                 img = Image.open(str(layer_file)).convert("RGBA")
-                psd.append(img, name=layer_file.stem)
+                layer = psd.create_pixel_layer(img, name=layer_file.stem)
+                psd.append(layer)
 
-            psd.save(output_path)
+            psd.save(output_path, encoding="utf-8")
             print(f"✅ PSD文件生成成功: {output_path}")
             return output_path
 
@@ -945,14 +955,24 @@ def main():
     parser.add_argument("prompt", nargs="?", default="蓝发猫耳少女", help="角色描述提示词")
     parser.add_argument("--input", type=str, help="现有图片路径")
     parser.add_argument("--k", type=int, default=8, help="颜色聚类数量（默认8）")
-    parser.add_argument("--output", type=str, default="./output", help="输出目录")
+    parser.add_argument("--output", type=str, default=None, help="输出目录（默认: 项目根目录/output）")
     parser.add_argument("--provider", type=str, default="sensenova", help="生成Provider（sensenova/local）")
     parser.add_argument("--deploy-desktop", action="store_true", help="部署为桌面桌宠")
 
     args = parser.parse_args()
 
+    # 默认输出到项目根目录的 output/，相对路径也基于项目根目录解析
+    if args.output is None:
+        output_dir = str(_get_project_root() / "output")
+    else:
+        output_path = Path(args.output)
+        if not output_path.is_absolute():
+            output_dir = str(_get_project_root() / output_path)
+        else:
+            output_dir = str(output_path)
+
     workflow = Live2DWorkflow(
-        output_dir=args.output,
+        output_dir=output_dir,
         provider=args.provider,
         k_clusters=args.k,
     )

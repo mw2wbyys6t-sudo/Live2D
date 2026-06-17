@@ -1,8 +1,8 @@
 ---
 name: live2d-master-agent
-version: 7.1
+version: 7.2
 creator: Live2D Community
-description: 专业的 Live2D 制作助手 v7.1，提供从概念到绑定的完整工作流，支持多Provider图像生成、AI智能分层、桌面桌宠部署、Go API服务，具备安全加密存储、30项深度全覆盖测试验证等生产级功能
+description: 专业的 Live2D 制作助手 v7.2，提供从概念到绑定的完整工作流，支持多Provider图像生成、AI智能分层、桌面桌宠部署、Go API服务，具备安全加密存储、30项深度全覆盖测试验证等生产级功能
 ---
 
 # Role

@@ -21,6 +21,12 @@ import argparse
 from pathlib import Path
 from PIL import Image
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。根目录包装器通过 LIVE2D_PROJECT_ROOT 指定。"""
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 # 尝试导入可选依赖
 try:
     import numpy as np
@@ -49,7 +55,17 @@ class Live2DLayerToolV6:
 
     def __init__(self, input_path, output_path=None, k_clusters=5, threshold=0.8):
         self.input_path = Path(input_path)
-        self.output_path = Path(output_path) if output_path else self.input_path.parent / f"{self.input_path.stem}_v6_layered"
+        project_root = _get_project_root()
+
+        if output_path is None:
+            self.output_path = project_root / "output" / f"{self.input_path.stem}_v6_layered"
+        else:
+            output_path = Path(output_path)
+            if not output_path.is_absolute():
+                self.output_path = project_root / output_path
+            else:
+                self.output_path = output_path
+
         self.k_clusters = k_clusters
         self.threshold = threshold
 

@@ -22,6 +22,15 @@ import os
 import argparse
 from pathlib import Path
 
+
+def _get_project_root() -> Path:
+    """返回项目根目录。
+
+    根目录包装器设置 LIVE2D_PROJECT_ROOT；直接运行 skill 时回退到脚本目录。
+    """
+    return Path(os.environ.get("LIVE2D_PROJECT_ROOT", Path(__file__).parent))
+
+
 # 确保可以导入同级模块
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -31,7 +40,7 @@ def print_banner():
     print(r"""
 ============================================================
 
-     Live2D Master Agent v7.1
+     Live2D Master Agent v7.2
      Your Live2D Assistant - Tell me what you want
 
 ============================================================
@@ -156,7 +165,7 @@ def handle_generate():
 
 def handle_layer_from_output():
     """Find latest image in output dir and layer it"""
-    output_dir = Path('output')
+    output_dir = _get_project_root() / 'output'
     if not output_dir.exists():
         print("❌ Output directory not found")
         return
@@ -186,8 +195,10 @@ def handle_layer_image(image_path: str = None):
     print("⏳ Processing...\n")
 
     import subprocess
+    project_root = _get_project_root()
+    workflow_output = project_root / 'output' / 'workflow'
     result = subprocess.run(
-        [sys.executable, 'live2d_workflow.py', '--input', image_path, '--output', 'output/workflow'],
+        [sys.executable, 'live2d_workflow.py', '--input', image_path, '--output', str(workflow_output)],
         capture_output=False,
         text=True
     )
@@ -206,7 +217,7 @@ def handle_layer_image(image_path: str = None):
 def handle_pet_from_layer():
     """Deploy desktop pet from latest layer output"""
     # Find latest layer directory
-    output_dir = Path('output')
+    output_dir = _get_project_root() / 'output'
     layer_dirs = list(output_dir.glob('workflow/layers_*'))
 
     if not layer_dirs:
@@ -223,16 +234,18 @@ def handle_pet_from_layer():
     print("⏳ Generating animation frames...\n")
 
     import subprocess
+    project_root = _get_project_root()
+    pet_output = project_root / 'output' / f'pet_{pet_name}'
     result = subprocess.run(
-        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', f'output/pet_{pet_name}'],
+        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', str(pet_output)],
         capture_output=False,
         text=True
     )
 
     if result.returncode == 0:
         print(f"\n✅ Pet '{pet_name}' deployed!")
-        print(f"📁 Location: output/pet_{pet_name}/")
-        print(f"🚀 Run: python output/pet_{pet_name}/run_pet.py")
+        print(f"📁 Location: {pet_output}/")
+        print(f"🚀 Run: python {pet_output}/run_pet.py")
     else:
         print("\n❌ Pet deployment failed")
 
@@ -270,7 +283,7 @@ def handle_workflow():
         return
 
     # Find latest generated image
-    output_dir = Path('output')
+    output_dir = _get_project_root() / 'output'
     images = list(output_dir.glob('*.png')) + list(output_dir.glob('*.jpg'))
     if not images:
         print("❌ No generated images found")
@@ -281,8 +294,9 @@ def handle_workflow():
     print("⏳ Step 3/4: Smart layering...")
 
     # Step 2-3: Layer
+    workflow_output = output_dir / 'workflow'
     result = subprocess.run(
-        [sys.executable, 'live2d_workflow.py', '--input', str(latest_image), '--output', 'output/workflow'],
+        [sys.executable, 'live2d_workflow.py', '--input', str(latest_image), '--output', str(workflow_output)],
         capture_output=False,
         text=True
     )
@@ -301,8 +315,9 @@ def handle_workflow():
     print("\n⏳ Step 4/4: Deploying pet...")
 
     # Step 4: Pet
+    pet_output = output_dir / f'pet_{pet_name}'
     result = subprocess.run(
-        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', f'output/pet_{pet_name}'],
+        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', str(latest_layer), '--output', str(pet_output)],
         capture_output=False,
         text=True
     )
@@ -313,8 +328,8 @@ def handle_workflow():
         print("=" * 50)
         print(f"🎨 Character image: {latest_image}")
         print(f"📐 Layer result: {latest_layer}")
-        print(f"🐱 Pet location: output/pet_{pet_name}/")
-        print(f"🚀 Run command: python output/pet_{pet_name}/run_pet.py")
+        print(f"🐱 Pet location: {pet_output}/")
+        print(f"🚀 Run command: python {pet_output}/run_pet.py")
         print("=" * 50)
     else:
         print("\n❌ Pet deployment failed")
@@ -468,8 +483,10 @@ def handle_pet_from_path(layer_path: str):
     pet_name = get_input("Name your pet (default: MyPet): ").strip() or "MyPet"
 
     import subprocess
+    project_root = _get_project_root()
+    pet_output = project_root / 'output' / f'pet_{pet_name}'
     result = subprocess.run(
-        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', layer_path, '--output', f'output/pet_{pet_name}'],
+        [sys.executable, 'live2d_desktop_pet.py', '--layers-dir', layer_path, '--output', str(pet_output)],
         capture_output=False,
         text=True
     )

@@ -80,10 +80,12 @@ class SecureConfig:
         3. 验证文件权限（如果不是0600则警告）
         """
         env_paths = [
+            Path(os.environ.get("LIVE2D_PROJECT_ROOT", "")) / ".env" if os.environ.get("LIVE2D_PROJECT_ROOT") else None,
             Path(__file__).parent / ".env",
             Path.cwd() / ".env",
             Path.home() / ".trae-cn" / "skills" / "live2d-master-agent" / ".env",
         ]
+        env_paths = [p for p in env_paths if p is not None]
         
         for env_path in env_paths:
             if env_path.exists():

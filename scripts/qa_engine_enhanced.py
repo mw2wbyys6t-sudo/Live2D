@@ -20,10 +20,20 @@ _HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SKILL_DIR = os.path.join(_HERE, ".trae", "skills", "live2d-master-agent")
 _ORIG_CWD = os.getcwd()
 
+if not os.path.isdir(_SKILL_DIR):
+    print(f"[ERROR] Skill implementation not found: {_SKILL_DIR}", file=sys.stderr)
+    print("[ERROR] Please clone the repository completely.", file=sys.stderr)
+    sys.exit(1)
+
+# Tell the skill where the project root is so outputs/config go to the root
+# directory when the user runs commands from the repository root.
+os.environ.setdefault("LIVE2D_PROJECT_ROOT", _HERE)
+os.environ.setdefault("LIVE2D_SKILL_DIR", _SKILL_DIR)
+
 # Convert relative path arguments to absolute (before chdir)
 _new_argv = [sys.argv[0]]
 for _arg in sys.argv[1:]:
-    if not _arg.startswith("-") and (os.path.exists(os.path.join(_ORIG_CWD, _arg)) or os.sep in _arg or "." in _arg):
+    if not _arg.startswith("-") and (os.path.exists(os.path.join(_ORIG_CWD, _arg)) or os.sep in _arg):
         _abs = os.path.abspath(os.path.join(_ORIG_CWD, _arg))
         _new_argv.append(_abs)
     else:
