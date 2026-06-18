@@ -3,8 +3,11 @@
 # Installation:
 #   python -m pip install -r requirements.txt
 #
-# Windows users: If pip install fails, use:
-#   python -m pip install -r requirements.txt
+# Windows users: If `pip install` fails with "Fatal error in launcher",
+# use `python -m pip install -r requirements.txt` instead.
+#
+# For Python 3.14+: If some optional packages fail to install, run
+# `python install.py` to install only compatible dependencies.
 #
 
 # ====== Core Dependencies (Required) ======
@@ -22,10 +25,12 @@ psd-tools>=1.9.0
 scipy>=1.10.0
 scikit-learn>=1.3.0
 
+# ====== Optional Dependencies (may fail on fresh Python 3.14) ======
+# Install via `python install.py` for automatic compatibility handling.
 # Computer vision (edge detection, etc.)
 opencv-python>=4.8.0
 
-# Desktop pet rendering (v7.1 new feature)
+# Desktop pet rendering (v7.2 new feature)
 pygame>=2.5.0; python_version < "3.14"
 pygame-ce>=2.5.0; python_version >= "3.14"
 
