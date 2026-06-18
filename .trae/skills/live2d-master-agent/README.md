@@ -164,7 +164,21 @@ python live2d_agent.py --workflow "cat girl, pink hair, green eyes"
 
 **就是这么快！** ⚡
 
-### 第五步：桌面桌宠（v7.1新功能）
+### 第五步：交互式终端 Agent 模式（v7.2新功能）
+
+```bash
+# 启动交互式命令行 Agent
+python live2d_agent.py
+```
+
+进入菜单后可选择功能，或直接输入自然语言描述：
+- `1` → 生成角色
+- `2` → 图片分层
+- `3` → 部署桌宠
+- `4` → 一键完整工作流
+- `exit` → 退出
+
+### 第六步：桌面桌宠（v7.2新功能）
 
 ```bash
 # 从分层结果创建桌面宠物
@@ -490,16 +504,18 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 | 功能 | 链接 |
 |------|------|
-| 快速入门 | [QUICKSTART.md](QUICKSTART.md) |
-| See-through指南 | [SEE_THROUGH_INTEGRATION.md](SEE_THROUGH_INTEGRATION.md) |
-| 常见问题 | [FAQ.md](FAQ.md) |
-| 项目结构 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) |
-| 更新日志 | [CHANGELOG.md](CHANGELOG.md) |
-| 已知限制 | [LIMITATIONS.md](LIMITATIONS.md) |
+| 项目首页 | https://github.com/mw2wbyys6t-sudo/Live2D |
+| Skill 入口 | [SKILL.md](SKILL.md) |
+| 快速入门 | [QUICKSTART.md](../../../docs/QUICKSTART.md) |
+| See-through指南 | [SEE_THROUGH_INTEGRATION.md](../../../docs/SEE_THROUGH_INTEGRATION.md) |
+| 常见问题 | [FAQ.md](../../../docs/FAQ.md) |
+| 项目结构 | [PROJECT_STRUCTURE.md](../../../docs/PROJECT_STRUCTURE.md) |
+| 更新日志 | [CHANGELOG.md](../../../CHANGELOG.md) |
+| 已知限制 | [LIMITATIONS.md](../../../docs/LIMITATIONS.md) |
 
 ---
 
 **让Live2D制作更简单！** 🎨
 
-*版本: v7.1（桌面桌宠功能+See-through集成）*
-*最后更新: 2026-05-30*
+*版本: v7.2（交互式终端 Agent + 桌面桌宠 + See-through集成）*
+*最后更新: 2026-06-18*

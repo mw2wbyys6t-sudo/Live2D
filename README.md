@@ -30,13 +30,26 @@ cd Live2D
 pip install -r requirements.txt
 ```
 
-### 第二步：生成角色
+### 第二步：生成角色（命令模式）
 
 ```bash
 python master_tool.py "cute anime girl, pink hair"
 ```
 
-### 第三步：专业分层（推荐）
+### 第三步：交互式终端 Agent 模式（推荐新手）
+
+```bash
+python live2d_agent.py
+```
+
+进入菜单后选择数字或直接用自然语言描述角色，例如：
+
+```text
+1
+cute anime girl, pink hair
+```
+
+### 第四步：专业分层（推荐）
 
 ```bash
 # 安装 See-through（一次性）
@@ -46,7 +59,7 @@ python install_comfyui_advanced.py
 python master_tool.py --see-through
 ```
 
-### 第四步：完成！
+### 第五步：完成！
 
 系统会自动：
 - ✅ 生成高质量角色立绘
@@ -55,7 +68,7 @@ python master_tool.py --see-through
 
 **就是这么快！** ⚡
 
-### 第五步：桌面桌宠（v7.1新功能）
+### 第六步：桌面桌宠（v7.2新功能）
 
 ```bash
 # 一键创建桌面宠物
@@ -103,7 +116,7 @@ python live2d_desktop_pet.py --run pet_output
 - PSD分层：1-2小时 → See-through 10秒（**提升360倍+**）
 - 总流程：4-5小时 → 3分钟（**提升100倍+**）
 
-### 🐱 桌面桌宠（v7.1新功能）
+### 🐱 桌面桌宠（v7.2新功能）
 - **无需Live2D软件**：脱离原生Live2D Cubism Editor，一键部署
 - **能动的Live2D形象**：身体摆动、眨眼、呼吸动画
 - **表情系统**：支持正常、开心、害羞、惊讶、困倦等表情
@@ -170,6 +183,46 @@ Live2D/
 ├── comfyui-connector/          # ComfyUI TypeScript 连接器
 └── .trae/skills/live2d-master-agent/   # 核心实现（Trae Skill）
 ```
+
+---
+
+## 🎮 两种使用模式
+
+### 1. 终端 Agent 模式（命令行交互）
+
+适合在终端中使用，支持菜单选择和自然语言命令。
+
+```bash
+# 启动交互式 Agent
+python live2d_agent.py
+```
+
+- 支持中文/英文自然语言指令
+- 菜单驱动，新手友好
+- 可快速生成角色、分层、部署桌宠
+
+### 2. Trae Skill 模式（IDE 内 AI 助手）
+
+将本仓库作为 [Trae IDE](https://www.trae.ai/) 的 Skill 使用，在编辑器内直接调用。
+
+**安装方法：**
+
+1. 将本仓库克隆到任意目录：
+
+```bash
+git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
+```
+
+2. 在 Trae 中加载 `.trae/skills/live2d-master-agent/` 目录作为 Skill：
+   - 打开 Trae → Settings → Skills → Add Skill
+   - 选择 `<仓库目录>/.trae/skills/live2d-master-agent`
+   - 或直接将整个仓库作为项目打开，Trae 会自动识别 `SKILL.md`
+
+**Skill 使用链接：**
+- 项目首页：`https://github.com/mw2wbyys6t-sudo/Live2D`
+- Skill 入口：`.trae/skills/live2d-master-agent/SKILL.md`
+
+> 两种模式共享同一套核心实现，输出目录和配置文件均统一在项目根目录的 `output/` 和 `.env` 中。
 
 ---
 
