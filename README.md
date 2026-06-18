@@ -168,11 +168,8 @@ Live2D/
 ├── live2d_layer_pro.py         # 颜色检测分层（包装器）
 ├── config_api.py               # API配置（包装器）
 ├── install_comfyui_advanced.py # See-through安装（包装器）
-├── create_test_image.py        # 测试图像生成（包装器）
-├── test_workflow.py            # 工作流测试（包装器）
-├── test_full_coverage.py       # 全覆盖测试（包装器）
-├── test_deep_coverage.py       # 深度测试（包装器）
 ├── requirements.txt            # Python 依赖
+├── tests/                      # 测试脚本（包装器）
 ├── scripts/                    # 辅助脚本（包装器）
 ├── docs/                       # 详细文档
 ├── examples/                   # 使用案例
@@ -240,7 +237,7 @@ git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
 | [live2d_layer_v6.py](live2d_layer_v6.py) | K-means分层工具 | ⭐⭐⭐⭐ |
 | [live2d_layer_pro.py](live2d_layer_pro.py) | 颜色检测分层 | ⭐⭐⭐ |
 | [config_api.py](config_api.py) | API配置 | ⭐⭐⭐⭐ |
-| [create_test_image.py](create_test_image.py) | 测试图像生成 | ⭐⭐⭐ |
+| [tests/create_test_image.py](tests/create_test_image.py) | 测试图像生成 | ⭐⭐⭐ |
 
 ### 辅助脚本
 
@@ -254,9 +251,9 @@ git clone https://github.com/mw2wbyys6t-sudo/Live2D.git
 
 | 脚本 | 说明 |
 |------|------|
-| [test_workflow.py](test_workflow.py) | 工作流基础测试 |
-| [test_full_coverage.py](test_full_coverage.py) | 功能全覆盖测试 |
-| [test_deep_coverage.py](test_deep_coverage.py) | 30 项深度测试 |
+| [tests/test_workflow.py](tests/test_workflow.py) | 工作流基础测试 |
+| [tests/test_full_coverage.py](tests/test_full_coverage.py) | 功能全覆盖测试 |
+| [tests/test_deep_coverage.py](tests/test_deep_coverage.py) | 30 项深度测试 |
 
 ---
 
@@ -355,7 +352,7 @@ python main.py
 python live2d_layer_v6.py character.png output_dir
 
 # 测试工具
-python create_test_image.py
+python tests/create_test_image.py
 python live2d_layer_v6.py test_character.png test_output
 ```
 
