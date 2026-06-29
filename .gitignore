@@ -15,3 +15,7 @@ temp/
 *.bak
 comfyui/
 *.tsbuildinfo
+
+# Expert context generator output - keep local only
+EXPERT_CONTEXT.md
+scripts/generate_expert_context.py
