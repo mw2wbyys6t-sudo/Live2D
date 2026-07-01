@@ -19,3 +19,7 @@ comfyui/
 # Expert context generator output - keep local only
 EXPERT_CONTEXT.md
 scripts/generate_expert_context.py
+
+# Update plan and project snapshot - keep local only
+UPDATE_PLAN.md
+Live2D_project_snapshot_*.tar.gz
