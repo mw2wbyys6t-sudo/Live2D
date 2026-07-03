@@ -10,8 +10,8 @@ import WorkflowTracker from '../components/WorkflowTracker';
 import { parsePSD } from '../lib/psd-parser';
 import { analyzePSD, getEnhancedResult, QAIssue } from '../lib/qa-engine';
 import { getErrorMessage } from '../lib/utils';
-import { Live2DWorkflow } from '../lib-shared/workflow';
-import { STEP_NAMES } from '../lib-shared/types';
+import { Live2DWorkflow } from '../lib/workflow';
+import { STEP_NAMES } from '../lib/types';
 
 const ChatAssistant = dynamic(() => import('../components/ChatAssistant'), {
   ssr: false,

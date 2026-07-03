@@ -21,30 +21,10 @@ _HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SKILL_DIR = os.path.join(_HERE, ".trae", "skills", "live2d-master-agent")
 _ORIG_CWD = os.getcwd()
 
-def _check_core_dependencies():
-    """Check that the minimal dependencies are importable before running."""
-    missing = []
-    for mod in ("PIL", "numpy", "requests", "psd_tools"):
-        try:
-            __import__(mod)
-        except ImportError:
-            missing.append(mod.replace("_", "-"))
-    if missing:
-        print("[ERROR] Missing required dependencies:", ", ".join(missing), file=sys.stderr)
-        print("[INFO] Run the installer to install compatible dependencies:", file=sys.stderr)
-        print("       python install.py", file=sys.stderr)
-        print("[INFO] Or manually install core packages:", file=sys.stderr)
-        print("       python -m pip install Pillow numpy requests psd-tools scipy scikit-learn", file=sys.stderr)
-        sys.exit(1)
-
-
-
 if not os.path.isdir(_SKILL_DIR):
     print(f"[ERROR] Skill implementation not found: {_SKILL_DIR}", file=sys.stderr)
     print("[ERROR] Please clone the repository completely.", file=sys.stderr)
     sys.exit(1)
-
-_check_core_dependencies()
 
 # Tell the skill where the project root is so outputs/config go to the root
 # directory when the user runs commands from the repository root.

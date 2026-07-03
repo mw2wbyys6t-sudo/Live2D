@@ -48,11 +48,8 @@ live2d-master-agent/
 ├── 📄 config_api.py          # API配置工具
 ├── 📄 config.py             # 配置文件
 ├── 📄 comfyui_integration.py    # ComfyUI集成
-├── 📁 tests/                    # 测试脚本目录
-│   ├── 📄 create_test_image.py   # 测试图像生成工具
-│   ├── 📄 test_workflow.py       # 工作流基础测试
-│   ├── 📄 test_full_coverage.py  # 功能全覆盖测试
-│   └── 📄 test_deep_coverage.py  # 30 项深度测试
+├── 📄 create_test_image.py   # 测试图像生成工具
+├── 📄 install_ai_models.py      # AI模型安装
 │
 ├── 📄 AI_LAYERING_GUIDE.md     # AI分层指南
 ├── 📄 BEST_PRACTICES.md        # 最佳实践
@@ -84,7 +81,8 @@ live2d-master-agent/
 | 文件名 | 说明 |
 |--------|------|
 | [config_api.py](config_api.py) | API配置工具 |
-| [tests/create_test_image.py](tests/create_test_image.py) | 测试图像生成 |
+| [create_test_image.py](create_test_image.py) | 测试图像生成 |
+| [install_ai_models.py](install_ai_models.py) | AI模型安装 |
 
 ---
 
@@ -142,7 +140,7 @@ python install_comfyui_advanced.py
 ### 3️⃣ 测试工具
 ```bash
 # 生成测试图像
-python tests/create_test_image.py
+python create_test_image.py
 # 使用v6分层
 python live2d_layer_v6.py test_character.png
 ```

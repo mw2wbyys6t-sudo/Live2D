@@ -261,33 +261,6 @@ python test_deep_coverage.py
 - **功能:** 身体摆动、眨眼、呼吸、表情切换、点击互动
 - **命令示例:** `python live2d_desktop_pet.py --layers ./output/my_project/layers/ --pet-name "你的桌宠名字"`
 
-# Usage Modes
-
-## 1. 终端 Agent 模式
-
-直接在仓库根目录启动交互式命令行 Agent：
-
-```bash
-python live2d_agent.py
-```
-
-支持菜单选择和自然语言命令，例如：
-- `1` 生成角色
-- `2` 图片分层
-- `3` 部署桌宠
-- `4` 一键完整工作流
-- `exit` 退出
-
-## 2. Trae Skill 模式
-
-本目录为 Trae IDE Skill 的标准入口，配置方式：
-
-1. 克隆仓库：`git clone https://github.com/mw2wbyys6t-sudo/Live2D.git`
-2. 在 Trae 中加载 `.trae/skills/live2d-master-agent/` 作为 Skill
-3. 通过 Trae 的 Agent 面板调用
-
----
-
 # Rules
 
 ## 必须遵循
