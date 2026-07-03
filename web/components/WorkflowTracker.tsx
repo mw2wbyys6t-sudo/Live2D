@@ -1,5 +1,5 @@
 import React from 'react';
-import { STEP_NAMES } from '../../lib/types';
+import { STEP_NAMES } from '../lib-shared/types';
 
 export interface WorkflowTrackerProps {
   currentStep: number;
