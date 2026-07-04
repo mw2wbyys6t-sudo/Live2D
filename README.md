@@ -199,7 +199,7 @@ python3 -m pytest tests/ -q
 
 ## 技术架构
 
-项目采用「Python 核心 + Go API + Next.js Web UI + Trae Skill」的多层架构：
+项目采用「Python 核心 + Go API + Next.js Web UI 」的多层架构：
 
 ```text
 Live2D/
