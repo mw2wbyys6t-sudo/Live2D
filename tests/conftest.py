@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Test Configuration and Shared Fixtures
+Live2D Master Agent v9.0 - Test Configuration and Shared Fixtures
 
 All tests run WITHOUT requiring real API keys:
 - HTTP requests are mocked

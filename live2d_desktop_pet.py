@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Desktop Pet Creator & Runner
+Live2D Master Agent v9.0 - Desktop Pet Creator & Runner
 P1-3 FIX: Generated pet uses script-relative paths (works from any directory)
 """
 

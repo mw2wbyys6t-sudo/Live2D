@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Unit Tests
+Live2D Master Agent v9.0 - Unit Tests
 Tests individual components: version, security, storage, layering, QA, PSD, pet, workflow.
 All tests run WITHOUT real API keys.
 
@@ -25,9 +25,9 @@ sys.path.insert(0, _PROJECT_ROOT)
 # ===================== Version Consistency (P0-1) =====================
 
 class TestVersionConsistency:
-    def test_version_is_v8(self):
+    def test_version_is_v9(self):
         from live2d.version import __version__
-        assert __version__.startswith("8.0"), f"Expected v8.0.x, got {__version__}"
+        assert __version__.startswith("9.0"), f"Expected v9.0.x, got {__version__}"
 
     def test_version_file_matches(self):
         from live2d.version import __version__
@@ -39,7 +39,7 @@ class TestVersionConsistency:
     def test_all_version_strings_consistent(self):
         from live2d.version import get_version_string
         vs = get_version_string()
-        assert "8.0" in vs
+        assert "9.0" in vs
 
 
 # ===================== Module Imports =====================

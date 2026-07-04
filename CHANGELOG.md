@@ -1,5 +1,47 @@
 # Changelog
 
+## v9.0.0 - Unified Release (2026-07-04)
+
+This release unifies the work from five historical branches into a single, coherent
+mainline. It keeps the v8.0 commercial Python package and Go API as the baseline,
+merges in security audit history, historical documentation, and example assets from
+`backup-full-history` and `trae/solo-agent-Dd6Zh4`, and preserves the v8.0 test suite
+(149 tests, zero API keys required).
+
+### Integration Sources
+
+- `origin/111` — baseline v8.0 commercial release (Python `live2d/` package, Go API,
+  149 tests, 52-layer standard, desktop pet, Seedream provider).
+- `origin/backup-full-history` — historical docs (`AI_LAYERING_GUIDE.md`,
+  `OPENSOURCE_INTEGRATION.md`, `CLOUD_SETUP_GUIDE.md`, `BUG_REPORT.md`) and example
+  outputs/assets moved to `docs/history/`, `examples/output/`, `examples/assets/`.
+- `origin/trae/solo-agent-Dd6Zh4` — security audit reports
+  (`SECURITY_AUDIT_v5.md`, `SECURITY_AUDIT_v6.md`, `SECURITY_REPORT.md`) and
+  `.env.encrypted` example.
+- `origin/second-yu` / `origin/trae/solo-agent-DfablD` — reviewed; their code changes
+  were either already present in v8.0 or were regressions (removed project-root path
+  handling, broken PSD generation, incomplete `web/lib` migration), so they were not
+  adopted as code changes, but their branches are fully backed up.
+
+### New / Added
+
+- `docs/history/` — archived design guides, integration research, and bug reports.
+- `examples/output/` — sample generated characters and PSD layering plans.
+- `examples/assets/` — Chinese character sample images.
+- `tests/history/` — historical test issue reports and JSON test reports.
+- `.trae/skills/live2d-master-agent/SECURITY_AUDIT_v5.md`
+- `.trae/skills/live2d-master-agent/SECURITY_AUDIT_v6.md`
+- `.trae/skills/live2d-master-agent/SECURITY_REPORT.md`
+- `.trae/skills/live2d-master-agent/.env.encrypted` (placeholder example)
+
+### Changed
+
+- Version unified to `9.0.0` across `live2d/version.py`, `VERSION`, `README.md`,
+  `.trae/skills/live2d-master-agent/SKILL.md`, and `VERSION_INFO.json`.
+- `.gitignore` updated to allow `examples/output/` and the sample encrypted config.
+
+---
+
 ## v8.0.0 - Commercial Release (2026-07-02)
 
 This is the commercial v8.0 release. All 14 documented P0-P2 bugs are fixed.

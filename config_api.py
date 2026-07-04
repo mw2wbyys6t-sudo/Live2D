@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - API Configuration Tool
+Live2D Master Agent v9.0 - API Configuration Tool
 Interactive setup for API keys (stored encrypted with Fernet/PBKDF2).
 """
 

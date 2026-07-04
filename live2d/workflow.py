@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent - Unified Workflow Engine (v8.0)
+Live2D Master Agent - Unified Workflow Engine (v9.0)
 
 Full pipeline: Text-to-Image → QA → Optimize → Layer → PSD → 52-layer mapping → Pet
 

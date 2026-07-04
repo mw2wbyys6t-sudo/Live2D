@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Main Image Generation + Layer Tool
+Live2D Master Agent v9.0 - Main Image Generation + Layer Tool
 P0-3 FIX: Uses K-means v6 layerer by default (not layer_pro)
 P2-3 FIX: Supports --version flag
 P1-1 FIX: Proper imports, no circular dependencies

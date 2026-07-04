@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Deep Coverage Tests
+Live2D Master Agent v9.0 - Deep Coverage Tests
 End-to-end pipeline, integration, and verification tests.
 All tests run WITHOUT real API keys (using local test images).
 
@@ -296,10 +296,10 @@ class TestGoAPIConfig:
         content = bridge.read_text()
         assert "GetPythonTimeout" in content
 
-    def test_go_main_uses_v8_version(self):
+    def test_go_main_uses_v9_version(self):
         main_go = Path(_PROJECT_ROOT) / "api" / "main.go"
         content = main_go.read_text()
-        assert "v8.0" in content
+        assert "v9.0" in content
 
     def test_python_bridge_defaults_v6(self):
         """P0-3: Python bridge defaults to v6 layerer."""
@@ -399,7 +399,7 @@ class TestProjectStructure:
 # ===================== Version Consistency Deep Check =====================
 
 class TestVersionDeep:
-    def test_all_version_references_are_v8(self):
+    def test_all_version_references_are_v9(self):
         """P0-1: No stale v7.x version references in Python source."""
         import glob
         py_files = glob.glob(os.path.join(_PROJECT_ROOT, "live2d", "**", "*.py"), recursive=True)

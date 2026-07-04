@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Full Coverage Tests
+Live2D Master Agent v9.0 - Full Coverage Tests
 Tests edge cases, error handling, and component integration.
 All tests run WITHOUT real API keys.
 

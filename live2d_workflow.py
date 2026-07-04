@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - End-to-End Workflow
+Live2D Master Agent v9.0 - End-to-End Workflow
 Pipeline: Generate → QA → Optimize → Layer → PSD → 52-layer config → Pet
 """
 

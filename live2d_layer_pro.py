@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Pro Layer Tool
+Live2D Master Agent v9.0 - Pro Layer Tool
 This is now an alias for v6 K-means (the Pro/AI layering requires See-through ComfyUI).
 See install_comfyui_advanced.py for See-through SIGGRAPH 2026 layering.
 """

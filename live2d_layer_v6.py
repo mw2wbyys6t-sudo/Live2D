@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - K-means Layer Separator (v6, DEFAULT)
+Live2D Master Agent v9.0 - K-means Layer Separator (v6, DEFAULT)
 P0-3 FIX: This is the default layer separation tool.
 """
 

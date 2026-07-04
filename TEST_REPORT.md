@@ -1,8 +1,11 @@
-# Live2D Master Agent v8.0 - Test Report
+# Live2D Master Agent v9.0 - Test Report
 
-**Date:** 2026-07-02
-**Version:** 8.0.0 (Commercial Release)
+**Date:** 2026-07-04
+**Version:** 9.0.0 (Unified Release)
 **Test Environment:** Python 3.10.12, Linux 5.15.0, pytest 9.0.3
+
+> This report documents the test suite results from the v8.0 commercial baseline,
+> which remains unchanged as the core of the v9.0 unified release.
 
 ---
 
@@ -28,7 +31,7 @@
 Unit tests covering individual components and bug fixes.
 
 **Version Consistency (P0-1): 3 tests**
-- `test_version_is_v8` - Verifies `__version__` starts with "8.0"
+- `test_version_is_v9` - Verifies `__version__` starts with "9.0"
 - `test_version_file_matches` - VERSION file matches `live2d/version.py`
 - `test_all_version_strings_consistent` - Version string format check
 - **Result: 3/3 PASSED**
@@ -244,7 +247,7 @@ End-to-end integration, structure validation, and cross-component tests.
 **Go API Config: 4 tests**
 - `test_go_config_has_dynamic_timeout` - config.go has TimeoutSec + GetPythonTimeout (P1-4)
 - `test_go_bridge_uses_config_timeout` - python_bridge.go uses GetPythonTimeout (P1-4)
-- `test_go_main_uses_v8_version` - main.go contains "v8.0"
+- `test_go_main_uses_v9_version` - main.go contains "v9.0"
 - `test_python_bridge_defaults_v6` - python_bridge.go references live2d_layer_v6.py (P0-3)
 - **Result: 4/4 PASSED**
 
@@ -264,7 +267,7 @@ End-to-end integration, structure validation, and cross-component tests.
 - **Result: 6/6 PASSED**
 
 **Version Deep Check: 1 test**
-- `test_all_version_references_are_v8` - Scans all .py files for stale v7.0/v7.1 references
+- `test_all_version_references_are_v9` - Scans all .py files for stale v7.0/v7.1 references
   (excluding CHANGELOG); asserts none found (P0-1)
 - **Result: 1/1 PASSED**
 
@@ -275,7 +278,7 @@ End-to-end integration, structure validation, and cross-component tests.
 ```
 $ python3 live2d_workflow.py --input output/e2e_test/test_input.png --output output/e2e_test --k 5
 
-[INFO] Live2D Master Agent v8.0.0
+[INFO] Live2D Master Agent v9.0.0
 [INFO] [2/10] Loading input image
 [INFO] Image size: (512, 512)
 [INFO] [3/10] Quality assessment: 45/100
@@ -299,13 +302,13 @@ Output files verified:
 CLI --version verified:
 ```
 $ python3 master_tool.py --version
-Live2D Master Agent v8.0.0 (Commercial Release, 2026-07-02)
+Live2D Master Agent v9.0.0 (Unified Release, 2026-07-04)
 
 $ python3 live2d_workflow.py --version
-Live2D Master Agent v8.0.0 (Commercial Release, 2026-07-02)
+Live2D Master Agent v9.0.0 (Unified Release, 2026-07-04)
 
 $ python3 live2d_layer_v6.py --version
-Live2D Master Agent v8.0.0 (Commercial Release, 2026-07-02)
+Live2D Master Agent v9.0.0 (Unified Release, 2026-07-04)
 ```
 
 ---
@@ -314,7 +317,7 @@ Live2D Master Agent v8.0.0 (Commercial Release, 2026-07-02)
 
 | Bug | Test(s) | Status |
 |-----|---------|--------|
-| P0-1 Version inconsistency | test_version_is_v8, test_version_file_matches, test_all_version_references_are_v8 | FIXED |
+| P0-1 Version inconsistency | test_version_is_v9, test_version_file_matches, test_all_version_references_are_v9 | FIXED |
 | P0-2 Tests need API keys | All 149 tests use mocks/synthetic images; mock_requests fixture | FIXED |
 | P0-3 Wrong default layerer | test_default_is_kmeans_not_pro, test_python_bridge_defaults_v6, test_default_layerer_is_v6 | FIXED |
 | P0-4 XOR encryption fallback | test_no_xor_fallback, test_no_xor_fallback_in_secure_storage, encrypt/decrypt roundtrip | FIXED |

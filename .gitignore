@@ -10,11 +10,17 @@ __pycache__/
 .DS_Store
 Thumbs.db
 output/
+!examples/output/
 temp/
 *.tmp
 *.bak
 comfyui/
 *.tsbuildinfo
+
+# Allow example encrypted config (placeholder only)
+!.trae/skills/live2d-master-agent/.env.encrypted
+# Allow example env file
+!.env.example
 
 # Expert context generator output - keep local only
 EXPERT_CONTEXT.md

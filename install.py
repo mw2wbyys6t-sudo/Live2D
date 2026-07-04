@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Installation Script
+Live2D Master Agent v9.0 - Installation Script
 
 Automatically detects Python version and OS, installs core + optional dependencies.
 
@@ -105,7 +105,7 @@ def write_env_example() -> None:
     env_example = root / ".env.example"
     env_file = root / ".env"
 
-    example_content = """# Live2D Master Agent v8.0 Configuration
+    example_content = """# Live2D Master Agent v9.0 Configuration
 # Copy this file to .env and fill in your API keys
 
 # === Optional API Keys (free Pollinations.ai works without keys) ===
@@ -143,7 +143,7 @@ def main() -> int:
     install_full = "--full" in sys.argv
 
     print("=" * 60)
-    print(" Live2D Master Agent v8.0 - Installation")
+    print(" Live2D Master Agent v9.0 - Installation")
     print("=" * 60)
     print(f"Python: {platform.python_version()}")
     print(f"OS: {platform.system()} {platform.release()}")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v8.0 - Interactive CLI Agent
+Live2D Master Agent v9.0 - Interactive CLI Agent
 Menu-driven interactive interface for the full Live2D pipeline.
 """
 

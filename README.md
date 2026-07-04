@@ -1,10 +1,10 @@
-# Live2D Master Agent v8.0
+# Live2D Master Agent v9.0
 
 > **Professional AI-assisted Live2D production pipeline - from concept to rigging, ready for desktop deployment**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-v8.0.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-v9.0.0-green.svg)]()
 [![Tests](https://img.shields.io/badge/tests-149%20passed-brightgreen.svg)]()
 
 ---
@@ -27,7 +27,14 @@ python3 live2d_workflow.py --input character.png --output ./output --deploy-desk
 
 ---
 
-## What's New in v8.0 (Commercial Release)
+## What's New in v9.0 (Unified Release)
+
+This release unifies five historical branches (`111`, `backup-full-history`, `second-yu`,
+`trae/solo-agent-Dd6Zh4`, `trae/solo-agent-DfablD`) into a single coherent mainline. It
+keeps the v8.0 commercial Python package and Go API, adds security audit reports,
+historical documentation, and example assets, and bumps the version to v9.0.0.
+
+### v8.0 Baseline
 
 **14 bugs fixed** across P0/P1/P2, **4 DEF features** implemented, full test coverage with 149 tests (all passing, zero API keys required).
 
@@ -137,7 +144,7 @@ The config searches 7 locations for `.env`: `LIVE2D_ENV_PATH`, `LIVE2D_PROJECT_R
 
 ```
 live2d/                          # Python package
-  version.py                     # v8.0.0 (single source of truth)
+  version.py                     # v9.0.0 (single source of truth)
   config.py                      # SecureConfig singleton (P0-5)
   logger.py                      # Unified logger (DEF-007)
   security.py                    # Path/PSD/prompt/filename validation
@@ -164,7 +171,7 @@ live2d/                          # Python package
 api/                             # Go REST API (Gin framework)
   config/config.go               # Config struct + TimeoutSec (P1-4)
   services/python_bridge.go      # Defaults to live2d_layer_v6.py (P0-3)
-  main.go                        # v8.0 version banner
+  main.go                        # v9.0 version banner
 tests/                           # 149 tests, zero API keys needed
   conftest.py                    # Fixtures: test_image, test_layers_dir, mock_requests
   test_workflow.py               # 67 unit tests
