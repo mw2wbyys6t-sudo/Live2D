@@ -1,0 +1,23 @@
+{
+  "manifest_version": "1.0",
+  "name": "ComfyUI Photoshop Connector",
+  "version": "1.0.0",
+  "description": "Photoshop 插件 - 连接本地 ComfyUI 进行 AI 绘图",
+  "main": "main.js",
+  "author": "ComfyUI Connector Team",
+  "engines": {
+    "photoshop": ">=24.0"
+  },
+  "features": {
+    "ui": {
+      "menu": "File > AI Art > ComfyUI Generator",
+      "panels": {
+        "main": {
+          "title": "ComfyUI Generator",
+          "width": 400,
+          "height": 600
+        }
+      }
+    }
+  }
+}

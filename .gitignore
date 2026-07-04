@@ -1,66 +1,25 @@
-# ===== OS =====
-.DS_Store
-._*
-Thumbs.db
-Desktop.ini
-
-# ===== IDE/Editor =====
-.vscode/
-.idea/
-.project
-.classpath
-.settings/
-*.sublime-*
-
-# ===== Node.js/Frontend =====
 node_modules/
-.pnpm-store/
 .next/
-.nuxt/
-.vite/
-.cache/
-.eslintcache
-*.tsbuildinfo
-
-# ===== Python =====
+out/
 __pycache__/
 *.pyc
-*.pyo
-.venv/
-venv/
-.pytest_cache/
-.mypy_cache/
-.ipynb_checkpoints/
-*.egg-info/
-
-# ===== Rust =====
-target/
-
-# ===== Java/JVM =====
-.gradle/
-*.class
-*.jar
-*.war
-*.ear
-
-# ===== Ruby =====
-.bundle/
-
-# ===== Logs/Temp =====
+.env
+.env.*
+*.encrypted
 *.log
-logs/
+.DS_Store
+Thumbs.db
+output/
+temp/
 *.tmp
-*.temp
-*.swp
-*.swo
-*~
+*.bak
+comfyui/
+*.tsbuildinfo
 
-# ===== Test Coverage =====
-coverage/
-.nyc_output/
-htmlcov/
-.coverage
-*.lcov
+# Expert context generator output - keep local only
+EXPERT_CONTEXT.md
+scripts/generate_expert_context.py
 
-# ===== Internal =====
-/.work/
+# Update plan and project snapshot - keep local only
+UPDATE_PLAN.md
+Live2D_project_snapshot_*.tar.gz
