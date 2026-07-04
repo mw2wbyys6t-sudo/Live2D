@@ -1,6 +1,6 @@
 # Live2D Master Agent v9.0
 
-> **Professional AI-assisted Live2D production pipeline - from concept to rigging, ready for desktop deployment**
+> **从一句话描述到可动 Live2D 角色，全程 AI 辅助的完整生产线。**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
@@ -9,222 +9,205 @@
 
 ---
 
-## Quick Start (3 minutes)
+## 这是什么？
+
+Live2D Master Agent 是一个面向创作者的工具集，帮助你把角色创意快速变成 Live2D 可用的分层素材。
+
+**一句话说明**：输入角色描述或图片，自动完成图像生成、图层拆分、PSD 导出、Cubism 参数配置，还能一键部署为桌面桌宠。
+
+适合人群：
+
+- 想做 Live2D 虚拟主播但不懂拆分的画师
+- 需要快速产出角色分层素材的内容创作者
+- 想用 AI 辅助 Live2D 工作流的技术美术
+- 想给自己的桌面加一只动态桌宠的用户
+
+---
+
+## 三分钟上手
 
 ```bash
-# Install
+# 1. 安装依赖
 python3 install.py
 
-# Run pipeline with a local image
+# 2. 用一句话生成角色并自动拆分图层
+python3 master_tool.py "蓝发猫耳少女，白色背景"
+
+# 3. 或者用已有图片拆分图层、生成 PSD 和 Cubism 配置
 python3 live2d_workflow.py --input character.png --output ./output --k 5
+```
 
-# Generate from free AI (no API key needed)
-python3 master_tool.py "anime girl with blue hair, white background"
+> 默认使用 Pollinations 免费图像生成，无需 API Key，开箱即用。
 
-# Deploy as desktop pet
-python3 live2d_workflow.py --input character.png --output ./output --deploy-desktop
+---
+
+## 主要功能
+
+| 功能 | 说明 |
+|------|------|
+| **AI 角色生成** | 输入中文或英文描述，自动生成角色立绘 |
+| **智能图层拆分** | 基于 K-means 颜色聚类，把角色拆成头发、脸部、身体等图层 |
+| **PSD 导出** | 生成 Adobe Photoshop 可直接打开的多图层 PSD 文件 |
+| **Cubism 标准配置** | 自动生成 52 层标准映射、`parameters.json`、`physics3.json` |
+| **桌面桌宠** | 一键打包为可运行的桌面宠物，支持 Windows / macOS / Linux |
+| **Web 质检工具** | 可视化检查 PSD 结构和 Live2D 规范合规性 |
+
+---
+
+## 五种使用方式
+
+### 1. 交互式 Agent（推荐新手）
+
+```bash
+python3 live2d_agent.py
+```
+
+启动后会看到菜单，支持直接输入数字或自然语言：
+
+```text
+[1] 生成角色
+[2] 拆分图层
+[3] 部署桌宠
+[4] 一键完成全部流程
+[5] 设置
+[0] 退出
+```
+
+### 2. 一站式命令行
+
+```bash
+# 生成角色 + 拆分 + PSD + Cubism 配置
+python3 master_tool.py "可爱的猫娘，粉色头发"
+
+# 如果你已有图片，用端到端工作流处理
+python3 live2d_workflow.py --input character.png --output ./output
+```
+
+### 3. 端到端工作流
+
+```bash
+# 从图片到完整 Live2D 素材
+python3 live2d_workflow.py --input character.png --output ./output --k 5 --deploy-desktop
+```
+
+常用参数：
+
+| 参数 | 说明 |
+|------|------|
+| `--input PATH` | 输入图片路径 |
+| `--output DIR` | 输出目录 |
+| `--k N` | 图层数量，3-20，默认 8 |
+| `--deploy-desktop` | 同时生成桌面桌宠 |
+| `--provider pollinations` | 免费生成（默认） |
+| `--provider seedream` | 火山 Seedream 高质量生成 |
+
+### 4. Web UI
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+浏览器打开 `http://localhost:3000`，可上传 PSD 检测结构问题，或把图片转为 PSD。
+
+### 5. Trae IDE Skill
+
+在 Trae IDE 中加载 `.trae/skills/live2d-master-agent/` 目录，即可在编辑器内用自然语言调用：
+
+- "帮我生成一个 Live2D 角色"
+- "把这张图拆分成 Live2D 图层"
+- "检查这个 PSD 是否符合 Live2D 规范"
+
+---
+
+## 运行后会得到什么？
+
+```text
+output/layers_<时间戳>/
+  optimized_*.png         # 去背景后的优化原图
+  layer_000.png           # 拆分后的独立图层（RGBA）
+  layer_001.png
+  ...
+  preview.png             # 图层叠加预览
+  character.psd           # Photoshop 多图层文件
+  layer_mapping.json      # 图层到 52 层标准的映射
+  parameters.json         # Cubism 参数定义
+  physics3.json           # 物理效果配置（头发、身体、呼吸）
+  52_LAYER_GUIDE.txt      # 52 层标准参考
+  pet_packages/<名称>/    # 桌面桌宠包（如果加了 --deploy-desktop）
+    run_pet.py            # 直接双击运行
+    pet_config.json       # 动画配置
+    layers/               # 图层素材
 ```
 
 ---
 
-## What's New in v9.0 (Unified Release)
+## 配置 API Key（可选）
 
-This release unifies five historical branches (`111`, `backup-full-history`, `second-yu`,
-`trae/solo-agent-Dd6Zh4`, `trae/solo-agent-DfablD`) into a single coherent mainline. It
-keeps the v8.0 commercial Python package and Go API, adds security audit reports,
-historical documentation, and example assets, and bumps the version to v9.0.0.
+默认免费方案无需配置。如需更高质量的火山 Seedream 生成，可复制示例文件并填写密钥：
 
-### v8.0 Baseline
-
-**14 bugs fixed** across P0/P1/P2, **4 DEF features** implemented, full test coverage with 149 tests (all passing, zero API keys required).
-
-### Bug Fixes
-| Priority | Bug | Fix |
-|----------|-----|-----|
-| P0-1 | Version inconsistency (v7.2/v7.1/v3.0 scattered) | Single `live2d/version.py` source of truth |
-| P0-2 | Tests require real API keys | All tests use mocks/synthetic images |
-| P0-3 | Wrong default layerer (pro, not v6) | KMeansLayerer (v6) is default everywhere |
-| P0-4 | XOR encryption fallback (security risk) | Fernet+PBKDF2 only; cryptography required |
-| P0-5 | .env file path search broken | 7-location search algorithm |
-| P1-1 | Circular imports between modules | Clean package architecture |
-| P1-2 | Temporary file leaks | `finally` block cleanup; router removes failed outputs |
-| P1-3 | Pet breaks when moved (relative paths) | `run_pet.py` uses `__file__` / `SCRIPT_DIR` |
-| P1-4 | Go API fixed 60s timeout | Configurable `TimeoutSec` + `GetPythonTimeout()` |
-| P2-1 | PSD zip bomb / malicious file risk | Magic bytes + dimension + layer count validation |
-| P2-2 | QA/PSD issue IDs are random UUIDs | SHA256-based deterministic stable IDs |
-| P2-3 | No `--version` flag on CLI tools | All 5 CLIs support `--version`/`-V` |
-| P2-4 | `cryptography` missing from requirements | Added to requirements.txt and install.py |
-
-### DEF Features
-| DEF | Feature |
-|-----|---------|
-| DEF-003 | Seedream/Volcano ARK image generation provider |
-| DEF-004 | 52-layer Cubism standard + physics3.json (22 params, 4 physics groups) |
-| DEF-007 | Unified logging: Rich console + rotating file + sensitive data redaction |
-| DEF-008 | `requirements-lock.txt` with pinned versions for reproducible builds |
-
----
-
-## CLI Tools
-
-| Command | Purpose |
-|---------|---------|
-| `python3 master_tool.py [prompt]` | Main entry: generate + layer + PSD + pet |
-| `python3 live2d_workflow.py` | Full workflow engine (input image or prompt) |
-| `python3 live2d_layer_v6.py` | K-means layer separation only |
-| `python3 live2d_desktop_pet.py` | Desktop pet preview from layers directory |
-| `python3 config_api.py` | Encrypted API key configuration |
-| `python3 live2d_agent.py` | Interactive menu-driven agent |
-
-All CLI tools support `--version` / `-V`.
-
-### Key Options
-
-```
---input PATH         Use existing character image (skip generation)
---output DIR         Output directory (default: ./output)
---k N                Number of K-means color clusters (3-20, default: 8)
---provider NAME      Image provider: pollinations (free, default) | sensenova | seedream
---deploy-desktop     Create desktop pet package after layering
---width / --height   Generation image dimensions (default: 512x512)
---seed N             Random seed for reproducible generations
+```bash
+cp .env.example .env
 ```
 
----
-
-## Pipeline Output
-
-Running the workflow produces an output directory containing:
-
-```
-output/layers_<timestamp>/
-  optimized_*.png         # Background-removed, enhanced source image
-  layer_000.png ...       # K-means separated layer PNGs (RGBA)
-  preview.png             # Layer preview composite
-  LAYER_GUIDE.txt         # Layer color/component reference
-  character.psd           # Multi-layer Adobe PSD file
-  layer_mapping.json      # K-means cluster -> 52-layer standard mapping
-  parameters.json         # 22 Cubism parameter definitions (ParamAngleX, etc.)
-  physics3.json           # Physics configuration (HairFront, HairBack, BodyBounce, Breathing)
-  52_LAYER_GUIDE.txt      # 52-layer standard reference
-  pet_packages/<name>/    # Desktop pet package (with --deploy-desktop)
-    run_pet.py            # Self-contained runner (uses __file__-relative paths)
-    pet_config.json       # Animation configuration
-    layers/               # Copied layer PNGs
-```
-
----
-
-## Configuration
-
-Copy `.env.example` to `.env`:
+编辑 `.env`：
 
 ```env
-# Optional API keys (Pollinations works without a key)
-SENSENOVA_API_KEY=sk-...
-ARK_API_KEY=...
+# 火山引擎 ARK / Seedream（可选）
+ARK_API_KEY=your-api-key-here
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 
-# Output
+# 输出目录
 OUTPUT_DIR=./output
 
-# Go API
+# Go API 服务端口（可选）
 GO_API_PORT=8080
-GO_API_TIMEOUT_SEC=120
-
-# Logging
-LIVE2D_LOG_LEVEL=INFO
-LIVE2D_TELEMETRY=0
-```
-
-The config searches 7 locations for `.env`: `LIVE2D_ENV_PATH`, `LIVE2D_PROJECT_ROOT/.env`, project root, CWD, script directory, `~/.trae-cn/skills/live2d-master-agent/.env`, `~/.live2d/.env`.
-
----
-
-## Architecture
-
-```
-live2d/                          # Python package
-  version.py                     # v9.0.0 (single source of truth)
-  config.py                      # SecureConfig singleton (P0-5)
-  logger.py                      # Unified logger (DEF-007)
-  security.py                    # Path/PSD/prompt/filename validation
-  secure_storage.py              # Fernet+PBKDF2 encrypted storage (P0-4)
-  workflow.py                    # State machine engine (P1-2)
-  image_gen/
-    base.py                      # Abstract ImageProvider interface
-    router.py                    # Provider registry with auto-fallback
-    pollinations.py              # Free, no key required
-    sensenova.py                 # SenseNova API
-    seedream.py                  # Volcano ARK/Seedream (DEF-003)
-  layering/
-    kmeans.py                    # K-means v6 (DEFAULT, P0-3)
-    layers52.py                  # 52-layer Cubism standard (DEF-004)
-    part_identifier.py           # Color/position heuristic part detection
-  psd/
-    creator.py                   # PSD creation (psd-tools + PNG fallback)
-    parser.py                    # PSD parser with bomb protection (P2-1)
-    validator.py                 # PSD validator with stable IDs (P2-2)
-  pet/
-    animator.py                  # Pet package generator (P1-3 fix)
-    runner.py                    # Direct pet preview
-  qa/engine.py                   # QA scoring with stable hash IDs (P2-2)
-api/                             # Go REST API (Gin framework)
-  config/config.go               # Config struct + TimeoutSec (P1-4)
-  services/python_bridge.go      # Defaults to live2d_layer_v6.py (P0-3)
-  main.go                        # v9.0 version banner
-tests/                           # 149 tests, zero API keys needed
-  conftest.py                    # Fixtures: test_image, test_layers_dir, mock_requests
-  test_workflow.py               # 67 unit tests
-  test_full_coverage.py          # 49 edge case tests
-  test_deep_coverage.py          # 33 integration/E2E tests
 ```
 
 ---
 
-## Running Tests
+## 环境要求
+
+- **Python**: 3.8 或更高版本（推荐 3.11 / 3.12）
+- **Node.js**: 18+（仅使用 Web UI 时需要）
+- **操作系统**: Windows、macOS、Linux
+
+核心依赖会自动安装：Pillow、numpy、requests、psd-tools、scikit-learn、cryptography、rich 等。
+
+---
+
+## 测试
+
+项目包含 149 项测试，全部无需真实 API Key：
 
 ```bash
-# Run all tests (recommended):
-python3 tests/test_workflow.py
-
-# Run with pytest directly:
-python3 -m pytest tests/ -v --tb=short
-
-# Individual suites:
-python3 -m pytest tests/test_workflow.py -v       # 67 unit tests
-python3 -m pytest tests/test_full_coverage.py -v  # 49 edge case tests
-python3 -m pytest tests/test_deep_coverage.py -v  # 33 integration/E2E tests
-```
-
-**All 149 tests pass without any external API keys or network access.**
-
----
-
-## Security
-
-- **Encryption**: Fernet (AES-128-CBC + HMAC-SHA256) with PBKDF2-HMAC-SHA256 (200,000 iterations); XOR fallback completely removed
-- **Path traversal protection**: All paths validated; `..`, null bytes, dangerous characters blocked
-- **PSD protection**: Magic byte check (`8BPS`), dimension limits (≤30000px), layer count limits before parsing
-- **Prompt injection defense**: `rm -rf`, `;`, `&`, backticks, `eval`, `exec`, `system` patterns sanitized
-- **Log redaction**: API keys (`sk-*`, Bearer tokens, JWTs) automatically redacted from logs and telemetry
-- **File permissions**: Encrypted config stored with 0600 permissions; keys kept in memory only, not in `os.environ`
-
----
-
-## Requirements
-
-- Python 3.8+
-- Core packages: Pillow, numpy, requests, psd-tools, scikit-learn, scipy, cryptography, rich
-- Optional: pygame (desktop pet runtime, Python <3.14)
-- Optional: Go 1.21+ (REST API server)
-
-Install locked versions for reproducibility:
-```bash
-pip install -r requirements-lock.txt
+python3 -m pytest tests/ -q
 ```
 
 ---
 
-## License
+## 项目亮点
 
-MIT
+- **开箱即用**：默认 Pollinations 免费生成，零配置跑通全流程
+- **中文友好**：CLI、Agent、提示词都支持中文输入
+- **安全可靠**：Fernet 加密存储、路径安全校验、PSD 防恶意文件校验
+- **测试完善**：149 项测试覆盖，无需外部 API Key
+- **生态完整**：CLI + Agent + Web UI + Trae Skill + Go API 多入口
+
+---
+
+## 文档导航
+
+- [快速入门](docs/QUICKSTART.md)
+- [完整使用说明](USAGE.md)
+- [用户指南](docs/USER_GUIDE.md)
+- [最佳实践](docs/BEST_PRACTICES.md)
+- [常见问题](docs/FAQ.md)
+- [更新日志](CHANGELOG.md)
+
+---
+
+## 许可证
+
+MIT License
