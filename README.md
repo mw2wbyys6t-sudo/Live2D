@@ -197,6 +197,72 @@ python3 -m pytest tests/ -q
 
 ---
 
+## 技术架构
+
+项目采用「Python 核心 + Go API + Next.js Web UI + Trae Skill」的多层架构：
+
+```text
+Live2D/
+├── live2d/                     # Python 核心包
+│   ├── workflow.py             # 状态机工作流引擎
+│   ├── image_gen/              # 图像生成 Provider 路由
+│   │   ├── pollinations.py     # 免费 Provider（无需 Key）
+│   │   ├── seedream.py         # 火山 Seedream / ARK
+│   │   └── sensenova.py        # SenseNova
+│   ├── layering/               # 图层拆分与 Live2D 标准
+│   │   ├── kmeans.py           # K-means v6 默认分层
+│   │   ├── layers52.py         # 52 层 Cubism 标准
+│   │   └── part_identifier.py  # 颜色/位置启发式部件识别
+│   ├── psd/                    # PSD 生成与校验
+│   │   ├── creator.py          # PSD / PNG 包创建
+│   │   ├── parser.py           # PSD 解析（带炸弹防护）
+│   │   └── validator.py        # PSD 合法性校验
+│   ├── pet/                    # 桌面桌宠
+│   │   ├── animator.py         # 桌宠包生成
+│   │   └── runner.py           # 实时预览运行器
+│   ├── qa/engine.py            # 图像质量评估
+│   ├── security.py             # 路径/提示词/文件名安全校验
+│   ├── secure_storage.py       # Fernet + PBKDF2 加密存储
+│   └── logger.py               # 统一日志 + 敏感信息脱敏
+├── api/                        # Go REST API（Gin 框架）
+│   ├── main.go                 # API 入口
+│   ├── config/config.go        # 动态超时配置
+│   ├── handlers/handlers.go    # HTTP 接口
+│   └── services/python_bridge.go # Python 桥接调用
+├── web/                        # Next.js 前端工具
+├── .trae/skills/live2d-master-agent/  # Trae IDE Skill
+├── tests/                      # 149 项测试套件
+├── scripts/                    # 辅助脚本
+├── docs/                       # 文档
+└── examples/                   # 示例案例与素材
+```
+
+### 数据流
+
+```text
+用户输入（描述 / 图片）
+    ↓
+图像生成 Provider → 角色立绘
+    ↓
+图像优化（去背景、增强）
+    ↓
+K-means 图层拆分 → layer_000.png ~ layer_NNN.png
+    ↓
+PSD 导出 + 52 层标准映射 + Cubism 参数/物理配置
+    ↓
+可选：桌面桌宠包 / Go API 服务 / Web UI 质检
+```
+
+### 安全设计
+
+- **加密存储**：API Key 使用 Fernet（AES-128-CBC + HMAC-SHA256）加密，密钥经 PBKDF2-HMAC-SHA256 派生
+- **路径防护**：禁止 `..`、空字节、危险字符，防止目录遍历
+- **PSD 防护**：校验文件魔数、尺寸上限、图层数量，防止 zip bomb
+- **提示词清洗**：过滤 `rm -rf`、`eval`、`exec` 等危险注入模式
+- **日志脱敏**：自动隐藏 `sk-*`、Bearer Token、JWT 等敏感信息
+
+---
+
 ## 文档导航
 
 - [快速入门](docs/QUICKSTART.md)
