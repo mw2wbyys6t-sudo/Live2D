@@ -1,0 +1,32 @@
+# Live2D Master Agent v9.0 - Python Requirements
+# Installation: python -m pip install -r requirements.txt
+
+# ====== Core Dependencies (Required) ======
+Pillow>=10.0.0
+numpy>=1.24.0
+requests>=2.31.0
+urllib3>=2.0.0
+httpx>=0.24.0
+psd-tools>=1.9.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+cryptography>=41.0.0       # P0-4/P2-4: REQUIRED for secure storage (no XOR fallback)
+
+# ====== CLI Enhancement (Optional but recommended) ======
+rich>=13.0.0               # Pretty console output for logger
+
+# ====== Desktop Pet (Optional) ======
+pygame>=2.5.0; python_version < "3.14"
+pygame-ce>=2.5.0; python_version >= "3.14"
+
+# ====== Advanced Features (Optional) ======
+opencv-python>=4.8.0       # Better image processing
+onnxruntime>=1.14.0        # AI background removal
+rembg[cpu]>=2.0.0          # AI background removal (requires onnxruntime)
+
+# ====== Local Stable Diffusion (Optional, large download) ======
+# diffusers>=0.20.0
+# transformers>=4.30.0
+# torch>=2.0.0
+# accelerate>=0.20.0
+# huggingface-hub>=0.17.0
