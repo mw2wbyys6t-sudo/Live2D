@@ -496,6 +496,278 @@
     z-index: 1000;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* === 在线试用 === */
+  .trial-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  @media (max-width: 768px) { .trial-box { grid-template-columns: 1fr; } }
+
+  .trial-input { display: flex; flex-direction: column; gap: 16px; }
+  .trial-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  #promptInput {
+    width: 100%;
+    min-height: 100px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 14px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+  #promptInput:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,107,157,0.15); }
+  #promptInput::placeholder { color: var(--text-dim); }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .preset-btn {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .preset-btn:hover {
+    background: rgba(255,107,157,0.1);
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+  }
+
+  .trial-options {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .trial-options select {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .trial-options select:focus { outline: none; border-color: var(--pink); }
+
+  .generate-btn {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 8px 24px rgba(196,77,255,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 54px;
+  }
+  .generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(196,77,255,0.5); }
+  .generate-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+  .generate-btn-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .trial-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .trial-result {
+    background: rgba(0,0,0,0.25);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .result-placeholder {
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .placeholder-icon { font-size: 64px; margin-bottom: 14px; opacity: 0.5; }
+  .result-placeholder p { font-size: 14px; }
+
+  .result-image-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-image-wrap img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+  }
+  .result-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-size: 14px;
+    gap: 14px;
+  }
+  .result-loading-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  .progress-text { color: var(--text-muted); font-size: 13px; }
+
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .result-action-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .result-action-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+  }
+  .result-action-btn.primary {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border-color: transparent;
+  }
+
+  /* === 颜色聚类分层预览 === */
+  .layer-analysis {
+    margin-top: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .layer-analysis h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-analysis > p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .color-chip {
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .color-chip:hover { transform: translateY(-2px); border-color: var(--pink); }
+  .color-chip.active { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,107,157,0.2); }
+  .color-swatch {
+    height: 50px;
+    width: 100%;
+  }
+  .color-info {
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.4);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+  .color-info strong { color: var(--cyan); display: block; font-size: 12px; }
+  .layer-canvas-wrap {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .layer-canvas-wrap canvas {
+    max-width: 100%;
+    border-radius: 10px;
+    background:
+      linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+  .layer-canvas-label {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .layer-canvas-block { text-align: center; }
 </style>
 </head>
 <body>
@@ -505,8 +777,8 @@
   <h1>🎭 Live2D Master Agent</h1>
   <p class="subtitle">从一张图到可动 Live2D 模型 · AI 自动拆层 + 自动 Rigging</p>
   <div class="hero-cta">
-    <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank" class="btn-cta btn-cta-primary">
-      ⭐ 立即试用 AI 生成
+    <a href="#trial" class="btn-cta btn-cta-primary">
+      🚀 立即在线试用
     </a>
     <a href="https://github.com/mw2wbyys6t-sudo/Live2D/raw/main/examples/demo-output/rigged/character.model3.json" class="btn-cta btn-cta-secondary" download>
       ⬇ 下载真实产物
@@ -517,6 +789,90 @@
     <span class="badge badge-purple">Phase 2: Auto-Rigging</span>
     <span class="badge badge-blue">Cubism 5 Compatible</span>
     <span class="badge badge-pink">Open Source MIT</span>
+  </div>
+</div>
+
+<!-- ============ 在线试用 ============ -->
+<div class="section" id="trial">
+  <h2 class="section-title">🎯 立即在线试用</h2>
+  <p class="section-subtitle">在浏览器内直接生成 Live2D 风格立绘 · 无需后端 · Pollinations 免费 API · 完全前端运行</p>
+
+  <div class="trial-box">
+    <!-- 左侧：输入区 -->
+    <div class="trial-input">
+      <label class="trial-label">📝 描述你想要的角色</label>
+      <textarea id="promptInput" placeholder="例：蓝发猫耳少女，红色眼睛，白色背景，全身立绘，anime style，高质量"></textarea>
+
+      <label class="trial-label">⚡ 快速预设</label>
+      <div class="preset-grid">
+        <button class="preset-btn" data-prompt="blue hair cat girl, red eyes, white background, full body portrait, anime style, high quality">🐱 蓝发猫耳少女</button>
+        <button class="preset-btn" data-prompt="pink hair VTuber girl, cute, big eyes, white background, anime style, high quality">🌸 粉发 VTuber</button>
+        <button class="preset-btn" data-prompt="silver hair fox girl, golden eyes, kimono, white background, anime style, high quality">🦊 银发狐妖</button>
+        <button class="preset-btn" data-prompt="chibi cute girl, twin tails, pastel colors, white background, anime style, high quality">🎀 Q版萌系</button>
+        <button class="preset-btn" data-prompt="purple hair magical girl, sparkle, frilly dress, white background, anime style, high quality">💜 魔法少女</button>
+        <button class="preset-btn" data-prompt="black hair samurai girl, traditional japanese, white background, anime style, high quality">⚔️ 武士少女</button>
+      </div>
+
+      <div class="trial-options">
+        <label>📐 宽高比:</label>
+        <select id="aspectRatio">
+          <option value="portrait">2:3 立绘（推荐）</option>
+          <option value="square">1:1 方形</option>
+          <option value="landscape">3:2 横图</option>
+        </select>
+      </div>
+
+      <button class="generate-btn" id="generateBtn" onclick="generateImage()">
+        <span class="generate-btn-text">✨ 生成角色</span>
+      </button>
+
+      <div class="trial-hint">
+        💡 Pollinations 免费 API · 无需 Key · 首次生成约 10-30 秒<br>
+        🔒 所有计算都在你的浏览器内完成，图片不会上传到任何服务器
+      </div>
+    </div>
+
+    <!-- 右侧：结果区 -->
+    <div>
+      <div class="trial-result" id="trialResult">
+        <div class="result-placeholder" id="resultPlaceholder">
+          <div class="placeholder-icon">🎨</div>
+          <p>生成的角色将显示在这里</p>
+          <p style="font-size:12px;margin-top:8px">点击左侧"生成角色"按钮开始</p>
+        </div>
+      </div>
+      <div class="result-actions" id="resultActions" style="display:none">
+        <button class="result-action-btn primary" onclick="analyzeLayers()">
+          🔍 AI 自动分层
+        </button>
+        <button class="result-action-btn" onclick="generateImage()">
+          🔄 重新生成
+        </button>
+        <a class="result-action-btn" id="downloadLink" download="live2d-character.png">
+          ⬇ 下载图片
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 颜色聚类分层预览（生成后显示） -->
+  <div class="layer-analysis" id="layerAnalysis" style="display:none">
+    <h3>🔍 AI 自动分层预览（K-means 颜色聚类）</h3>
+    <p>把图像按颜色聚类成 8 个图层 — 这就是 Live2D 拆层的第一步。点击下方色块查看每个独立图层。</p>
+    <div class="color-palette" id="colorPalette"></div>
+    <div class="layer-canvas-wrap" id="layerCanvasWrap">
+      <div class="layer-canvas-block">
+        <canvas id="originalCanvas" width="300" height="450"></canvas>
+        <div class="layer-canvas-label">📋 原图</div>
+      </div>
+      <div class="layer-canvas-block">
+        <canvas id="layerCanvas" width="300" height="450"></canvas>
+        <div class="layer-canvas-label" id="layerCanvasLabel">👆 点击色块查看独立图层</div>
+      </div>
+    </div>
+    <div class="trial-hint" style="margin-top:14px">
+      💡 真实项目里会用更复杂的语义分割（识别头发/眼睛/嘴巴等部位），这里只演示颜色聚类原理
+    </div>
   </div>
 </div>
 
@@ -977,6 +1333,335 @@
       idx++;
     }, 1200);
   }
+
+  // ============ 在线试用：Pollinations API 调用 ============
+  const trialState = {
+    currentImageURL: null,
+    currentImageEl: null,
+    kmeansResult: null,  // { centers: [[r,g,b],...], labels: Uint8Array, width, height }
+  };
+
+  // 预设按钮：点击填充 prompt
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('promptInput').value = btn.dataset.prompt;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  async function generateImage() {
+    const prompt = document.getElementById('promptInput').value.trim();
+    if (!prompt) {
+      showToast('⚠️ 请先输入或选择一个 prompt');
+      return;
+    }
+
+    const btn = document.getElementById('generateBtn');
+    const btnText = btn.querySelector('.generate-btn-text');
+    const originalText = btnText.textContent;
+    btn.disabled = true;
+    btnText.textContent = '生成中...';
+
+    // 显示加载状态
+    const resultBox = document.getElementById('trialResult');
+    resultBox.innerHTML = `
+      <div class="result-loading">
+        <div class="result-loading-spinner"></div>
+        <div>🎨 AI 正在生成角色...</div>
+        <div class="progress-text" id="progressText">⏳ 首次约 10-30 秒，请耐心等待</div>
+      </div>
+    `;
+
+    // 隐藏之前的分层分析
+    document.getElementById('layerAnalysis').style.display = 'none';
+    document.getElementById('resultActions').style.display = 'none';
+
+    // 进度提示动画
+    const progressMessages = [
+      '⏳ 首次约 10-30 秒，请耐心等待',
+      '🎨 AI 正在绘制角色...',
+      '✨ 添加细节中...',
+      '🖼️ 即将完成...',
+    ];
+    let pmIdx = 0;
+    const pmTimer = setInterval(() => {
+      pmIdx = (pmIdx + 1) % progressMessages.length;
+      const el = document.getElementById('progressText');
+      if (el) el.textContent = progressMessages[pmIdx];
+    }, 3000);
+
+    // 计算尺寸
+    const aspect = document.getElementById('aspectRatio').value;
+    let width = 768, height = 1152;  // 默认 2:3
+    if (aspect === 'square') { width = 1024; height = 1024; }
+    if (aspect === 'landscape') { width = 1152; height = 768; }
+
+    // 增强 prompt：加上 live2d 风格关键词
+    const enhancedPrompt = `${prompt}, live2d style, clean lines, flat colors, clear outline, suitable for live2d rigging`;
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+
+    try {
+      // 预加载图像
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('图像加载失败'));
+        img.src = imageUrl;
+      });
+
+      clearInterval(pmTimer);
+      trialState.currentImageURL = imageUrl;
+      trialState.currentImageEl = img;
+
+      // 显示图像
+      resultBox.innerHTML = `
+        <div class="result-image-wrap">
+          <img src="${imageUrl}" alt="生成的角色">
+        </div>
+      `;
+      document.getElementById('resultActions').style.display = 'flex';
+      document.getElementById('downloadLink').href = imageUrl;
+      showToast('✅ 生成完成！点击"AI 自动分层"看拆层效果');
+    } catch (err) {
+      clearInterval(pmTimer);
+      console.error(err);
+      resultBox.innerHTML = `
+        <div class="result-placeholder">
+          <div class="placeholder-icon">😢</div>
+          <p>生成失败</p>
+          <p style="font-size:12px;margin-top:8px">${err.message} · 请重试</p>
+        </div>
+      `;
+      showToast('❌ 生成失败，请重试');
+    } finally {
+      btn.disabled = false;
+      btnText.textContent = originalText;
+    }
+  }
+
+  // ============ K-means 颜色聚类分层 ============
+  function analyzeLayers() {
+    if (!trialState.currentImageEl) {
+      showToast('⚠️ 请先生成图像');
+      return;
+    }
+
+    showToast('🔍 正在分析颜色...');
+
+    setTimeout(() => {
+      try {
+        const img = trialState.currentImageEl;
+        const K = 8;
+
+        // 在隐藏 canvas 上获取像素数据
+        const sampleCanvas = document.createElement('canvas');
+        const targetW = 200;  // 缩小采样，加速
+        const targetH = Math.round(targetW * (img.naturalHeight / img.naturalWidth));
+        sampleCanvas.width = targetW;
+        sampleCanvas.height = targetH;
+        const sctx = sampleCanvas.getContext('2d');
+        sctx.drawImage(img, 0, 0, targetW, targetH);
+        const imageData = sctx.getImageData(0, 0, targetW, targetH);
+        const pixels = imageData.data;
+
+        // 收集所有不透明像素
+        const samples = [];
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (pixels[i + 3] > 10) {  // 跳过透明像素
+            samples.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
+          }
+        }
+
+        if (samples.length === 0) {
+          showToast('❌ 图像无有效像素');
+          return;
+        }
+
+        // K-means++ 初始化
+        const centers = kmeansPlusPlusInit(samples, K);
+        const labels = new Uint8Array(samples.length);
+
+        // 迭代 10 次
+        for (let iter = 0; iter < 10; iter++) {
+          // 分配
+          for (let i = 0; i < samples.length; i++) {
+            let minDist = Infinity, minIdx = 0;
+            for (let k = 0; k < K; k++) {
+              const dr = samples[i][0] - centers[k][0];
+              const dg = samples[i][1] - centers[k][1];
+              const db = samples[i][2] - centers[k][2];
+              const dist = dr * dr + dg * dg + db * db;
+              if (dist < minDist) { minDist = dist; minIdx = k; }
+            }
+            labels[i] = minIdx;
+          }
+          // 更新
+          const sums = Array.from({ length: K }, () => [0, 0, 0, 0]);
+          for (let i = 0; i < samples.length; i++) {
+            const k = labels[i];
+            sums[k][0] += samples[i][0];
+            sums[k][1] += samples[i][1];
+            sums[k][2] += samples[i][2];
+            sums[k][3]++;
+          }
+          for (let k = 0; k < K; k++) {
+            if (sums[k][3] > 0) {
+              centers[k] = [sums[k][0] / sums[k][3], sums[k][1] / sums[k][3], sums[k][2] / sums[k][3]];
+            }
+          }
+        }
+
+        // 计算每个 cluster 的像素数
+        const counts = new Array(K).fill(0);
+        for (let i = 0; i < labels.length; i++) counts[labels[i]]++;
+        const order = [...Array(K).keys()].sort((a, b) => counts[b] - counts[a]);
+
+        trialState.kmeansResult = { centers, labels, samples, order, counts, targetW, targetH };
+
+        // 显示分层分析区
+        document.getElementById('layerAnalysis').style.display = 'block';
+        document.getElementById('layerAnalysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // 渲染色板
+        renderColorPalette();
+
+        // 渲染原图和默认显示第一个图层
+        renderOriginalImage(img);
+        showLayerByColor(order[0]);
+
+        showToast('✅ 分层完成！点击色块查看每个图层');
+      } catch (e) {
+        console.error(e);
+        showToast('❌ 分层失败：' + e.message);
+      }
+    }, 100);
+  }
+
+  function kmeansPlusPlusInit(samples, K) {
+    const centers = [];
+    // 第一个中心：随机选一个
+    centers.push([...samples[Math.floor(Math.random() * samples.length)]]);
+    // 后续中心：按距离平方加权选择
+    for (let k = 1; k < K; k++) {
+      const dists = samples.map(s => {
+        let minDist = Infinity;
+        for (const c of centers) {
+          const d = (s[0] - c[0]) ** 2 + (s[1] - c[1]) ** 2 + (s[2] - c[2]) ** 2;
+          if (d < minDist) minDist = d;
+        }
+        return minDist;
+      });
+      const total = dists.reduce((a, b) => a + b, 0);
+      let r = Math.random() * total;
+      let idx = 0;
+      for (let i = 0; i < dists.length; i++) {
+        r -= dists[i];
+        if (r <= 0) { idx = i; break; }
+      }
+      centers.push([...samples[idx]]);
+    }
+    return centers;
+  }
+
+  function renderColorPalette() {
+    const { centers, order, counts, samples } = trialState.kmeansResult;
+    const palette = document.getElementById('colorPalette');
+    palette.innerHTML = '';
+    order.forEach((k, idx) => {
+      const [r, g, b] = centers[k].map(v => Math.round(v));
+      const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      const percent = ((counts[k] / samples.length) * 100).toFixed(1);
+      const chip = document.createElement('div');
+      chip.className = 'color-chip' + (idx === 0 ? ' active' : '');
+      chip.dataset.k = k;
+      chip.innerHTML = `
+        <div class="color-swatch" style="background:${hex}"></div>
+        <div class="color-info">
+          <strong>Layer ${String(idx + 1).padStart(2, '0')}</strong>
+          ${hex}<br>${percent}%
+        </div>
+      `;
+      chip.onclick = () => {
+        document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        showLayerByColor(k);
+      };
+      palette.appendChild(chip);
+    });
+  }
+
+  function renderOriginalImage(img) {
+    const canvas = document.getElementById('originalCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 等比缩放绘制
+    const ratio = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+    const w = img.naturalWidth * ratio;
+    const h = img.naturalHeight * ratio;
+    const x = (canvas.width - w) / 2;
+    const y = (canvas.height - h) / 2;
+    ctx.drawImage(img, x, y, w, h);
+  }
+
+  function showLayerByColor(k) {
+    const { centers, samples, labels, targetW, targetH } = trialState.kmeansResult;
+    const img = trialState.currentImageEl;
+    const canvas = document.getElementById('layerCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 用原图绘制，但只保留属于该 cluster 的像素
+    const ratio = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+    const w = img.naturalWidth * ratio;
+    const h = img.naturalHeight * ratio;
+    const offsetX = (canvas.width - w) / 2;
+    const offsetY = (canvas.height - h) / 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 用缓存的采样 canvas 取像素数据（加速）
+    if (!trialState._sampleCanvas) {
+      const sc = document.createElement('canvas');
+      sc.width = targetW;
+      sc.height = targetH;
+      sc.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+      trialState._sampleCanvas = sc;
+    }
+    const sampleData = trialState._sampleCanvas.getContext('2d').getImageData(0, 0, targetW, targetH).data;
+
+    // 创建一个采样分辨率的 ImageData，只保留属于 cluster k 的像素
+    const layerImg = ctx.createImageData(targetW, targetH);
+    for (let i = 0; i < sampleData.length; i += 4) {
+      const r = sampleData[i], g = sampleData[i + 1], b = sampleData[i + 2], a = sampleData[i + 3];
+      if (a < 10) continue;
+      // 找最近的 center
+      let minDist = Infinity, minK = 0;
+      for (let kk = 0; kk < centers.length; kk++) {
+        const d = (r - centers[kk][0]) ** 2 + (g - centers[kk][1]) ** 2 + (b - centers[kk][2]) ** 2;
+        if (d < minDist) { minDist = d; minK = kk; }
+      }
+      if (minK === k) {
+        layerImg.data[i] = r;
+        layerImg.data[i + 1] = g;
+        layerImg.data[i + 2] = b;
+        layerImg.data[i + 3] = 255;
+      }
+    }
+
+    // 把采样 ImageData 画到隐藏 canvas，再缩放绘制到目标 canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = targetW;
+    tempCanvas.height = targetH;
+    tempCanvas.getContext('2d').putImageData(layerImg, 0, 0);
+    ctx.drawImage(tempCanvas, offsetX, offsetY, w, h);
+
+    const [cr, cg, cb] = centers[k].map(v => Math.round(v));
+    const hex = '#' + [cr, cg, cb].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('layerCanvasLabel').innerHTML = `Layer 颜色: <strong style="color:${hex}">${hex}</strong>`;
+  }
+
 </script>
 </body>
 </html>
