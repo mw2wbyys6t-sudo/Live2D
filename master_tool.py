@@ -54,6 +54,8 @@ Examples:
     parser.add_argument("--version", "-V", action="version", version=FULL_VERSION_STRING)
     parser.add_argument("--list-providers", action="store_true", help="List available providers")
     parser.add_argument("--no-layer", action="store_true", help="Skip layer separation")
+    parser.add_argument("--rig", action="store_true",
+                        help="Run automatic rigging after layer separation")
 
     args = parser.parse_args()
 
@@ -75,6 +77,25 @@ Examples:
         from live2d.layering.kmeans import layer_image_file
         result = layer_image_file(args.input, args.output, k_clusters=args.k)
         print(f"\nLayer separation complete: {result['layer_count']} layers")
+
+        if args.rig:
+            print("\nRunning automatic rigging...")
+            from collections import OrderedDict
+            from live2d.rigging.pipeline import RiggingPipeline
+            from PIL import Image as _PI
+            layers = OrderedDict()
+            for info in result["layers"]:
+                path = info["path"]
+                name = info.get("name") or Path(path).stem
+                layers[name] = _PI.open(path)
+            rig_result = RiggingPipeline().run(
+                layers,
+                output_dir=str(Path(result["output_dir"]) / "rigged"),
+                character_name="character",
+            )
+            print(f"[OK] Rigged output: {rig_result['output_dir']}")
+            print(f"     model3.json: {rig_result['model3_json']}")
+
         print(f"Output: {result['output_dir']}")
         return
 

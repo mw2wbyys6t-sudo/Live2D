@@ -48,7 +48,7 @@ class WorkflowEngine:
     """
 
     STATES = ["idle", "generating", "qa_check", "optimizing", "layering",
-              "psd_export", "mapping", "pet_deploy", "done", "error"]
+              "rigging", "psd_export", "mapping", "pet_deploy", "done", "error"]
 
     def __init__(
         self,
@@ -217,6 +217,29 @@ class WorkflowEngine:
                 "preview": layer_result["preview_path"],
             }
             log.success(f"Layering complete: {layer_result['layer_count']} layers")
+
+            # === Step 4b: Automatic rigging ===
+            if generate_52_config:
+                self._set_state("rigging", "Automatic rigging", 70)
+                from collections import OrderedDict
+                from live2d.rigging.pipeline import RiggingPipeline
+                layers_for_rig = OrderedDict()
+                for info in layer_result["layers"]:
+                    path = info["path"]
+                    name = info.get("name") or Path(path).stem
+                    layers_for_rig[name] = Image.open(path)
+                rig_output = str(self.output_dir / f"rigged_{timestamp}")
+                rig_result = RiggingPipeline().run(
+                    layers_for_rig,
+                    output_dir=rig_output,
+                    character_name="generated_character",
+                )
+                result["steps"]["rigging"] = {
+                    "output_dir": rig_output,
+                    "model3_json": rig_result["model3_json"],
+                    "texture": rig_result["texture"],
+                }
+                log.success(f"Rigging complete: {rig_result['model3_json']}")
 
             # === Step 5: PSD export ===
             self._set_state("psd_export", "Creating PSD file", 75)

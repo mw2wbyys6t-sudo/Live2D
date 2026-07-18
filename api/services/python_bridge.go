@@ -257,8 +257,8 @@ func (pb *PythonBridge) GetPythonScripts() []map[string]string {
 		Name string
 		Desc string
 	}{
-		{"master_tool.py", "主工具 - 图片生成+分层 v9.0"},
-		{"live2d_workflow.py", "完整工作流引擎 v9.0"},
+		{"master_tool.py", "主工具 - 图片生成+分层 v8.0"},
+		{"live2d_workflow.py", "完整工作流引擎 v8.0"},
 		{"live2d_layer_v6.py", "K-means 分层工具 v6 (默认)"},
 		{"live2d_desktop_pet.py", "桌面桌宠创建工具"},
 		{"config_api.py", "API 配置工具"},
