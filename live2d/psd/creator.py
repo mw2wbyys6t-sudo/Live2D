@@ -130,7 +130,7 @@ class PSDCreator:
         """Fallback: create a PNG package (composite + individual layers + guide)."""
         import shutil
 
-        pkg_dir = Path(str(output_path) + "_png_package")
+        pkg_dir = Path(output_path).with_suffix("_png_package")
         pkg_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy layers
@@ -151,7 +151,7 @@ class PSDCreator:
         # Write info file
         info_path = pkg_dir / "PACKAGE_INFO.txt"
         with open(info_path, 'w', encoding='utf-8') as f:
-            f.write(f"Live2D Master Agent v9.0 - PNG Layer Package\n")
+            f.write(f"Live2D Master Agent v8.0 - PNG Layer Package\n")
             f.write("=" * 50 + "\n\n")
             f.write(f"Canvas size: {w}x{h}\n")
             f.write(f"Layers: {len(layer_files)}\n\n")

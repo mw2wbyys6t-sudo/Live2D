@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live2D Master Agent v9.0.0 - Professional AI-Assisted Live2D Creation Tool
+Live2D Master Agent v8.0.0 - Professional AI-Assisted Live2D Creation Tool
 
 Full pipeline: Text-to-Image → AI Layer Separation → PSD Export → QA → Desktop Pet / Go API
 
