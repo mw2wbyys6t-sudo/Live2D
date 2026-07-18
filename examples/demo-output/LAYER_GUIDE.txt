@@ -1,0 +1,32 @@
+Live2D Master Agent v8.0 - K-Means Layer Guide
+============================================================
+
+Image size: 1024x1536
+Clusters (k): 12
+Layers exported: 15
+
+Layers (by area, largest first):
+------------------------------------------------------------
+    0. layer_000.png  pixels= 793,985  color=RGB( 43, 57, 78)
+    1. layer_001.png  pixels= 197,405  color=RGB( 54, 68, 89)
+    2. layer_002.png  pixels= 184,819  color=RGB( 70, 83,105)
+    3. layer_003.png  pixels= 164,558  color=RGB(249,235,226)
+    4. layer_004.png  pixels= 104,481  color=RGB( 23, 30, 42)
+    5. layer_005.png  pixels=  35,668  color=RGB(115,148,185)
+    6. layer_006.png  pixels=  25,640  color=RGB( 77,104,142)
+    7. layer_007.png  pixels=  16,285  color=RGB(228,171,163)
+    8. layer_008.png  pixels=  12,510  color=RGB(183,198,222)
+    9. layer_009.png  pixels=  12,438  color=RGB(158,160,163)
+   10. layer_010.png  pixels=   8,204  color=RGB(147,176,208)
+   11. layer_011.png  pixels=   5,618  color=RGB(122,156,194)
+   12. layer_012.png  pixels=   5,499  color=RGB( 68, 58, 61)
+   13. layer_013.png  pixels=   1,831  color=RGB( 70, 61, 64)
+   14. layer_014.png  pixels=   1,659  color=RGB(241,200,187)
+
+Importing into Live2D Cubism Editor:
+------------------------------------------------------------
+1. Open Cubism Editor
+2. File -> Import PSD or import layers as textures
+3. Arrange layers from back to front
+4. Create ArtMeshes for each part
+5. Set up deformation parameters

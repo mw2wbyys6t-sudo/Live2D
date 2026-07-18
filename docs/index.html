@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live2D Master Agent - AI 自动生成 Live2D 模型</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    color: #fff;
+    min-height: 100vh;
+  }
+  .hero {
+    text-align: center;
+    padding: 50px 20px 30px;
+  }
+  .hero h1 {
+    font-size: 48px;
+    background: linear-gradient(90deg, #ff6b9d, #c44dff, #6b8cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .hero .subtitle {
+    font-size: 20px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 20px;
+  }
+  .badges {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+  .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-pink { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+
+  .canvas-container {
+    max-width: 900px;
+    margin: 0 auto 30px;
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #live2d-canvas {
+    width: 100%;
+    height: 500px;
+    display: block;
+  }
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .controls {
+    max-width: 900px;
+    margin: 0 auto 40px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d, #c44dff);
+    color: #fff;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(196,77,255,0.4); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+  .slider-group {
+    max-width: 900px;
+    margin: 0 auto 40px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 14px;
+  }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-label {
+    width: 120px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+    flex-shrink: 0;
+  }
+  .slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.15);
+    outline: none;
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b9d, #c44dff);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(196,77,255,0.5);
+  }
+  .slider-value {
+    width: 50px;
+    text-align: right;
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    font-family: monospace;
+  }
+
+  .section {
+    max-width: 900px;
+    margin: 0 auto 40px;
+  }
+  .section h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+  .feature-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 22px;
+    transition: all 0.3s;
+  }
+  .feature-card:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateY(-3px);
+    border-color: rgba(196,77,255,0.3);
+  }
+  .feature-icon { font-size: 32px; margin-bottom: 12px; }
+  .feature-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .feature-desc { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+
+  .layer-demo {
+    text-align: center;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .layer-demo img {
+    max-width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .layer-demo p {
+    margin-top: 14px;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+  }
+  .footer a { color: rgba(255,255,255,0.6); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🎭 Live2D Master Agent</h1>
+  <p class="subtitle">从一句话描述到可动 Live2D 角色，全程 AI 驱动</p>
+  <div class="badges">
+    <span class="badge badge-green">✓ 279 Tests Passed</span>
+    <span class="badge badge-purple">Phase 2: Auto-Rigging</span>
+    <span class="badge badge-blue">Cubism 5 Compatible</span>
+    <span class="badge badge-pink">Open Source MIT</span>
+  </div>
+</div>
+
+<div class="canvas-container">
+  <canvas id="live2d-canvas"></canvas>
+  <div class="loading" id="loading">加载 Live2D 模型中...</div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" onclick="playExpression('smile')">😊 微笑</button>
+  <button class="btn btn-secondary" onclick="playExpression('surprised')">😮 惊讶</button>
+  <button class="btn btn-secondary" onclick="playExpression('angry')">😠 生气</button>
+  <button class="btn btn-secondary" onclick="toggleEyeBlink()">👁 眨眼开关</button>
+  <button class="btn btn-secondary" onclick="toggleLipSync()">👄 口型同步</button>
+  <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank" class="btn btn-primary">⭐ GitHub 仓库</a>
+</div>
+
+<div class="slider-group">
+  <div class="slider-row">
+    <span class="slider-label">头部左右</span>
+    <input type="range" class="slider" id="paramAngleX" min="-30" max="30" value="0" step="1" oninput="setParam('AngleX', this.value)">
+    <span class="slider-value" id="valAngleX">0</span>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label">头部上下</span>
+    <input type="range" class="slider" id="paramAngleY" min="-30" max="30" value="0" step="1" oninput="setParam('AngleY', this.value)">
+    <span class="slider-value" id="valAngleY">0</span>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label">左眼开闭</span>
+    <input type="range" class="slider" id="paramEyeLOpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeLOpen', this.value)">
+    <span class="slider-value" id="valEyeLOpen">1.00</span>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label">右眼开闭</span>
+    <input type="range" class="slider" id="paramEyeROpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeROpen', this.value)">
+    <span class="slider-value" id="valEyeROpen">1.00</span>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label">嘴巴开闭</span>
+    <input type="range" class="slider" id="paramMouthOpenY" min="0" max="1" value="0" step="0.01" oninput="setParam('MouthOpenY', this.value)">
+    <span class="slider-value" id="valMouthOpenY">0.00</span>
+  </div>
+  <div class="slider-row">
+    <span class="slider-label">呼吸</span>
+    <input type="range" class="slider" id="paramBreath" min="0" max="1" value="0.5" step="0.01" oninput="setParam('Breath', this.value)">
+    <span class="slider-value" id="valBreath">0.50</span>
+  </div>
+</div>
+
+<div class="section">
+  <h2>✨ 核心能力</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🎨</div>
+      <div class="feature-title">AI 图像生成</div>
+      <div class="feature-desc">一句话生成角色立绘，支持 Pollinations / Seedream / SenseNova 等多家 Provider</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✂️</div>
+      <div class="feature-title">自动分层</div>
+      <div class="feature-desc">K-means 颜色聚类自动拆层，12-15 层精准分离，无需手工处理</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">52 层标准映射</div>
+      <div class="feature-desc">自动映射到 Live2D Cubism 52 层官方标准，开箱即用</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧬</div>
+      <div class="feature-title">自动 ArtMesh</div>
+      <div class="feature-desc">Delaunay 三角剖分自动生成网格，轮廓提取 + 内部点填充</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏗️</div>
+      <div class="feature-title">变形器层级</div>
+      <div class="feature-desc">自动构建 Root → Head/Body → Face/Eye/Mouth 完整 Warp Deformer 树</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <div class="feature-title">model3.json 导出</div>
+      <div class="feature-desc">导出 Cubism 5 兼容格式：参数/物理/表情/纹理，直接导入编辑器</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>🖼️ AI 自动分层效果</h2>
+  <div class="layer-demo">
+    <img src="../examples/assets/layer_demo_overview.png" alt="AI 自动分层效果演示">
+    <p>左侧：原始输入图 &nbsp;|&nbsp; 右侧：AI 自动拆分的 15 个图层（K-means 聚类）</p>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Demo 模型：Live2D 官方样例 Haru &nbsp;|&nbsp; 本项目 AI 生成的 model3.json 可直接导入 Cubism Editor</p>
+  <p><a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank">GitHub</a> · MIT License · Made with ❤️</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.0/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/pixi-live2d-display.min.js"></script>
+<script>
+  const app = new PIXI.Application({
+    view: document.getElementById('live2d-canvas'),
+    width: 900,
+    height: 500,
+    backgroundAlpha: 0,
+    autoDensity: true,
+    resolution: window.devicePixelRatio || 1,
+  });
+
+  let currentModel = null;
+  let eyeBlinkEnabled = true;
+  let lipSyncEnabled = false;
+  let breathEnabled = true;
+
+  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json';
+
+  PIXI.live2d.Live2DModel.from(MODEL_URL).then(model => {
+    document.getElementById('loading').style.display = 'none';
+    currentModel = model;
+
+    model.scale.set(0.35);
+    model.x = app.screen.width / 2;
+    model.y = app.screen.height / 2 + 50;
+
+    app.stage.addChild(model);
+
+    model.on('hit', hitAreas => {
+      if (hitAreas.includes('body')) {
+        model.motion('tap_body');
+      } else if (hitAreas.includes('head')) {
+        model.expression();
+      }
+    });
+  }).catch(err => {
+    document.getElementById('loading').textContent = '模型加载失败，请刷新重试';
+    console.error(err);
+  });
+
+  function setParam(name, value) {
+    if (!currentModel) return;
+    const paramName = 'Param' + name;
+    currentModel.internalModel.coreModel.setParameterValueById(paramName, parseFloat(value));
+    document.getElementById('val' + name).textContent = parseFloat(value).toFixed(name === 'AngleX' || name === 'AngleY' ? 0 : 2);
+  }
+
+  function playExpression(type) {
+    if (!currentModel) return;
+    currentModel.expression(type);
+  }
+
+  function toggleEyeBlink() {
+    eyeBlinkEnabled = !eyeBlinkEnabled;
+    if (currentModel) {
+      currentModel.internalModel.eyeBlink = eyeBlinkEnabled;
+    }
+  }
+
+  function toggleLipSync() {
+    lipSyncEnabled = !lipSyncEnabled;
+  }
+
+  let breathTime = 0;
+  app.ticker.add(() => {
+    if (!currentModel || !breathEnabled) return;
+    breathTime += 0.02;
+    const breathVal = (Math.sin(breathTime) + 1) / 2;
+    currentModel.internalModel.coreModel.setParameterValueById('ParamBreath', breathVal);
+    document.getElementById('paramBreath').value = breathVal;
+    document.getElementById('valBreath').textContent = breathVal.toFixed(2);
+  });
+
+  let blinkTimer = 0;
+  let nextBlink = 3000;
+  app.ticker.add(delta => {
+    if (!currentModel || !eyeBlinkEnabled) return;
+    blinkTimer += delta * 16;
+    if (blinkTimer >= nextBlink) {
+      currentModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 0);
+      currentModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 0);
+      setTimeout(() => {
+        if (currentModel && eyeBlinkEnabled) {
+          currentModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
+          currentModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+        }
+      }, 150);
+      blinkTimer = 0;
+      nextBlink = 2000 + Math.random() * 4000;
+    }
+  });
+</script>
+</body>
+</html>

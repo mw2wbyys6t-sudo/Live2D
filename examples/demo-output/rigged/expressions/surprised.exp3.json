@@ -1,0 +1,19 @@
+{
+  "Type": "Live2D Expression",
+  "FadeInTime": 0.5,
+  "FadeOutTime": 0.5,
+  "Parameters": [
+    {
+      "Id": "ParamMouthOpenY",
+      "Value": 0.8
+    },
+    {
+      "Id": "ParamEyeLOpen",
+      "Value": 1.0
+    },
+    {
+      "Id": "ParamEyeROpen",
+      "Value": 1.0
+    }
+  ]
+}

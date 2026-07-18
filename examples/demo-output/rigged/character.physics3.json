@@ -1,0 +1,184 @@
+{
+  "version": 3,
+  "meta": {
+    "setting_count": 4,
+    "physics_setting_count": 0
+  },
+  "physics_settings": [
+    {
+      "id": "HairFront",
+      "name": "前发摇摆",
+      "input": [
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamAngleX"
+          },
+          "weight": 10
+        },
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamBodyAngleX"
+          },
+          "weight": 5
+        }
+      ],
+      "output": [
+        {
+          "destination": {
+            "target": "Parameter",
+            "id": "ParamHairFrontX"
+          },
+          "weight": 100,
+          "scale": 1.0
+        },
+        {
+          "destination": {
+            "target": "Parameter",
+            "id": "ParamHairSideX"
+          },
+          "weight": 70,
+          "scale": 0.8
+        }
+      ],
+      "pendulums": [
+        {
+          "length": 0.3,
+          "damping": 0.85,
+          "stiffness": 0.3,
+          "mass": 1.0
+        },
+        {
+          "length": 0.5,
+          "damping": 0.9,
+          "stiffness": 0.2,
+          "mass": 0.8
+        }
+      ],
+      "fps": 60
+    },
+    {
+      "id": "HairBack",
+      "name": "后发摇摆",
+      "input": [
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamAngleX"
+          },
+          "weight": 8
+        },
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamBodyAngleX"
+          },
+          "weight": 8
+        }
+      ],
+      "output": [
+        {
+          "destination": {
+            "target": "Parameter",
+            "id": "ParamHairBackX"
+          },
+          "weight": 100,
+          "scale": 1.0
+        }
+      ],
+      "pendulums": [
+        {
+          "length": 0.8,
+          "damping": 0.92,
+          "stiffness": 0.15,
+          "mass": 1.2
+        },
+        {
+          "length": 1.0,
+          "damping": 0.95,
+          "stiffness": 0.1,
+          "mass": 1.0
+        },
+        {
+          "length": 1.2,
+          "damping": 0.97,
+          "stiffness": 0.08,
+          "mass": 0.8
+        }
+      ],
+      "fps": 60
+    },
+    {
+      "id": "BodyBounce",
+      "name": "身体弹跳",
+      "input": [
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamBodyAngleY"
+          },
+          "weight": 10
+        },
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamAngleY"
+          },
+          "weight": 5
+        }
+      ],
+      "output": [
+        {
+          "destination": {
+            "target": "Parameter",
+            "id": "ParamBreath"
+          },
+          "weight": 30,
+          "scale": 0.5
+        }
+      ],
+      "pendulums": [
+        {
+          "length": 0.2,
+          "damping": 0.7,
+          "stiffness": 0.5,
+          "mass": 1.5
+        }
+      ],
+      "fps": 60
+    },
+    {
+      "id": "Breathing",
+      "name": "呼吸",
+      "input": [
+        {
+          "source": {
+            "target": "Parameter",
+            "id": "ParamBreath"
+          },
+          "weight": 1
+        }
+      ],
+      "output": [
+        {
+          "destination": {
+            "target": "Parameter",
+            "id": "ParamBodyAngleY"
+          },
+          "weight": 50,
+          "scale": 0.3
+        }
+      ],
+      "pendulums": [
+        {
+          "length": 2.0,
+          "damping": 0.99,
+          "stiffness": 0.05,
+          "mass": 2.0
+        }
+      ],
+      "fps": 30
+    }
+  ]
+}

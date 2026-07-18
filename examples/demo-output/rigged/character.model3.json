@@ -1,0 +1,115 @@
+{
+  "Version": 3.0,
+  "FileReferences": {
+    "Moc": "character.moc3",
+    "Textures": [
+      "character.texture_00.png",
+      "character.texture_01.png",
+      "character.texture_02.png",
+      "character.texture_03.png",
+      "character.texture_04.png",
+      "character.texture_05.png",
+      "character.texture_06.png",
+      "character.texture_07.png"
+    ],
+    "Physics": "character.physics3.json",
+    "Expressions": [
+      {
+        "Name": "smile",
+        "File": "expressions/smile.exp3.json"
+      },
+      {
+        "Name": "surprised",
+        "File": "expressions/surprised.exp3.json"
+      },
+      {
+        "Name": "angry",
+        "File": "expressions/angry.exp3.json"
+      }
+    ]
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": [
+        "ParamMouthOpenY"
+      ]
+    }
+  ],
+  "HitAreas": [],
+  "Parameters": [
+    {
+      "Id": "ParamAngleX",
+      "Value": 0
+    },
+    {
+      "Id": "ParamAngleY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamAngleZ",
+      "Value": 0
+    },
+    {
+      "Id": "ParamBodyAngleX",
+      "Value": 0
+    },
+    {
+      "Id": "ParamBodyAngleY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamEyeLOpen",
+      "Value": 1
+    },
+    {
+      "Id": "ParamEyeROpen",
+      "Value": 1
+    },
+    {
+      "Id": "ParamEyeBallX",
+      "Value": 0
+    },
+    {
+      "Id": "ParamEyeBallY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamMouthOpenY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamMouthForm",
+      "Value": 0
+    },
+    {
+      "Id": "ParamBrowLY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamBrowRY",
+      "Value": 0
+    },
+    {
+      "Id": "ParamBreath",
+      "Value": 0.5
+    },
+    {
+      "Id": "ParamHairFrontX",
+      "Value": 0
+    },
+    {
+      "Id": "ParamHairBackX",
+      "Value": 0
+    }
+  ]
+}

@@ -1,33 +1,82 @@
 # 🎭 Live2D Master Agent v9.0
 
-> **从一句话描述到可动 Live2D 角色，全程 AI 驱动的完整端到端生产线。**
+> **从一张图到可动 Live2D 模型，AI 自动拆层 + 自动 Rigging**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![Node.js 18+](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-v9.0.0-purple.svg)]()
-[![Tests](https://img.shields.io/badge/tests-279%20passed-brightgreen.svg)]()
-[![Rigging](https://img.shields.io/badge/Auto--Rigging-Phase%20✅-ff69b4.svg)]()
-[![Cubism 5](https://img.shields.io/badge/Cubism-5.x-ff8c00.svg)]()
+<div align="center">
+
+[![在线体验](https://img.shields.io/badge/🚀_在线体验-点击这里-ff69b4?style=for-the-badge)](https://mw2wbyys6t-sudo.github.io/Live2D/)
+[![GitHub](https://img.shields.io/badge/GitHub-仓库-667eea?style=for-the-badge)](https://github.com/mw2wbyys6t-sudo/Live2D)
+
+</div>
+
+<div align="center">
+  <img src="examples/assets/layer_demo_overview.png" alt="AI自动分层效果" width="700">
+  <p><em>左侧：输入原图 → 右侧：AI 自动拆分的 15 个图层</em></p>
+</div>
+
+---
+
+## 👀 先看效果
+
+| 在线 Live2D 演示 | AI 自动分层 | 自动 Rigging |
+|:---:|:---:|:---:|
+| [🚀 点我体验](https://mw2wbyys6t-sudo.github.io/Live2D/) | ✅ 15 层自动拆分 | ✅ model3.json 导出 |
+| 可调节头部/眼睛/嘴巴/呼吸 | 颜色聚类 + 轮廓提取 | Delaunay 网格 + Deformer 树 |
+
+---
+
+## 📋 当前能力边界（请先读）
+
+> 诚实说明，避免误解。以下是**真实已实现**和**正在开发**的功能：
+
+### ✅ 已实现且可用
+
+| 功能 | 说明 | 状态 |
+|---|---|---|
+| AI 图像生成 | Pollinations（免费）/ Seedream / SenseNova | ✅ 可用 |
+| K-means 颜色聚类分层 | 自动拆成 12-15 个颜色图层 | ✅ 可用 |
+| 52 层 Cubism 标准映射 | 自动映射到官方 52 层标准 | ✅ 可用 |
+| PSD 导出 | 分层结果一键导出 PSD | ✅ 可用 |
+| **自动 ArtMesh 网格生成** | Delaunay 三角剖分 + 轮廓提取 | ✅ Phase 2 |
+| **自动 Warp Deformer 层级** | Root → Head/Body → Face/Eye/Mouth 完整树 | ✅ Phase 2 |
+| **model3.json 导出** | Cubism 5 兼容（参数/物理/表情/纹理） | ✅ Phase 2 |
+| 279 项自动化测试 | 全暴力测试覆盖边界场景 | ✅ 全部通过 |
+
+### ⚠️ 已实现但有局限
+
+| 功能 | 局限 |
+|---|---|
+| model3.json | **不含 .moc3**，需在 Cubism Editor 中手动生成 MOC3 后才能在运行时播放 |
+| 桌面桌宠 | 仅打包资源文件，运行时需配合第三方播放器 |
+| 图像生成质量 | 依赖第三方 Provider，风格不稳定 |
+| 分层精度 | K-means 按颜色聚类，无法理解语义（如"头发"和"皮肤"颜色接近时会混在一起） |
+
+### 🚧 开发中（Phase 3）
+
+- 语义分割（替代 K-means，按部位理解图像）
+- Amodal 补全（被遮挡部分自动补全，如头发遮住的脸）
+- 口型同步（ARKit 52 blendshape）
+- 一键桌宠运行时
+- Web 端在线生成
 
 ---
 
 ## ✨ 这是什么？
 
-**Live2D Master Agent 是国内首个开源的 AI 驱动 Live2D 全自动生成工具链。**
+**Live2D Master Agent 是开源的 AI 驱动 Live2D 生成工具链。**
 
-输入一句角色描述或一张图片，AI 自动完成：图像生成 → 背景去除 → K-means 颜色聚类分层 → 52 层 Cubism 标准映射 → **自动 ArtMesh 网格生成 → 自动 Warp Deformer 层级构建 → model3.json 导出** → PSD 导出 → 桌面桌宠一键部署。
+输入一张角色图片，AI 自动完成：背景去除 → K-means 颜色聚类分层 → 52 层 Cubism 标准映射 → **自动 ArtMesh 网格生成 → 自动 Warp Deformer 层级构建 → model3.json 导出** → PSD 导出。
 
-**一句话说明**：从文案到可动 Live2D 模型，**3 分钟搞定**。
+**一句话说明**：从图片到 Cubism 可编辑的 model3.json，**3 分钟搞定**。
 
 ### 🎯 适合谁用？
 
 | 人群 | 痛点 | 我们的方案 |
 |---|---|---|
-| VTuber / 虚拟主播 | 找画师+建模师太贵、周期长 | AI 一键生成，当天出道 |
-| Live2D 建模师 | 拆层、拉网格太机械 | AI 做粗模，你做精修 |
+| VTuber / 虚拟主播 | 找画师+建模师太贵、周期长 | AI 生成粗模，快速出道 |
+| Live2D 建模师 | 拆层、拉网格太机械重复 | AI 做粗模，你做精修 |
 | 独立游戏开发者 | 需要大量 Live2D NPC | 批量生成，统一风格 |
-| 桌宠爱好者 | 想要专属桌宠但不会建模 | 一键生成，双击运行 |
+| 桌宠爱好者 | 想要专属桌宠但不会建模 | 一键生成，即开即用 |
 | 技术美术 | 想探索 AI + Live2D 工作流 | 完整开源，可二次开发 |
 
 ---
@@ -47,6 +96,26 @@ python3 master_tool.py --input character.png --layer-only --rig
 
 > 💡 默认使用 **Pollinations 免费图像生成**，无需 API Key，开箱即用。
 > 支持 **火山 Seedream / SenseNova** 等多家 Provider 切换。
+
+---
+
+## 📦 真实 Demo 产物
+
+我们已经用一张真实图片跑了一遍完整流程，产物在 `examples/demo-output/`：
+
+```
+examples/demo-output/
+├── layer_000.png ~ layer_014.png   # 15 个分层 PNG
+├── preview.png                      # 分层预览图
+└── rigged/
+    ├── character.model3.json        # Cubism model3 配置
+    ├── character.texture_00~07.png  # 8 张纹理图集
+    ├── character.physics3.json      # 物理配置
+    ├── mesh_guide.json              # 网格元数据
+    └── expressions/                 # 3 个表情（smile/surprised/angry）
+```
+
+直接把 `rigged/` 目录拖进 Cubism Editor 就能看到自动生成的网格和变形器。
 
 ---
 
