@@ -6,208 +6,512 @@
 <title>Live2D Master Agent - AI 自动生成 Live2D 模型</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-deep: #0a0e27;
+    --bg-card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --border-hover: rgba(255,107,157,0.4);
+    --pink: #ff6b9d;
+    --purple: #c44dff;
+    --blue: #6b8cff;
+    --cyan: #4dd4ff;
+    --green: #4ade80;
+    --text: #fff;
+    --text-muted: rgba(255,255,255,0.6);
+    --text-dim: rgba(255,255,255,0.4);
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    color: #fff;
+    background:
+      radial-gradient(ellipse at top, rgba(196,77,255,0.15), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(255,107,157,0.1), transparent 50%),
+      var(--bg-deep);
+    color: var(--text);
     min-height: 100vh;
+    overflow-x: hidden;
   }
+
+  /* === Hero === */
   .hero {
     text-align: center;
-    padding: 50px 20px 30px;
+    padding: 60px 20px 30px;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(196,77,255,0.15), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
   }
   .hero h1 {
-    font-size: 48px;
-    background: linear-gradient(90deg, #ff6b9d, #c44dff, #6b8cff);
+    font-size: 56px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    letter-spacing: -1px;
   }
   .hero .subtitle {
-    font-size: 20px;
-    color: rgba(255,255,255,0.7);
+    font-size: 22px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    font-weight: 300;
+  }
+  .hero-cta {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
     margin-bottom: 20px;
   }
+  .btn-cta {
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-cta-primary {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(196,77,255,0.35);
+  }
+  .btn-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(196,77,255,0.5); }
+  .btn-cta-secondary {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-cta-secondary:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.08); }
   .badges {
     display: flex;
     gap: 10px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 20px;
   }
   .badge {
-    padding: 6px 14px;
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
+    backdrop-filter: blur(10px);
   }
-  .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-  .badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
-  .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-  .badge-pink { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .badge-purple { background: rgba(196,77,255,0.15); color: var(--purple); border: 1px solid rgba(196,77,255,0.3); }
+  .badge-blue { background: rgba(107,140,255,0.15); color: var(--blue); border: 1px solid rgba(107,140,255,0.3); }
+  .badge-pink { background: rgba(255,107,157,0.15); color: var(--pink); border: 1px solid rgba(255,107,157,0.3); }
 
-  .canvas-container {
-    max-width: 900px;
-    margin: 0 auto 30px;
-    position: relative;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.1);
+  /* === Section 通用 === */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto 60px;
+    padding: 0 20px;
   }
-  #live2d-canvas {
-    width: 100%;
-    height: 500px;
-    display: block;
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
   }
-  .loading {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  .section-subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    font-size: 15px;
+  }
+
+  /* === AI 产物展示 === */
+  .product-showcase {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) { .product-showcase { grid-template-columns: 1fr; } }
+  .showcase-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s;
+  }
+  .showcase-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-3px);
+  }
+  .showcase-card h3 {
     font-size: 18px;
-    color: rgba(255,255,255,0.6);
-  }
-
-  .controls {
-    max-width: 900px;
-    margin: 0 auto 40px;
+    margin-bottom: 6px;
     display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
+    align-items: center;
+    gap: 8px;
   }
-  .btn {
-    padding: 10px 22px;
+  .showcase-card p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .showcase-card img {
+    width: 100%;
     border-radius: 10px;
-    border: none;
-    font-size: 14px;
+    display: block;
+    background: rgba(0,0,0,0.2);
+  }
+  .showcase-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .tag-real { background: rgba(74,222,128,0.15); color: var(--green); }
+
+  /* === 分层动画 === */
+  .layer-animator {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 20px;
+  }
+  .layer-animator-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .layer-animator-header h3 { font-size: 18px; }
+  .layer-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .layer-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
   }
-  .btn-primary {
-    background: linear-gradient(135deg, #ff6b9d, #c44dff);
-    color: #fff;
+  .layer-btn:hover { background: rgba(255,255,255,0.1); }
+  .layer-btn.active {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border-color: transparent;
   }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(196,77,255,0.4); }
-  .btn-secondary {
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.2);
+  .layer-display {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2/3;
+    max-width: 400px;
+    margin: 0 auto;
+    background:
+      linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    border-radius: 12px;
+    overflow: hidden;
   }
-  .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+  .layer-display img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: opacity 0.4s;
+  }
+  .layer-info {
+    text-align: center;
+    margin-top: 14px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .layer-info strong { color: var(--pink); }
 
-  .slider-group {
-    max-width: 900px;
-    margin: 0 auto 40px;
-    background: rgba(255,255,255,0.05);
+  /* === Live2D Canvas === */
+  .canvas-wrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  #live2d-canvas {
+    width: 100%;
+    height: 520px;
+    display: block;
+    cursor: grab;
+  }
+  #live2d-canvas:active { cursor: grabbing; }
+  .loading {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    margin: 0 auto 14px;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .canvas-label {
+    position: absolute;
+    top: 14px; left: 14px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .canvas-label strong { color: var(--cyan); }
+
+  /* === 控制面板 === */
+  .control-panel {
+    max-width: 1100px;
+    margin: 20px auto 60px;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) { .control-panel { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 24px;
-    border: 1px solid rgba(255,255,255,0.1);
+    padding: 22px;
+  }
+  .panel h3 {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .expr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .expr-btn {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .expr-btn:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateY(-2px);
+  }
+  .expr-btn.playing {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border-color: transparent;
+  }
+  .toggle-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toggle-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle-btn.on {
+    background: rgba(74,222,128,0.15);
+    border-color: rgba(74,222,128,0.4);
+    color: var(--green);
   }
   .slider-row {
     display: flex;
     align-items: center;
     margin-bottom: 14px;
-    gap: 14px;
+    gap: 12px;
   }
   .slider-row:last-child { margin-bottom: 0; }
   .slider-label {
-    width: 120px;
-    font-size: 14px;
-    color: rgba(255,255,255,0.8);
+    width: 90px;
+    font-size: 13px;
+    color: var(--text-muted);
     flex-shrink: 0;
   }
   .slider {
     flex: 1;
     -webkit-appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.15);
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.1);
     outline: none;
   }
   .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 16px; height: 16px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #ff6b9d, #c44dff);
+    background: linear-gradient(135deg, var(--pink), var(--purple));
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(196,77,255,0.5);
   }
   .slider-value {
-    width: 50px;
+    width: 45px;
     text-align: right;
-    font-size: 13px;
-    color: rgba(255,255,255,0.5);
-    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+  .auto-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    background: rgba(74,222,128,0.2);
+    color: var(--green);
+    margin-left: 4px;
+    vertical-align: middle;
   }
 
-  .section {
-    max-width: 900px;
-    margin: 0 auto 40px;
-  }
-  .section h2 {
-    font-size: 28px;
-    margin-bottom: 20px;
-    text-align: center;
-  }
+  /* === Features === */
   .feature-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 16px;
   }
   .feature-card {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 22px;
-    transition: all 0.3s;
-  }
-  .feature-card:hover {
-    background: rgba(255,255,255,0.08);
-    transform: translateY(-3px);
-    border-color: rgba(196,77,255,0.3);
-  }
-  .feature-icon { font-size: 32px; margin-bottom: 12px; }
-  .feature-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-  .feature-desc { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; }
-
-  .layer-demo {
-    text-align: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
     padding: 24px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
   }
-  .layer-demo img {
-    max-width: 100%;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 0;
+    background: linear-gradient(180deg, var(--pink), var(--purple));
+    transition: height 0.3s;
   }
-  .layer-demo p {
-    margin-top: 14px;
-    color: rgba(255,255,255,0.6);
-    font-size: 14px;
+  .feature-card:hover::before { height: 100%; }
+  .feature-card:hover {
+    background: rgba(255,255,255,0.06);
+    transform: translateY(-3px);
+  }
+  .feature-icon { font-size: 32px; margin-bottom: 14px; }
+  .feature-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .feature-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* === Stats === */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin: 40px 0;
+    padding: 30px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
   }
 
+  /* === Footer === */
   .footer {
     text-align: center;
     padding: 40px 20px;
-    color: rgba(255,255,255,0.4);
+    color: var(--text-dim);
     font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
   }
-  .footer a { color: rgba(255,255,255,0.6); }
+  .footer a { color: var(--text-muted); text-decoration: none; }
+  .footer a:hover { color: var(--pink); }
+
+  /* === 状态提示 === */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    transition: transform 0.3s;
+    z-index: 1000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
+<!-- ============ Hero ============ -->
 <div class="hero">
   <h1>🎭 Live2D Master Agent</h1>
-  <p class="subtitle">从一句话描述到可动 Live2D 角色，全程 AI 驱动</p>
+  <p class="subtitle">从一张图到可动 Live2D 模型 · AI 自动拆层 + 自动 Rigging</p>
+  <div class="hero-cta">
+    <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank" class="btn-cta btn-cta-primary">
+      ⭐ 立即试用 AI 生成
+    </a>
+    <a href="https://github.com/mw2wbyys6t-sudo/Live2D/raw/main/examples/demo-output/rigged/character.model3.json" class="btn-cta btn-cta-secondary" download>
+      ⬇ 下载真实产物
+    </a>
+  </div>
   <div class="badges">
     <span class="badge badge-green">✓ 279 Tests Passed</span>
     <span class="badge badge-purple">Phase 2: Auto-Rigging</span>
@@ -216,60 +520,180 @@
   </div>
 </div>
 
-<div class="canvas-container">
-  <canvas id="live2d-canvas"></canvas>
-  <div class="loading" id="loading">加载 Live2D 模型中...</div>
-</div>
-
-<div class="controls">
-  <button class="btn btn-primary" onclick="playExpression('smile')">😊 微笑</button>
-  <button class="btn btn-secondary" onclick="playExpression('surprised')">😮 惊讶</button>
-  <button class="btn btn-secondary" onclick="playExpression('angry')">😠 生气</button>
-  <button class="btn btn-secondary" onclick="toggleEyeBlink()">👁 眨眼开关</button>
-  <button class="btn btn-secondary" onclick="toggleLipSync()">👄 口型同步</button>
-  <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank" class="btn btn-primary">⭐ GitHub 仓库</a>
-</div>
-
-<div class="slider-group">
-  <div class="slider-row">
-    <span class="slider-label">头部左右</span>
-    <input type="range" class="slider" id="paramAngleX" min="-30" max="30" value="0" step="1" oninput="setParam('AngleX', this.value)">
-    <span class="slider-value" id="valAngleX">0</span>
-  </div>
-  <div class="slider-row">
-    <span class="slider-label">头部上下</span>
-    <input type="range" class="slider" id="paramAngleY" min="-30" max="30" value="0" step="1" oninput="setParam('AngleY', this.value)">
-    <span class="slider-value" id="valAngleY">0</span>
-  </div>
-  <div class="slider-row">
-    <span class="slider-label">左眼开闭</span>
-    <input type="range" class="slider" id="paramEyeLOpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeLOpen', this.value)">
-    <span class="slider-value" id="valEyeLOpen">1.00</span>
-  </div>
-  <div class="slider-row">
-    <span class="slider-label">右眼开闭</span>
-    <input type="range" class="slider" id="paramEyeROpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeROpen', this.value)">
-    <span class="slider-value" id="valEyeROpen">1.00</span>
-  </div>
-  <div class="slider-row">
-    <span class="slider-label">嘴巴开闭</span>
-    <input type="range" class="slider" id="paramMouthOpenY" min="0" max="1" value="0" step="0.01" oninput="setParam('MouthOpenY', this.value)">
-    <span class="slider-value" id="valMouthOpenY">0.00</span>
-  </div>
-  <div class="slider-row">
-    <span class="slider-label">呼吸</span>
-    <input type="range" class="slider" id="paramBreath" min="0" max="1" value="0.5" step="0.01" oninput="setParam('Breath', this.value)">
-    <span class="slider-value" id="valBreath">0.50</span>
-  </div>
-</div>
-
+<!-- ============ 数据统计 ============ -->
 <div class="section">
-  <h2>✨ 核心能力</h2>
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-num">15</div>
+      <div class="stat-label">AI 自动分层</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">8</div>
+      <div class="stat-label">纹理图集</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">16</div>
+      <div class="stat-label">Live2D 参数</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">3</div>
+      <div class="stat-label">预设表情</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">279</div>
+      <div class="stat-label">测试通过</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AI 真实产物展示 ============ -->
+<div class="section">
+  <h2 class="section-title">📦 AI 生成的真实产物</h2>
+  <p class="section-subtitle">以下全部由本项目的 AI 流水线自动生成 · 非样例 · 可下载验证</p>
+
+  <div class="product-showcase">
+    <div class="showcase-card">
+      <span class="showcase-tag tag-real">● 真实输入</span>
+      <h3>🖼️ 原始输入图</h3>
+      <p>用户提供的一张动漫角色立绘</p>
+      <img src="assets/demo_input.png" alt="原始输入图" loading="lazy">
+    </div>
+    <div class="showcase-card">
+      <span class="showcase-tag tag-real">● AI 自动拆分</span>
+      <h3>✂️ 15 层分解结果</h3>
+      <p>K-means 颜色聚类自动分层 · 每层独立 PNG</p>
+      <img src="assets/layer_demo_overview.png" alt="分层效果" loading="lazy">
+    </div>
+    <div class="showcase-card">
+      <span class="showcase-tag tag-real">● 自动打包</span>
+      <h3>🎨 纹理图集 #1</h3>
+      <p>多页 shelf-packing 算法自动合图</p>
+      <img src="assets/character.texture_00.jpg" alt="纹理图集" loading="lazy">
+    </div>
+    <div class="showcase-card">
+      <span class="showcase-tag tag-real">● 自动打包</span>
+      <h3>🎨 纹理图集 #2</h3>
+      <p>超出单页自动分页 · 8 张纹理</p>
+      <img src="assets/character.texture_01.jpg" alt="纹理图集" loading="lazy">
+    </div>
+  </div>
+
+  <!-- 分层动画演示 -->
+  <div class="layer-animator">
+    <div class="layer-animator-header">
+      <h3>🎬 分层逐层预览（点击切换）</h3>
+      <div class="layer-controls">
+        <button class="layer-btn active" onclick="showLayer('all')">全部</button>
+        <button class="layer-btn" onclick="showLayer('0')">Layer 00</button>
+        <button class="layer-btn" onclick="showLayer('4')">Layer 04</button>
+        <button class="layer-btn" onclick="showLayer('8')">Layer 08</button>
+        <button class="layer-btn" onclick="playLayerSequence()">▶ 自动播放</button>
+      </div>
+    </div>
+    <div class="layer-display" id="layerDisplay">
+      <img src="assets/demo_input.png" id="layerImgAll" style="opacity:1">
+      <img src="assets/layer_000.png" id="layerImg0" style="opacity:0">
+      <img src="assets/layer_004.png" id="layerImg4" style="opacity:0">
+      <img src="assets/layer_008.png" id="layerImg8" style="opacity:0">
+    </div>
+    <div class="layer-info" id="layerInfo">
+      显示: <strong>全部图层</strong> · 共 15 层
+    </div>
+  </div>
+</div>
+
+<!-- ============ Live2D 实时演示 ============ -->
+<div class="section">
+  <h2 class="section-title">🎭 Live2D 实时演示</h2>
+  <p class="section-subtitle">鼠标移到模型上 · 视线会跟随 · 点击头部/身体有互动</p>
+
+  <div class="canvas-wrapper">
+    <div class="canvas-label">
+      模型: <strong>Haru</strong> (Live2D 官方样例) · 我们的 AI 产物可直接导入 Cubism Editor
+    </div>
+    <canvas id="live2d-canvas"></canvas>
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <div>加载 Live2D 模型中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 控制面板 ============ -->
+<div class="control-panel">
+  <div class="panel">
+    <h3>😊 表情 & 动作</h3>
+    <div class="expr-grid">
+      <button class="expr-btn" onclick="playExpression('smile')">😊 微笑</button>
+      <button class="expr-btn" onclick="playExpression('surprised')">😮 惊讶</button>
+      <button class="expr-btn" onclick="playExpression('angry')">😠 生气</button>
+    </div>
+    <div class="toggle-row">
+      <button class="toggle-btn on" id="blinkBtn" onclick="toggleAuto('blink')">👁 自动眨眼</button>
+      <button class="toggle-btn on" id="breathBtn" onclick="toggleAuto('breath')">🫁 自动呼吸</button>
+      <button class="toggle-btn on" id="trackingBtn" onclick="toggleAuto('tracking')">👀 鼠标跟随</button>
+    </div>
+    <div class="toggle-row" style="margin-top:10px">
+      <button class="toggle-btn" id="motionBtn" onclick="playRandomMotion()">🎬 播放动作</button>
+      <button class="toggle-btn" id="resetBtn" onclick="resetParams()">↻ 重置参数</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>🎚️ 手动参数调节</h3>
+    <div class="slider-row">
+      <span class="slider-label">头部左右</span>
+      <input type="range" class="slider" id="paramAngleX" min="-30" max="30" value="0" step="1" oninput="setParam('AngleX', this.value, false)">
+      <span class="slider-value" id="valAngleX">0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">头部上下</span>
+      <input type="range" class="slider" id="paramAngleY" min="-30" max="30" value="0" step="1" oninput="setParam('AngleY', this.value, false)">
+      <span class="slider-value" id="valAngleY">0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">身体旋转</span>
+      <input type="range" class="slider" id="paramBodyAngleX" min="-10" max="10" value="0" step="0.1" oninput="setParam('BodyAngleX', this.value, false)">
+      <span class="slider-value" id="valBodyAngleX">0.0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">左眼开闭</span>
+      <input type="range" class="slider" id="paramEyeLOpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeLOpen', this.value, true)">
+      <span class="slider-value" id="valEyeLOpen">1.00</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">右眼开闭</span>
+      <input type="range" class="slider" id="paramEyeROpen" min="0" max="1" value="1" step="0.01" oninput="setParam('EyeROpen', this.value, true)">
+      <span class="slider-value" id="valEyeROpen">1.00</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">嘴巴开闭</span>
+      <input type="range" class="slider" id="paramMouthOpenY" min="0" max="1" value="0" step="0.01" oninput="setParam('MouthOpenY', this.value, true)">
+      <span class="slider-value" id="valMouthOpenY">0.00</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">嘴巴形状</span>
+      <input type="range" class="slider" id="paramMouthForm" min="-1" max="1" value="0" step="0.01" oninput="setParam('MouthForm', this.value, true)">
+      <span class="slider-value" id="valMouthForm">0.00</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">呼吸 <span class="auto-badge">AUTO</span></span>
+      <input type="range" class="slider" id="paramBreath" min="0" max="1" value="0.5" step="0.01" oninput="setParam('Breath', this.value, true)">
+      <span class="slider-value" id="valBreath">0.50</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 核心能力 ============ -->
+<div class="section">
+  <h2 class="section-title">✨ 核心能力</h2>
+  <p class="section-subtitle">Phase 1 + Phase 2 已实现 · Phase 3 开发中</p>
+
   <div class="feature-grid">
     <div class="feature-card">
       <div class="feature-icon">🎨</div>
       <div class="feature-title">AI 图像生成</div>
-      <div class="feature-desc">一句话生成角色立绘，支持 Pollinations / Seedream / SenseNova 等多家 Provider</div>
+      <div class="feature-desc">一句话生成角色立绘，支持 Pollinations / Seedream / SenseNova 多家 Provider</div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">✂️</div>
@@ -299,111 +723,260 @@
   </div>
 </div>
 
-<div class="section">
-  <h2>🖼️ AI 自动分层效果</h2>
-  <div class="layer-demo">
-    <img src="../examples/assets/layer_demo_overview.png" alt="AI 自动分层效果演示">
-    <p>左侧：原始输入图 &nbsp;|&nbsp; 右侧：AI 自动拆分的 15 个图层（K-means 聚类）</p>
-  </div>
+<!-- ============ Footer ============ -->
+<div class="footer">
+  <p>🎭 Live2D Master Agent · <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank">GitHub</a> · MIT License</p>
+  <p style="margin-top:8px">AI 产物展示 = 真实生成 · Live2D 演示模型 = Live2D 官方样例 Haru</p>
 </div>
 
-<div class="footer">
-  <p>Demo 模型：Live2D 官方样例 Haru &nbsp;|&nbsp; 本项目 AI 生成的 model3.json 可直接导入 Cubism Editor</p>
-  <p><a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank">GitHub</a> · MIT License · Made with ❤️</p>
-</div>
+<div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.0/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/pixi-live2d-display.min.js"></script>
 <script>
+  // ============ 全局状态 ============
+  const state = {
+    model: null,
+    autoBlink: true,
+    autoBreath: true,
+    autoTracking: true,
+    manualOverride: {},  // 记录哪些参数被手动设置
+    mouseX: 0,
+    mouseY: 0,
+  };
+
+  // ============ Live2D 初始化 ============
   const app = new PIXI.Application({
     view: document.getElementById('live2d-canvas'),
-    width: 900,
-    height: 500,
+    width: 1100,
+    height: 520,
     backgroundAlpha: 0,
     autoDensity: true,
     resolution: window.devicePixelRatio || 1,
   });
 
-  let currentModel = null;
-  let eyeBlinkEnabled = true;
-  let lipSyncEnabled = false;
-  let breathEnabled = true;
-
   const MODEL_URL = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json';
 
   PIXI.live2d.Live2DModel.from(MODEL_URL).then(model => {
     document.getElementById('loading').style.display = 'none';
-    currentModel = model;
-
-    model.scale.set(0.35);
+    state.model = model;
+    model.scale.set(0.4);
+    model.anchor.set(0.5, 0.5);
     model.x = app.screen.width / 2;
-    model.y = app.screen.height / 2 + 50;
-
+    model.y = app.screen.height / 2 + 30;
     app.stage.addChild(model);
 
+    // 点击交互
     model.on('hit', hitAreas => {
       if (hitAreas.includes('body')) {
         model.motion('tap_body');
+        showToast('👋 点击身体');
       } else if (hitAreas.includes('head')) {
         model.expression();
+        showToast('👆 点击头部 → 切换表情');
       }
     });
+
+    showToast('✅ 模型加载完成 · 移动鼠标试试');
   }).catch(err => {
-    document.getElementById('loading').textContent = '模型加载失败，请刷新重试';
+    document.getElementById('loading').innerHTML = '<div>❌ 模型加载失败 · 请刷新重试</div>';
     console.error(err);
   });
 
-  function setParam(name, value) {
-    if (!currentModel) return;
+  // ============ 鼠标跟随 ============
+  app.view.addEventListener('mousemove', e => {
+    const rect = app.view.getBoundingClientRect();
+    state.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;  // -1 ~ 1
+    state.mouseY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+  });
+
+  // ============ 参数设置 ============
+  function setParam(name, value, isPersistent) {
+    if (!state.model) return;
     const paramName = 'Param' + name;
-    currentModel.internalModel.coreModel.setParameterValueById(paramName, parseFloat(value));
-    document.getElementById('val' + name).textContent = parseFloat(value).toFixed(name === 'AngleX' || name === 'AngleY' ? 0 : 2);
+    const v = parseFloat(value);
+    state.model.internalModel.coreModel.setParameterValueById(paramName, v);
+    document.getElementById('val' + name).textContent = v.toFixed(name.includes('Angle') && !name.includes('Body') ? 0 : 2);
+    // 标记为手动覆盖（呼吸/眨眼不再自动覆盖）
+    if (isPersistent) state.manualOverride[name] = true;
   }
 
+  function resetParams() {
+    state.manualOverride = {};
+    const defaults = {
+      AngleX: 0, AngleY: 0, BodyAngleX: 0,
+      EyeLOpen: 1, EyeROpen: 1,
+      MouthOpenY: 0, MouthForm: 0, Breath: 0.5
+    };
+    Object.entries(defaults).forEach(([k, v]) => {
+      document.getElementById('param' + k).value = v;
+      setParam(k, v, false);
+    });
+    showToast('↻ 参数已重置');
+  }
+
+  // ============ 表情 & 动作 ============
   function playExpression(type) {
-    if (!currentModel) return;
-    currentModel.expression(type);
+    if (!state.model) return;
+    state.model.expression(type);
+    document.querySelectorAll('.expr-btn').forEach(b => b.classList.remove('playing'));
+    event.target.classList.add('playing');
+    setTimeout(() => event.target.classList.remove('playing'), 1000);
+    showToast(`😊 表情: ${type}`);
   }
 
-  function toggleEyeBlink() {
-    eyeBlinkEnabled = !eyeBlinkEnabled;
-    if (currentModel) {
-      currentModel.internalModel.eyeBlink = eyeBlinkEnabled;
+  function playRandomMotion() {
+    if (!state.model) return;
+    state.model.motion('tap_body');
+    showToast('🎬 播放动作');
+  }
+
+  // ============ 自动行为 ============
+  function toggleAuto(type) {
+    if (type === 'blink') {
+      state.autoBlink = !state.autoBlink;
+      document.getElementById('blinkBtn').classList.toggle('on', state.autoBlink);
+      if (!state.autoBlink && state.model) {
+        state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
+        state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+      }
+      showToast(state.autoBlink ? '👁 自动眨眼 开' : '👁 自动眨眼 关');
+    } else if (type === 'breath') {
+      state.autoBreath = !state.autoBreath;
+      document.getElementById('breathBtn').classList.toggle('on', state.autoBreath);
+      showToast(state.autoBreath ? '🫁 自动呼吸 开' : '🫁 自动呼吸 关');
+    } else if (type === 'tracking') {
+      state.autoTracking = !state.autoTracking;
+      document.getElementById('trackingBtn').classList.toggle('on', state.autoTracking);
+      showToast(state.autoTracking ? '👀 鼠标跟随 开' : '👀 鼠标跟随 关');
     }
   }
 
-  function toggleLipSync() {
-    lipSyncEnabled = !lipSyncEnabled;
-  }
-
+  // ============ Ticker: 呼吸 ============
   let breathTime = 0;
-  app.ticker.add(() => {
-    if (!currentModel || !breathEnabled) return;
-    breathTime += 0.02;
-    const breathVal = (Math.sin(breathTime) + 1) / 2;
-    currentModel.internalModel.coreModel.setParameterValueById('ParamBreath', breathVal);
-    document.getElementById('paramBreath').value = breathVal;
-    document.getElementById('valBreath').textContent = breathVal.toFixed(2);
+  app.ticker.add(delta => {
+    if (!state.model) return;
+    breathTime += delta * 0.02;
+    if (state.autoBreath && !state.manualOverride['Breath']) {
+      const v = (Math.sin(breathTime) + 1) / 2;
+      state.model.internalModel.coreModel.setParameterValueById('ParamBreath', v);
+      document.getElementById('paramBreath').value = v;
+      document.getElementById('valBreath').textContent = v.toFixed(2);
+    }
   });
 
+  // ============ Ticker: 眨眼 ============
   let blinkTimer = 0;
   let nextBlink = 3000;
   app.ticker.add(delta => {
-    if (!currentModel || !eyeBlinkEnabled) return;
+    if (!state.model || !state.autoBlink) return;
     blinkTimer += delta * 16;
     if (blinkTimer >= nextBlink) {
-      currentModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 0);
-      currentModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 0);
-      setTimeout(() => {
-        if (currentModel && eyeBlinkEnabled) {
-          currentModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
-          currentModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+      const blinkStep = (phase) => {
+        if (!state.model || !state.autoBlink) return;
+        if (phase < 0.5) {
+          // 闭眼
+          const v = 1 - phase * 2;
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
+        } else if (phase < 1) {
+          // 睁眼
+          const v = (phase - 0.5) * 2;
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
         }
-      }, 150);
+      };
+      let phase = 0;
+      const blinkInterval = setInterval(() => {
+        phase += 0.15;
+        if (phase >= 1) {
+          clearInterval(blinkInterval);
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
+          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+          document.getElementById('paramEyeLOpen').value = 1;
+          document.getElementById('paramEyeROpen').value = 1;
+          document.getElementById('valEyeLOpen').textContent = '1.00';
+          document.getElementById('valEyeROpen').textContent = '1.00';
+          return;
+        }
+        blinkStep(phase);
+      }, 30);
       blinkTimer = 0;
       nextBlink = 2000 + Math.random() * 4000;
     }
   });
+
+  // ============ Ticker: 鼠标跟随 ============
+  app.ticker.add(() => {
+    if (!state.model || !state.autoTracking) return;
+    if (!state.manualOverride['AngleX']) {
+      const targetX = state.mouseX * 30;
+      const curX = state.model.internalModel.coreModel.getParameterValueById('ParamAngleX');
+      const newX = curX + (targetX - curX) * 0.1;
+      state.model.internalModel.coreModel.setParameterValueById('ParamAngleX', newX);
+      document.getElementById('paramAngleX').value = newX;
+      document.getElementById('valAngleX').textContent = Math.round(newX);
+    }
+    if (!state.manualOverride['AngleY']) {
+      const targetY = -state.mouseY * 30;
+      const curY = state.model.internalModel.coreModel.getParameterValueById('ParamAngleY');
+      const newY = curY + (targetY - curY) * 0.1;
+      state.model.internalModel.coreModel.setParameterValueById('ParamAngleY', newY);
+      document.getElementById('paramAngleY').value = newY;
+      document.getElementById('valAngleY').textContent = Math.round(newY);
+    }
+    // 眼球跟随
+    const eyeBallX = state.mouseX;
+    const eyeBallY = -state.mouseY;
+    state.model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', eyeBallX);
+    state.model.internalModel.coreModel.setParameterValueById('ParamEyeBallY', eyeBallY);
+  });
+
+  // ============ Toast 提示 ============
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // ============ 分层动画 ============
+  function showLayer(id) {
+    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    ['All', '0', '4', '8'].forEach(k => {
+      const img = document.getElementById('layerImg' + k);
+      if (img) img.style.opacity = (k === id || (id === 'all' && k === 'All')) ? '1' : '0';
+    });
+    const labels = { all: '全部图层', '0': 'Layer 00 (最大色块)', '4': 'Layer 04 (中间色块)', '8': 'Layer 08 (小色块)' };
+    document.getElementById('layerInfo').innerHTML = `显示: <strong>${labels[id]}</strong> · 共 15 层`;
+  }
+
+  let sequenceTimer = null;
+  function playLayerSequence() {
+    const layers = ['all', '0', '4', '8'];
+    let idx = 0;
+    if (sequenceTimer) {
+      clearInterval(sequenceTimer);
+      sequenceTimer = null;
+      showToast('⏸ 停止自动播放');
+      return;
+    }
+    showToast('▶ 开始自动播放');
+    sequenceTimer = setInterval(() => {
+      const id = layers[idx % layers.length];
+      // 模拟点击
+      const btns = document.querySelectorAll('.layer-btn');
+      const targetBtn = Array.from(btns).find(b => b.textContent.includes(id === 'all' ? '全部' : `Layer ${id.padStart(2,'0')}`));
+      if (targetBtn) {
+        event = { target: targetBtn };
+        showLayer(id);
+      }
+      idx++;
+    }, 1200);
+  }
 </script>
 </body>
 </html>
