@@ -939,11 +939,11 @@
     <div class="layer-animator-header">
       <h3>🎬 分层逐层预览（点击切换）</h3>
       <div class="layer-controls">
-        <button class="layer-btn active" onclick="showLayer('all')">全部</button>
-        <button class="layer-btn" onclick="showLayer('0')">Layer 00</button>
-        <button class="layer-btn" onclick="showLayer('4')">Layer 04</button>
-        <button class="layer-btn" onclick="showLayer('8')">Layer 08</button>
-        <button class="layer-btn" onclick="playLayerSequence()">▶ 自动播放</button>
+        <button class="layer-btn active" onclick="showLayer('all', this)">全部</button>
+        <button class="layer-btn" onclick="showLayer('0', this)">Layer 00</button>
+        <button class="layer-btn" onclick="showLayer('4', this)">Layer 04</button>
+        <button class="layer-btn" onclick="showLayer('8', this)">Layer 08</button>
+        <button class="layer-btn" onclick="playLayerSequence(this)">▶ 自动播放</button>
       </div>
     </div>
     <div class="layer-display" id="layerDisplay">
@@ -980,9 +980,9 @@
   <div class="panel">
     <h3>😊 表情 & 动作</h3>
     <div class="expr-grid">
-      <button class="expr-btn" onclick="playExpression('smile')">😊 微笑</button>
-      <button class="expr-btn" onclick="playExpression('surprised')">😮 惊讶</button>
-      <button class="expr-btn" onclick="playExpression('angry')">😠 生气</button>
+      <button class="expr-btn" onclick="playExpression('smile', this)">😊 微笑</button>
+      <button class="expr-btn" onclick="playExpression('surprised', this)">😮 惊讶</button>
+      <button class="expr-btn" onclick="playExpression('angry', this)">😠 生气</button>
     </div>
     <div class="toggle-row">
       <button class="toggle-btn on" id="blinkBtn" onclick="toggleAuto('blink')">👁 自动眨眼</button>
@@ -1090,203 +1090,10 @@
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.0/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/pixi-live2d-display.min.js"></script>
 <script>
-  // ============ 全局状态 ============
-  const state = {
-    model: null,
-    autoBlink: true,
-    autoBreath: true,
-    autoTracking: true,
-    manualOverride: {},  // 记录哪些参数被手动设置
-    mouseX: 0,
-    mouseY: 0,
-  };
-
-  // ============ Live2D 初始化 ============
-  const app = new PIXI.Application({
-    view: document.getElementById('live2d-canvas'),
-    width: 1100,
-    height: 520,
-    backgroundAlpha: 0,
-    autoDensity: true,
-    resolution: window.devicePixelRatio || 1,
-  });
-
-  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json';
-
-  PIXI.live2d.Live2DModel.from(MODEL_URL).then(model => {
-    document.getElementById('loading').style.display = 'none';
-    state.model = model;
-    model.scale.set(0.4);
-    model.anchor.set(0.5, 0.5);
-    model.x = app.screen.width / 2;
-    model.y = app.screen.height / 2 + 30;
-    app.stage.addChild(model);
-
-    // 点击交互
-    model.on('hit', hitAreas => {
-      if (hitAreas.includes('body')) {
-        model.motion('tap_body');
-        showToast('👋 点击身体');
-      } else if (hitAreas.includes('head')) {
-        model.expression();
-        showToast('👆 点击头部 → 切换表情');
-      }
-    });
-
-    showToast('✅ 模型加载完成 · 移动鼠标试试');
-  }).catch(err => {
-    document.getElementById('loading').innerHTML = '<div>❌ 模型加载失败 · 请刷新重试</div>';
-    console.error(err);
-  });
-
-  // ============ 鼠标跟随 ============
-  app.view.addEventListener('mousemove', e => {
-    const rect = app.view.getBoundingClientRect();
-    state.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;  // -1 ~ 1
-    state.mouseY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-  });
-
-  // ============ 参数设置 ============
-  function setParam(name, value, isPersistent) {
-    if (!state.model) return;
-    const paramName = 'Param' + name;
-    const v = parseFloat(value);
-    state.model.internalModel.coreModel.setParameterValueById(paramName, v);
-    document.getElementById('val' + name).textContent = v.toFixed(name.includes('Angle') && !name.includes('Body') ? 0 : 2);
-    // 标记为手动覆盖（呼吸/眨眼不再自动覆盖）
-    if (isPersistent) state.manualOverride[name] = true;
-  }
-
-  function resetParams() {
-    state.manualOverride = {};
-    const defaults = {
-      AngleX: 0, AngleY: 0, BodyAngleX: 0,
-      EyeLOpen: 1, EyeROpen: 1,
-      MouthOpenY: 0, MouthForm: 0, Breath: 0.5
-    };
-    Object.entries(defaults).forEach(([k, v]) => {
-      document.getElementById('param' + k).value = v;
-      setParam(k, v, false);
-    });
-    showToast('↻ 参数已重置');
-  }
-
-  // ============ 表情 & 动作 ============
-  function playExpression(type) {
-    if (!state.model) return;
-    state.model.expression(type);
-    document.querySelectorAll('.expr-btn').forEach(b => b.classList.remove('playing'));
-    event.target.classList.add('playing');
-    setTimeout(() => event.target.classList.remove('playing'), 1000);
-    showToast(`😊 表情: ${type}`);
-  }
-
-  function playRandomMotion() {
-    if (!state.model) return;
-    state.model.motion('tap_body');
-    showToast('🎬 播放动作');
-  }
-
-  // ============ 自动行为 ============
-  function toggleAuto(type) {
-    if (type === 'blink') {
-      state.autoBlink = !state.autoBlink;
-      document.getElementById('blinkBtn').classList.toggle('on', state.autoBlink);
-      if (!state.autoBlink && state.model) {
-        state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
-        state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
-      }
-      showToast(state.autoBlink ? '👁 自动眨眼 开' : '👁 自动眨眼 关');
-    } else if (type === 'breath') {
-      state.autoBreath = !state.autoBreath;
-      document.getElementById('breathBtn').classList.toggle('on', state.autoBreath);
-      showToast(state.autoBreath ? '🫁 自动呼吸 开' : '🫁 自动呼吸 关');
-    } else if (type === 'tracking') {
-      state.autoTracking = !state.autoTracking;
-      document.getElementById('trackingBtn').classList.toggle('on', state.autoTracking);
-      showToast(state.autoTracking ? '👀 鼠标跟随 开' : '👀 鼠标跟随 关');
-    }
-  }
-
-  // ============ Ticker: 呼吸 ============
-  let breathTime = 0;
-  app.ticker.add(delta => {
-    if (!state.model) return;
-    breathTime += delta * 0.02;
-    if (state.autoBreath && !state.manualOverride['Breath']) {
-      const v = (Math.sin(breathTime) + 1) / 2;
-      state.model.internalModel.coreModel.setParameterValueById('ParamBreath', v);
-      document.getElementById('paramBreath').value = v;
-      document.getElementById('valBreath').textContent = v.toFixed(2);
-    }
-  });
-
-  // ============ Ticker: 眨眼 ============
-  let blinkTimer = 0;
-  let nextBlink = 3000;
-  app.ticker.add(delta => {
-    if (!state.model || !state.autoBlink) return;
-    blinkTimer += delta * 16;
-    if (blinkTimer >= nextBlink) {
-      const blinkStep = (phase) => {
-        if (!state.model || !state.autoBlink) return;
-        if (phase < 0.5) {
-          // 闭眼
-          const v = 1 - phase * 2;
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
-        } else if (phase < 1) {
-          // 睁眼
-          const v = (phase - 0.5) * 2;
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
-        }
-      };
-      let phase = 0;
-      const blinkInterval = setInterval(() => {
-        phase += 0.15;
-        if (phase >= 1) {
-          clearInterval(blinkInterval);
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
-          state.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
-          document.getElementById('paramEyeLOpen').value = 1;
-          document.getElementById('paramEyeROpen').value = 1;
-          document.getElementById('valEyeLOpen').textContent = '1.00';
-          document.getElementById('valEyeROpen').textContent = '1.00';
-          return;
-        }
-        blinkStep(phase);
-      }, 30);
-      blinkTimer = 0;
-      nextBlink = 2000 + Math.random() * 4000;
-    }
-  });
-
-  // ============ Ticker: 鼠标跟随 ============
-  app.ticker.add(() => {
-    if (!state.model || !state.autoTracking) return;
-    if (!state.manualOverride['AngleX']) {
-      const targetX = state.mouseX * 30;
-      const curX = state.model.internalModel.coreModel.getParameterValueById('ParamAngleX');
-      const newX = curX + (targetX - curX) * 0.1;
-      state.model.internalModel.coreModel.setParameterValueById('ParamAngleX', newX);
-      document.getElementById('paramAngleX').value = newX;
-      document.getElementById('valAngleX').textContent = Math.round(newX);
-    }
-    if (!state.manualOverride['AngleY']) {
-      const targetY = -state.mouseY * 30;
-      const curY = state.model.internalModel.coreModel.getParameterValueById('ParamAngleY');
-      const newY = curY + (targetY - curY) * 0.1;
-      state.model.internalModel.coreModel.setParameterValueById('ParamAngleY', newY);
-      document.getElementById('paramAngleY').value = newY;
-      document.getElementById('valAngleY').textContent = Math.round(newY);
-    }
-    // 眼球跟随
-    const eyeBallX = state.mouseX;
-    const eyeBallY = -state.mouseY;
-    state.model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', eyeBallX);
-    state.model.internalModel.coreModel.setParameterValueById('ParamEyeBallY', eyeBallY);
-  });
+  // ============================================================
+  // 第一部分：基础工具 + 在线试用 + 分层动画（不依赖 PIXI/Live2D）
+  // 这部分即使 Live2D 加载失败也必须正常工作
+  // ============================================================
 
   // ============ Toast 提示 ============
   let toastTimer = null;
@@ -1298,10 +1105,19 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
-  // ============ 分层动画 ============
-  function showLayer(id) {
+  // ============ 分层动画（真实产物展示区）============
+  function showLayer(id, btn) {
     document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+    } else {
+      const btns = document.querySelectorAll('.layer-btn');
+      const targetBtn = Array.from(btns).find(b => {
+        if (id === 'all') return b.textContent.includes('全部');
+        return b.textContent.includes(`Layer ${id.padStart(2,'0')}`);
+      });
+      if (targetBtn) targetBtn.classList.add('active');
+    }
     ['All', '0', '4', '8'].forEach(k => {
       const img = document.getElementById('layerImg' + k);
       if (img) img.style.opacity = (k === id || (id === 'all' && k === 'All')) ? '1' : '0';
@@ -1311,25 +1127,21 @@
   }
 
   let sequenceTimer = null;
-  function playLayerSequence() {
+  function playLayerSequence(btn) {
     const layers = ['all', '0', '4', '8'];
     let idx = 0;
     if (sequenceTimer) {
       clearInterval(sequenceTimer);
       sequenceTimer = null;
+      if (btn) btn.textContent = '▶ 自动播放';
       showToast('⏸ 停止自动播放');
       return;
     }
+    if (btn) btn.textContent = '⏸ 停止播放';
     showToast('▶ 开始自动播放');
     sequenceTimer = setInterval(() => {
       const id = layers[idx % layers.length];
-      // 模拟点击
-      const btns = document.querySelectorAll('.layer-btn');
-      const targetBtn = Array.from(btns).find(b => b.textContent.includes(id === 'all' ? '全部' : `Layer ${id.padStart(2,'0')}`));
-      if (targetBtn) {
-        event = { target: targetBtn };
-        showLayer(id);
-      }
+      showLayer(id);
       idx++;
     }, 1200);
   }
@@ -1338,10 +1150,11 @@
   const trialState = {
     currentImageURL: null,
     currentImageEl: null,
-    kmeansResult: null,  // { centers: [[r,g,b],...], labels: Uint8Array, width, height }
+    kmeansResult: null,
+    _sampleCanvas: null,
   };
 
-  // 预设按钮：点击填充 prompt
+  // 预设按钮：点击填充 prompt（必须最先绑定）
   document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.getElementById('promptInput').value = btn.dataset.prompt;
@@ -1363,7 +1176,6 @@
     btn.disabled = true;
     btnText.textContent = '生成中...';
 
-    // 显示加载状态
     const resultBox = document.getElementById('trialResult');
     resultBox.innerHTML = `
       <div class="result-loading">
@@ -1373,11 +1185,10 @@
       </div>
     `;
 
-    // 隐藏之前的分层分析
     document.getElementById('layerAnalysis').style.display = 'none';
     document.getElementById('resultActions').style.display = 'none';
+    trialState._sampleCanvas = null;
 
-    // 进度提示动画
     const progressMessages = [
       '⏳ 首次约 10-30 秒，请耐心等待',
       '🎨 AI 正在绘制角色...',
@@ -1391,19 +1202,16 @@
       if (el) el.textContent = progressMessages[pmIdx];
     }, 3000);
 
-    // 计算尺寸
     const aspect = document.getElementById('aspectRatio').value;
-    let width = 768, height = 1152;  // 默认 2:3
+    let width = 768, height = 1152;
     if (aspect === 'square') { width = 1024; height = 1024; }
     if (aspect === 'landscape') { width = 1152; height = 768; }
 
-    // 增强 prompt：加上 live2d 风格关键词
     const enhancedPrompt = `${prompt}, live2d style, clean lines, flat colors, clear outline, suitable for live2d rigging`;
     const seed = Math.floor(Math.random() * 1000000);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
 
     try {
-      // 预加载图像
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise((resolve, reject) => {
@@ -1416,7 +1224,6 @@
       trialState.currentImageURL = imageUrl;
       trialState.currentImageEl = img;
 
-      // 显示图像
       resultBox.innerHTML = `
         <div class="result-image-wrap">
           <img src="${imageUrl}" alt="生成的角色">
@@ -1448,17 +1255,13 @@
       showToast('⚠️ 请先生成图像');
       return;
     }
-
     showToast('🔍 正在分析颜色...');
-
     setTimeout(() => {
       try {
         const img = trialState.currentImageEl;
         const K = 8;
-
-        // 在隐藏 canvas 上获取像素数据
         const sampleCanvas = document.createElement('canvas');
-        const targetW = 200;  // 缩小采样，加速
+        const targetW = 200;
         const targetH = Math.round(targetW * (img.naturalHeight / img.naturalWidth));
         sampleCanvas.width = targetW;
         sampleCanvas.height = targetH;
@@ -1467,26 +1270,20 @@
         const imageData = sctx.getImageData(0, 0, targetW, targetH);
         const pixels = imageData.data;
 
-        // 收集所有不透明像素
         const samples = [];
         for (let i = 0; i < pixels.length; i += 4) {
-          if (pixels[i + 3] > 10) {  // 跳过透明像素
+          if (pixels[i + 3] > 10) {
             samples.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
           }
         }
-
         if (samples.length === 0) {
           showToast('❌ 图像无有效像素');
           return;
         }
 
-        // K-means++ 初始化
         const centers = kmeansPlusPlusInit(samples, K);
         const labels = new Uint8Array(samples.length);
-
-        // 迭代 10 次
         for (let iter = 0; iter < 10; iter++) {
-          // 分配
           for (let i = 0; i < samples.length; i++) {
             let minDist = Infinity, minIdx = 0;
             for (let k = 0; k < K; k++) {
@@ -1498,7 +1295,6 @@
             }
             labels[i] = minIdx;
           }
-          // 更新
           const sums = Array.from({ length: K }, () => [0, 0, 0, 0]);
           for (let i = 0; i < samples.length; i++) {
             const k = labels[i];
@@ -1514,24 +1310,18 @@
           }
         }
 
-        // 计算每个 cluster 的像素数
         const counts = new Array(K).fill(0);
         for (let i = 0; i < labels.length; i++) counts[labels[i]]++;
         const order = [...Array(K).keys()].sort((a, b) => counts[b] - counts[a]);
 
         trialState.kmeansResult = { centers, labels, samples, order, counts, targetW, targetH };
+        trialState._sampleCanvas = sampleCanvas;
 
-        // 显示分层分析区
         document.getElementById('layerAnalysis').style.display = 'block';
         document.getElementById('layerAnalysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // 渲染色板
         renderColorPalette();
-
-        // 渲染原图和默认显示第一个图层
         renderOriginalImage(img);
         showLayerByColor(order[0]);
-
         showToast('✅ 分层完成！点击色块查看每个图层');
       } catch (e) {
         console.error(e);
@@ -1542,9 +1332,7 @@
 
   function kmeansPlusPlusInit(samples, K) {
     const centers = [];
-    // 第一个中心：随机选一个
     centers.push([...samples[Math.floor(Math.random() * samples.length)]]);
-    // 后续中心：按距离平方加权选择
     for (let k = 1; k < K; k++) {
       const dists = samples.map(s => {
         let minDist = Infinity;
@@ -1597,7 +1385,6 @@
     const canvas = document.getElementById('originalCanvas');
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // 等比缩放绘制
     const ratio = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
     const w = img.naturalWidth * ratio;
     const h = img.naturalHeight * ratio;
@@ -1607,12 +1394,11 @@
   }
 
   function showLayerByColor(k) {
-    const { centers, samples, labels, targetW, targetH } = trialState.kmeansResult;
+    const { centers, targetW, targetH } = trialState.kmeansResult;
     const img = trialState.currentImageEl;
     const canvas = document.getElementById('layerCanvas');
     const ctx = canvas.getContext('2d');
 
-    // 用原图绘制，但只保留属于该 cluster 的像素
     const ratio = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
     const w = img.naturalWidth * ratio;
     const h = img.naturalHeight * ratio;
@@ -1621,22 +1407,11 @@
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 用缓存的采样 canvas 取像素数据（加速）
-    if (!trialState._sampleCanvas) {
-      const sc = document.createElement('canvas');
-      sc.width = targetW;
-      sc.height = targetH;
-      sc.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
-      trialState._sampleCanvas = sc;
-    }
     const sampleData = trialState._sampleCanvas.getContext('2d').getImageData(0, 0, targetW, targetH).data;
-
-    // 创建一个采样分辨率的 ImageData，只保留属于 cluster k 的像素
     const layerImg = ctx.createImageData(targetW, targetH);
     for (let i = 0; i < sampleData.length; i += 4) {
       const r = sampleData[i], g = sampleData[i + 1], b = sampleData[i + 2], a = sampleData[i + 3];
       if (a < 10) continue;
-      // 找最近的 center
       let minDist = Infinity, minK = 0;
       for (let kk = 0; kk < centers.length; kk++) {
         const d = (r - centers[kk][0]) ** 2 + (g - centers[kk][1]) ** 2 + (b - centers[kk][2]) ** 2;
@@ -1650,7 +1425,6 @@
       }
     }
 
-    // 把采样 ImageData 画到隐藏 canvas，再缩放绘制到目标 canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = targetW;
     tempCanvas.height = targetH;
@@ -1662,6 +1436,252 @@
     document.getElementById('layerCanvasLabel').innerHTML = `Layer 颜色: <strong style="color:${hex}">${hex}</strong>`;
   }
 
+  // ============================================================
+  // 第二部分：Live2D 演示（可选，失败不影响其他功能）
+  // ============================================================
+
+  // 全局 Live2D 状态和函数（即使 Live2D 加载失败，这些函数也存在，不会报 ReferenceError）
+  const live2dState = {
+    model: null,
+    autoBlink: true,
+    autoBreath: true,
+    autoTracking: true,
+    manualOverride: {},
+    mouseX: 0,
+    mouseY: 0,
+    app: null,
+  };
+
+  function setParam(name, value, isPersistent) {
+    if (!live2dState.model) {
+      showToast('ℹ️ Live2D 模型未加载');
+      return;
+    }
+    const paramName = 'Param' + name;
+    const v = parseFloat(value);
+    live2dState.model.internalModel.coreModel.setParameterValueById(paramName, v);
+    const el = document.getElementById('val' + name);
+    if (el) el.textContent = v.toFixed(name.includes('Angle') && !name.includes('Body') ? 0 : 2);
+    if (isPersistent) live2dState.manualOverride[name] = true;
+  }
+
+  function resetParams() {
+    live2dState.manualOverride = {};
+    const defaults = {
+      AngleX: 0, AngleY: 0, BodyAngleX: 0,
+      EyeLOpen: 1, EyeROpen: 1,
+      MouthOpenY: 0, MouthForm: 0, Breath: 0.5
+    };
+    Object.entries(defaults).forEach(([k, v]) => {
+      const el = document.getElementById('param' + k);
+      if (el) el.value = v;
+      setParam(k, v, false);
+    });
+    showToast('↻ 参数已重置');
+  }
+
+  function playExpression(type, btn) {
+    if (!live2dState.model) {
+      showToast('ℹ️ Live2D 模型未加载');
+      return;
+    }
+    live2dState.model.expression(type);
+    document.querySelectorAll('.expr-btn').forEach(b => b.classList.remove('playing'));
+    if (btn) {
+      btn.classList.add('playing');
+      setTimeout(() => btn.classList.remove('playing'), 1000);
+    }
+    showToast(`😊 表情: ${type}`);
+  }
+
+  function playRandomMotion() {
+    if (!live2dState.model) {
+      showToast('ℹ️ Live2D 模型未加载');
+      return;
+    }
+    live2dState.model.motion('tap_body');
+    showToast('🎬 播放动作');
+  }
+
+  function toggleAuto(type) {
+    if (type === 'blink') {
+      live2dState.autoBlink = !live2dState.autoBlink;
+      const btn = document.getElementById('blinkBtn');
+      if (btn) btn.classList.toggle('on', live2dState.autoBlink);
+      if (!live2dState.autoBlink && live2dState.model) {
+        live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
+        live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+      }
+      showToast(live2dState.autoBlink ? '👁 自动眨眼 开' : '👁 自动眨眼 关');
+    } else if (type === 'breath') {
+      live2dState.autoBreath = !live2dState.autoBreath;
+      const btn = document.getElementById('breathBtn');
+      if (btn) btn.classList.toggle('on', live2dState.autoBreath);
+      showToast(live2dState.autoBreath ? '🫁 自动呼吸 开' : '🫁 自动呼吸 关');
+    } else if (type === 'tracking') {
+      live2dState.autoTracking = !live2dState.autoTracking;
+      const btn = document.getElementById('trackingBtn');
+      if (btn) btn.classList.toggle('on', live2dState.autoTracking);
+      showToast(live2dState.autoTracking ? '👀 鼠标跟随 开' : '👀 鼠标跟随 关');
+    }
+  }
+
+  // Live2D 初始化（全部包在 try-catch 里，失败不影响其他功能）
+  (function initLive2D() {
+    try {
+      if (typeof PIXI === 'undefined' || !PIXI.Application) {
+        console.warn('PIXI 未加载，跳过 Live2D 演示');
+        return;
+      }
+
+      const canvasEl = document.getElementById('live2d-canvas');
+      if (!canvasEl) return;
+
+      const app = new PIXI.Application({
+        view: canvasEl,
+        width: 1100,
+        height: 520,
+        backgroundAlpha: 0,
+        autoDensity: true,
+        resolution: window.devicePixelRatio || 1,
+      });
+      live2dState.app = app;
+
+      // 鼠标跟随
+      app.view.addEventListener('mousemove', e => {
+        const rect = app.view.getBoundingClientRect();
+        live2dState.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        live2dState.mouseY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+      });
+
+      // Ticker: 呼吸
+      let breathTime = 0;
+      app.ticker.add(delta => {
+        if (!live2dState.model) return;
+        breathTime += delta * 0.02;
+        if (live2dState.autoBreath && !live2dState.manualOverride['Breath']) {
+          const v = (Math.sin(breathTime) + 1) / 2;
+          live2dState.model.internalModel.coreModel.setParameterValueById('ParamBreath', v);
+          const el = document.getElementById('paramBreath');
+          if (el) el.value = v;
+          const vel = document.getElementById('valBreath');
+          if (vel) vel.textContent = v.toFixed(2);
+        }
+      });
+
+      // Ticker: 眨眼
+      let blinkTimer = 0;
+      let nextBlink = 3000;
+      app.ticker.add(delta => {
+        if (!live2dState.model || !live2dState.autoBlink) return;
+        blinkTimer += delta * 16;
+        if (blinkTimer >= nextBlink) {
+          const blinkStep = (phase) => {
+            if (!live2dState.model || !live2dState.autoBlink) return;
+            if (phase < 0.5) {
+              const v = 1 - phase * 2;
+              live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
+              live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
+            } else if (phase < 1) {
+              const v = (phase - 0.5) * 2;
+              live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', v);
+              live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', v);
+            }
+          };
+          let phase = 0;
+          const blinkInterval = setInterval(() => {
+            phase += 0.15;
+            if (phase >= 1) {
+              clearInterval(blinkInterval);
+              if (live2dState.model) {
+                live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', 1);
+                live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeROpen', 1);
+                const el = document.getElementById('paramEyeLOpen');
+                if (el) el.value = 1;
+                const er = document.getElementById('paramEyeROpen');
+                if (er) er.value = 1;
+                const vl = document.getElementById('valEyeLOpen');
+                if (vl) vl.textContent = '1.00';
+                const vr = document.getElementById('valEyeROpen');
+                if (vr) vr.textContent = '1.00';
+              }
+              return;
+            }
+            blinkStep(phase);
+          }, 30);
+          blinkTimer = 0;
+          nextBlink = 2000 + Math.random() * 4000;
+        }
+      });
+
+      // Ticker: 鼠标跟随
+      app.ticker.add(() => {
+        if (!live2dState.model || !live2dState.autoTracking) return;
+        if (!live2dState.manualOverride['AngleX']) {
+          const targetX = live2dState.mouseX * 30;
+          const curX = live2dState.model.internalModel.coreModel.getParameterValueById('ParamAngleX');
+          const newX = curX + (targetX - curX) * 0.1;
+          live2dState.model.internalModel.coreModel.setParameterValueById('ParamAngleX', newX);
+          const el = document.getElementById('paramAngleX');
+          if (el) el.value = newX;
+          const vel = document.getElementById('valAngleX');
+          if (vel) vel.textContent = Math.round(newX);
+        }
+        if (!live2dState.manualOverride['AngleY']) {
+          const targetY = -live2dState.mouseY * 30;
+          const curY = live2dState.model.internalModel.coreModel.getParameterValueById('ParamAngleY');
+          const newY = curY + (targetY - curY) * 0.1;
+          live2dState.model.internalModel.coreModel.setParameterValueById('ParamAngleY', newY);
+          const el = document.getElementById('paramAngleY');
+          if (el) el.value = newY;
+          const vel = document.getElementById('valAngleY');
+          if (vel) vel.textContent = Math.round(newY);
+        }
+        const eyeBallX = live2dState.mouseX;
+        const eyeBallY = -live2dState.mouseY;
+        live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', eyeBallX);
+        live2dState.model.internalModel.coreModel.setParameterValueById('ParamEyeBallY', eyeBallY);
+      });
+
+      // 加载模型
+      if (PIXI.live2d && PIXI.live2d.Live2DModel) {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json';
+        PIXI.live2d.Live2DModel.from(MODEL_URL).then(model => {
+          const loading = document.getElementById('loading');
+          if (loading) loading.style.display = 'none';
+          live2dState.model = model;
+          model.scale.set(0.4);
+          model.anchor.set(0.5, 0.5);
+          model.x = app.screen.width / 2;
+          model.y = app.screen.height / 2 + 30;
+          app.stage.addChild(model);
+
+          model.on('hit', hitAreas => {
+            if (hitAreas.includes('body')) {
+              model.motion('tap_body');
+              showToast('👋 点击身体');
+            } else if (hitAreas.includes('head')) {
+              model.expression();
+              showToast('👆 点击头部 → 切换表情');
+            }
+          });
+
+          showToast('✅ 模型加载完成 · 移动鼠标试试');
+        }).catch(err => {
+          const loading = document.getElementById('loading');
+          if (loading) loading.innerHTML = '<div>❌ 模型加载失败 · 请刷新重试</div>';
+          console.error(err);
+        });
+      } else {
+        const loading = document.getElementById('loading');
+        if (loading) loading.innerHTML = '<div>ℹ️ Live2D 插件未加载 · 其他功能正常可用</div>';
+      }
+    } catch (e) {
+      console.warn('Live2D 初始化失败，跳过：', e.message);
+      const loading = document.getElementById('loading');
+      if (loading) loading.innerHTML = '<div>ℹ️ 此浏览器不支持 WebGL · 其他功能正常可用</div>';
+    }
+  })();
 </script>
 </body>
 </html>
