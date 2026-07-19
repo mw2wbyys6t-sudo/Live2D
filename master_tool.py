@@ -56,6 +56,8 @@ Examples:
     parser.add_argument("--no-layer", action="store_true", help="Skip layer separation")
     parser.add_argument("--rig", action="store_true",
                         help="Run automatic rigging after layer separation")
+    parser.add_argument("--pet", action="store_true",
+                        help="Generate desktop pet package (full workflow)")
 
     args = parser.parse_args()
 
@@ -103,6 +105,39 @@ Examples:
         parser.print_help()
         print("\nError: Provide a prompt or use --input with --layer-only", file=sys.stderr)
         sys.exit(1)
+
+    if args.pet:
+        from live2d.workflow import WorkflowEngine
+        from live2d.logger import get_logger
+        log = get_logger("master_tool")
+        log.section(FULL_VERSION_STRING)
+        
+        provider = None if args.provider == "auto" else args.provider
+        out_dir = args.output or str(Path(_PROJECT_ROOT) / "output")
+        
+        engine = WorkflowEngine(
+            output_dir=out_dir,
+            k_clusters=args.k,
+            provider=provider,
+            width=args.width,
+            height=args.height,
+        )
+        result = engine.run(
+            prompt=args.prompt,
+            deploy_desktop=True,
+        )
+        
+        if result.get("success"):
+            pet_info = result.get("steps", {}).get("pet", {})
+            print(f"\n[OK] Desktop pet generated!")
+            if pet_info.get("package_dir"):
+                print(f"     Package: {pet_info['package_dir']}")
+                print(f"     Run: {Path(pet_info['package_dir']) / 'run_pet.sh'}")
+            print(f"     Output dir: {result.get('output_dir')}")
+        else:
+            print(f"\n[ERROR] Failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     from live2d.image_gen.router import get_router
     from live2d.logger import get_logger

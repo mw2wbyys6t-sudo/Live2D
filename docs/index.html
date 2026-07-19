@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Live2D Master Agent - AI 自动生成 Live2D 模型</title>
+<title>AI 桌宠生成器 - 一句话生成你的桌面伙伴</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
@@ -774,20 +774,20 @@
 
 <!-- ============ Hero ============ -->
 <div class="hero">
-  <h1>🎭 Live2D Master Agent</h1>
-  <p class="subtitle">从一张图到可动 Live2D 模型 · AI 自动拆层 + 自动 Rigging</p>
+  <h1>🎭 AI 桌宠生成器</h1>
+  <p class="subtitle">一句话生成你的专属桌面伙伴 · 会眨眼 · 会呼吸 · 会跟着鼠标看</p>
   <div class="hero-cta">
     <a href="#trial" class="btn-cta btn-cta-primary">
-      🚀 立即在线试用
+      🚀 立即在线体验
     </a>
-    <a href="https://github.com/mw2wbyys6t-sudo/Live2D/raw/main/examples/demo-output/rigged/character.model3.json" class="btn-cta btn-cta-secondary" download>
-      ⬇ 下载真实产物
+    <a href="https://github.com/mw2wbyys6t-sudo/Live2D" class="btn-cta btn-cta-secondary" target="_blank">
+      📦 GitHub 仓库
     </a>
   </div>
   <div class="badges">
-    <span class="badge badge-green">✓ 279 Tests Passed</span>
-    <span class="badge badge-purple">Phase 2: Auto-Rigging</span>
-    <span class="badge badge-blue">Cubism 5 Compatible</span>
+    <span class="badge badge-green">✓ 149 Tests Passed</span>
+    <span class="badge badge-purple">🤖 AI 生成</span>
+    <span class="badge badge-blue">💻 桌面桌宠</span>
     <span class="badge badge-pink">Open Source MIT</span>
   </div>
 </div>
@@ -795,7 +795,7 @@
 <!-- ============ 在线试用 ============ -->
 <div class="section" id="trial">
   <h2 class="section-title">🎯 立即在线试用</h2>
-  <p class="section-subtitle">在浏览器内直接生成 Live2D 风格立绘 · 无需后端 · Pollinations 免费 API · 完全前端运行</p>
+  <p class="section-subtitle">在浏览器内直接生成你的桌宠角色 · Pollinations 免费 API · 无需安装 · 实时预览动画效果</p>
 
   <div class="trial-box">
     <!-- 左侧：输入区 -->
@@ -958,19 +958,19 @@
   </div>
 </div>
 
-<!-- ============ Live2D 实时演示 ============ -->
+<!-- ============ 桌宠动画预览 ============ -->
 <div class="section">
-  <h2 class="section-title">🎭 Live2D 实时演示</h2>
-  <p class="section-subtitle">鼠标移到模型上 · 视线会跟随 · 点击头部/身体有互动</p>
+  <h2 class="section-title">🎭 桌宠动画预览</h2>
+  <p class="section-subtitle">鼠标移到模型上 · 视线会跟随 · 点击有互动 · 这就是桌宠的效果</p>
 
   <div class="canvas-wrapper">
     <div class="canvas-label">
-      模型: <strong>Haru</strong> (Live2D 官方样例) · 我们的 AI 产物可直接导入 Cubism Editor
+      演示模型: <strong>Haru</strong> (Live2D 官方样例) · 你的 AI 生成角色也会有类似的动画效果
     </div>
     <canvas id="live2d-canvas"></canvas>
     <div class="loading" id="loading">
       <div class="loading-spinner"></div>
-      <div>加载 Live2D 模型中...</div>
+      <div>加载演示模型中...</div>
     </div>
   </div>
 </div>
@@ -1043,46 +1043,46 @@
 <!-- ============ 核心能力 ============ -->
 <div class="section">
   <h2 class="section-title">✨ 核心能力</h2>
-  <p class="section-subtitle">Phase 1 + Phase 2 已实现 · Phase 3 开发中</p>
+  <p class="section-subtitle">AI 生成 + 自动分层 + 桌宠动画 · 全部真实可用</p>
 
   <div class="feature-grid">
     <div class="feature-card">
       <div class="feature-icon">🎨</div>
       <div class="feature-title">AI 图像生成</div>
-      <div class="feature-desc">一句话生成角色立绘，支持 Pollinations / Seedream / SenseNova 多家 Provider</div>
+      <div class="feature-desc">一句话生成角色立绘，支持 Pollinations（免费）/ Seedream / SenseNova 多家 Provider</div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">✂️</div>
       <div class="feature-title">自动分层</div>
-      <div class="feature-desc">K-means 颜色聚类自动拆层，12-15 层精准分离，无需手工处理</div>
+      <div class="feature-desc">K-means 颜色聚类自动拆层，12-15 层颜色分离，可导出 PSD 进一步编辑</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🔗</div>
-      <div class="feature-title">52 层标准映射</div>
-      <div class="feature-desc">自动映射到 Live2D Cubism 52 层官方标准，开箱即用</div>
+      <div class="feature-icon">👁</div>
+      <div class="feature-title">桌宠动画</div>
+      <div class="feature-desc">眨眼 / 呼吸 / 身体摇摆 / 头发摆动 / 鼠标跟随，桌面窗口透明置顶</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🧬</div>
-      <div class="feature-title">自动 ArtMesh</div>
-      <div class="feature-desc">Delaunay 三角剖分自动生成网格，轮廓提取 + 内部点填充</div>
+      <div class="feature-icon">😊</div>
+      <div class="feature-title">表情系统</div>
+      <div class="feature-desc">微笑 / 惊讶 / 生气 等基础表情，点击互动触发</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🏗️</div>
-      <div class="feature-title">变形器层级</div>
-      <div class="feature-desc">自动构建 Root → Head/Body → Face/Eye/Mouth 完整 Warp Deformer 树</div>
+      <div class="feature-icon">🖱️</div>
+      <div class="feature-title">丰富交互</div>
+      <div class="feature-desc">拖拽移动 / 点击互动 / 自动漫游 / 右键菜单 / 多角色切换</div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📦</div>
-      <div class="feature-title">model3.json 导出</div>
-      <div class="feature-desc">导出 Cubism 5 兼容格式：参数/物理/表情/纹理，直接导入编辑器</div>
+      <div class="feature-icon">💻</div>
+      <div class="feature-title">桌面桌宠</div>
+      <div class="feature-desc">Windows 双击运行，透明窗口置顶，开机自启，不占工作区</div>
     </div>
   </div>
 </div>
 
 <!-- ============ Footer ============ -->
 <div class="footer">
-  <p>🎭 Live2D Master Agent · <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank">GitHub</a> · MIT License</p>
-  <p style="margin-top:8px">AI 产物展示 = 真实生成 · Live2D 演示模型 = Live2D 官方样例 Haru</p>
+  <p>🎭 AI 桌宠生成器 · <a href="https://github.com/mw2wbyys6t-sudo/Live2D" target="_blank">GitHub</a> · MIT License</p>
+  <p style="margin-top:8px">演示模型 = Live2D 官方样例 Haru · 你的 AI 生成角色将有类似动画效果</p>
 </div>
 
 <div class="toast" id="toast"></div>

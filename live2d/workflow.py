@@ -268,7 +268,7 @@ class WorkflowEngine:
             # === Step 7: Desktop pet (optional) ===
             if deploy_desktop:
                 self._set_state("pet_deploy", "Creating desktop pet package", 95)
-                pet_result = self._create_pet(layers_output)
+                pet_result = self._create_pet(layers_output, layers_with_parts)
                 result["steps"]["pet"] = pet_result
 
             self._set_state("done", "Workflow complete!", 100)
@@ -341,11 +341,26 @@ class WorkflowEngine:
 
         return result
 
-    def _create_pet(self, layers_dir: str) -> Dict:
-        """Create desktop pet package."""
+    def _create_pet(self, layers_dir: str, layers_with_parts: Optional[List[Dict]] = None) -> Dict:
+        """Create desktop pet package.
+        
+        Args:
+            layers_dir: Directory containing layer PNGs
+            layers_with_parts: List of layer info dicts with 'name' and 'part_name' keys
+        """
         try:
             animator = DesktopPetAnimator(layers_dir)
             animator.load_layers()
+            
+            if layers_with_parts:
+                part_mapping = {}
+                for info in layers_with_parts:
+                    path = info.get("path", "")
+                    name = info.get("name") or Path(path).stem
+                    part_name = info.get("part_name", "未分类")
+                    part_mapping[name] = part_name
+                animator.apply_part_mapping(part_mapping)
+            
             pet_output = str(Path(layers_dir).parent / "pet_packages")
             return animator.create_pet_package(pet_output)
         except Exception as e:
