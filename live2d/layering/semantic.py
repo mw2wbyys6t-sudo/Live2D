@@ -74,36 +74,48 @@ class SemanticLayerer:
         self._has_model = False
 
     def _load_model(self):
-        """Load anime-segmentation model with graceful fallback."""
+        """Load anime-segmentation model with graceful fallback.
+        
+        Note: anime-segmentation is a HuggingFace model repo, not a package.
+        We use segment-anything (SAM) library to load the fine-tuned weights.
+        """
         try:
-            from anime_segmentation import SamAutomaticMaskGenerator, sam_model_registry
+            # Try segment-anything first (the correct way)
+            from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
             import torch
 
-            log.info("Loading anime-segmentation model...")
+            log.info("Loading anime-segmentation SAM model...")
             
             model_type = "vit_h"
             sam_checkpoint = None
             
-            for path in [
-                os.path.expanduser("~/.cache/huggingface/hub/models--anime-segmentation--sam-vit-huge-anime/model.safetensors"),
+            # Check common cache locations
+            possible_paths = [
+                os.path.expanduser("~/.cache/huggingface/hub/models--anime-segmentation--sam-vit-huge-anime/snapshots/*/sam_vit_h_anime.pth"),
                 os.path.expanduser("~/.cache/anime-segmentation/sam_vit_h_anime.pth"),
-            ]:
-                if os.path.exists(path):
-                    sam_checkpoint = path
+                os.path.expanduser("~/models/sam_vit_h_anime.pth"),
+            ]
+            
+            import glob
+            for pattern in possible_paths:
+                matches = glob.glob(pattern)
+                if matches:
+                    sam_checkpoint = matches[0]
                     break
 
             if sam_checkpoint is None:
-                log.info("Downloading anime-segmentation model...")
-                from huggingface_hub import snapshot_download
+                log.info("Downloading anime-segmentation model from HuggingFace...")
                 try:
-                    cache_dir = snapshot_download(
-                        "anime-segmentation/sam-vit-huge-anime",
+                    from huggingface_hub import hf_hub_download
+                    sam_checkpoint = hf_hub_download(
+                        repo_id="anime-segmentation/sam-vit-huge-anime",
+                        filename="sam_vit_h_anime.pth",
                         local_dir=os.path.expanduser("~/.cache/anime-segmentation"),
-                        local_dir_use_symlinks=False,
                     )
-                    sam_checkpoint = os.path.join(cache_dir, "model.safetensors")
+                    log.info(f"Model downloaded to: {sam_checkpoint}")
                 except Exception as e:
                     log.warning(f"Failed to download model: {e}")
+                    log.info("Will fall back to K-means layering")
                     self._has_model = False
                     return
 
@@ -111,19 +123,22 @@ class SemanticLayerer:
             if self.device != "auto":
                 device = self.device
 
+            log.info(f"Loading SAM model from {sam_checkpoint} on {device}...")
             sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
             sam.to(device=device)
             
             self._mask_generator = SamAutomaticMaskGenerator(sam)
             self._has_model = True
-            log.success(f"anime-segmentation loaded on {device}")
+            log.success(f"anime-segmentation SAM model loaded on {device}")
 
         except ImportError as e:
-            log.warning(f"anime-segmentation not installed: {e}")
+            log.warning(f"segment-anything not installed: {e}")
+            log.info("Install with: pip install segment-anything")
             log.info("Falling back to K-means layering")
             self._has_model = False
         except Exception as e:
             log.warning(f"Failed to load anime-segmentation: {e}")
+            log.info("Falling back to K-means layering")
             self._has_model = False
 
     def _segment_with_sam(self, image: Image.Image) -> List[Dict]:

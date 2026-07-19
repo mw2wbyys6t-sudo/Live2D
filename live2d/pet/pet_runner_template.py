@@ -149,41 +149,48 @@ def clamp(val, low, high):
 def lerp(a, b, t):
     return a + (b - a) * t
 
+def create_blush_surface(radius, intensity, base_color=(255, 180, 180)):
+    """Pre-render a blush surface for efficient blitting.
+    
+    Creates a circular gradient blush that can be reused each frame.
+    """
+    size = radius * 2 + 2
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    center = radius + 1
+    
+    for y in range(size):
+        for x in range(size):
+            dist = math.sqrt((x - center) ** 2 + (y - center) ** 2)
+            if dist <= radius:
+                falloff = 1 - (dist / radius)
+                alpha = int(255 * intensity * falloff * falloff * 0.7)
+                r = min(255, base_color[0])
+                g = min(255, base_color[1])
+                b = min(255, base_color[2])
+                surf.set_at((x, y), (r, g, b, alpha))
+    
+    return surf
+
 def draw_blush(screen, center_x, center_y, intensity, w, h):
+    """Draw blush circles on cheeks using pre-rendered surfaces.
+    
+    Uses efficient surface creation instead of per-pixel set_at.
+    """
     if intensity <= 0:
         return
-    blush_offset = w * 0.15
-    blush_radius = w * 0.12
-    alpha = int(255 * intensity * 0.7)
     
-    left_pos = (center_x - blush_offset, center_y + h * 0.1)
-    right_pos = (center_x + blush_offset, center_y + h * 0.1)
+    blush_radius = int(w * 0.12)
+    blush_offset = int(w * 0.15)
     
-    for x in range(int(left_pos[0]) - blush_radius, int(left_pos[0]) + blush_radius + 1):
-        for y in range(int(left_pos[1]) - blush_radius, int(left_pos[1]) + blush_radius + 1):
-            dist = math.sqrt((x - left_pos[0]) ** 2 + (y - left_pos[1]) ** 2)
-            if dist <= blush_radius:
-                falloff = 1 - (dist / blush_radius)
-                pixel_alpha = int(alpha * falloff * falloff)
-                if pixel_alpha > 0 and 0 <= x < w and 0 <= y < h:
-                    current_color = screen.get_at((x, y))
-                    new_r = min(255, current_color[0] + int(255 * 0.3 * falloff))
-                    new_g = min(255, current_color[1] + int(255 * 0.1 * falloff))
-                    new_b = min(255, current_color[2] + int(255 * 0.2 * falloff))
-                    screen.set_at((x, y), (new_r, new_g, new_b, current_color[3]))
+    left_x = int(center_x - blush_offset)
+    right_x = int(center_x + blush_offset)
+    cheek_y = int(center_y + h * 0.1)
     
-    for x in range(int(right_pos[0]) - blush_radius, int(right_pos[0]) + blush_radius + 1):
-        for y in range(int(right_pos[1]) - blush_radius, int(right_pos[1]) + blush_radius + 1):
-            dist = math.sqrt((x - right_pos[0]) ** 2 + (y - right_pos[1]) ** 2)
-            if dist <= blush_radius:
-                falloff = 1 - (dist / blush_radius)
-                pixel_alpha = int(alpha * falloff * falloff)
-                if pixel_alpha > 0 and 0 <= x < w and 0 <= y < h:
-                    current_color = screen.get_at((x, y))
-                    new_r = min(255, current_color[0] + int(255 * 0.3 * falloff))
-                    new_g = min(255, current_color[1] + int(255 * 0.1 * falloff))
-                    new_b = min(255, current_color[2] + int(255 * 0.2 * falloff))
-                    screen.set_at((x, y), (new_r, new_g, new_b, current_color[3]))
+    blush_surf = create_blush_surface(blush_radius, intensity)
+    bw, bh = blush_surf.get_size()
+    
+    screen.blit(blush_surf, (left_x - bw // 2, cheek_y - bh // 2))
+    screen.blit(blush_surf, (right_x - bw // 2, cheek_y - bh // 2))
 
 def main():
     pygame.init()
