@@ -28,6 +28,7 @@ from live2d.config import config
 from live2d.logger import get_logger
 from live2d.image_gen.router import ProviderRouter, get_router
 from live2d.layering.kmeans import KMeansLayerer
+from live2d.layering.semantic import SemanticLayerer
 from live2d.layering.layers52 import Layer52Generator
 from live2d.layering.part_identifier import PartIdentifier
 from live2d.psd.creator import PSDCreator
@@ -57,6 +58,7 @@ class WorkflowEngine:
         provider: Optional[str] = None,
         width: int = 1024,
         height: int = 1024,
+        layer_method: str = "semantic",
     ):
         self.output_dir = Path(output_dir or config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -64,11 +66,15 @@ class WorkflowEngine:
         self.provider_name = provider
         self.width = width
         self.height = height
+        self.layer_method = layer_method
 
         # Initialize components
         self.router = get_router(config)
         self.qa_engine = QAEngine()
-        self.kmeans_layerer = KMeansLayerer(k_clusters=k_clusters)
+        if layer_method == "semantic":
+            self.layerer = SemanticLayerer(output_dir=str(self.output_dir))
+        else:
+            self.layerer = KMeansLayerer(k_clusters=k_clusters)
         self.layer52_gen = Layer52Generator()
         self.psd_creator = PSDCreator()
         self.part_identifier = PartIdentifier()
@@ -203,9 +209,9 @@ class WorkflowEngine:
             log.info("Image optimized: background removed, contrast enhanced")
 
             # === Step 4: Layer separation ===
-            self._set_state("layering", f"K-means layering (k={self.k_clusters})", 60)
+            self._set_state("layering", f"Semantic layering (method={self.layer_method})", 60)
             layers_output = str(self.output_dir / f"layers_{timestamp}")
-            layer_result = self.kmeans_layerer.layer(optimized_img, output_dir=layers_output)
+            layer_result = self.layerer.layer(optimized_img, output_dir=layers_output)
 
             # Identify parts
             layers_with_parts = self.part_identifier.identify_layers(
@@ -376,10 +382,16 @@ def run_workflow(
     deploy_desktop: bool = False,
     k_clusters: int = 12,
     provider: Optional[str] = None,
+    layer_method: str = "semantic",
     **kwargs
 ) -> Dict:
     """Run the Live2D workflow with default settings."""
-    engine = WorkflowEngine(output_dir=output_dir, k_clusters=k_clusters, provider=provider)
+    engine = WorkflowEngine(
+        output_dir=output_dir,
+        k_clusters=k_clusters,
+        provider=provider,
+        layer_method=layer_method,
+    )
     return engine.run(prompt=prompt, input_image=input_image, deploy_desktop=deploy_desktop, **kwargs)
 
 
@@ -391,6 +403,8 @@ if __name__ == "__main__":
     parser.add_argument("--output", "-o", help="Output directory")
     parser.add_argument("--deploy-desktop", action="store_true", help="Create desktop pet")
     parser.add_argument("--k", type=int, default=12, help="K-means clusters (default: 12)")
+    parser.add_argument("--layer-method", choices=["semantic", "kmeans"],
+                        default="semantic", help="Layer separation method")
     parser.add_argument("--provider", choices=["pollinations", "sensenova", "seedream", "auto"],
                         default="auto", help="Image provider")
     parser.add_argument("--width", type=int, default=1024)
@@ -402,9 +416,14 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(1)
 
-    wf = WorkflowEngine(output_dir=args.output, k_clusters=args.k,
-                        provider=None if args.provider == "auto" else args.provider,
-                        width=args.width, height=args.height)
+    wf = WorkflowEngine(
+        output_dir=args.output,
+        k_clusters=args.k,
+        provider=None if args.provider == "auto" else args.provider,
+        width=args.width,
+        height=args.height,
+        layer_method=args.layer_method,
+    )
     result = wf.run(
         prompt=args.prompt,
         input_image=args.input,

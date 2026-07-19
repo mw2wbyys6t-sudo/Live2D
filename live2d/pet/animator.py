@@ -79,12 +79,73 @@ class DesktopPetAnimator:
         "未分类": "body_static",
     }
 
+    # English part name -> animation group mapping
+    # Used when semantic layerer provides English part names
+    ENGLISH_PART_TO_GROUP = {
+        "hair": "hair_front",
+        "hair_front": "hair_front",
+        "hair_back": "hair_back",
+        "face": "face",
+        "skin": "face",
+        "eyes": "eyes",
+        "eyebrows": "eyebrows",
+        "mouth": "mouth",
+        "clothes": "body_swing",
+        "accessories": "body_static",
+        "other": "body_static",
+        "background": "body_static",
+    }
+
     EXPRESSIONS = {
-        "normal": {"mouth_scale": 1.0, "eye_open": 1.0, "blush": False},
-        "happy": {"mouth_scale": 1.1, "eye_open": 0.7, "blush": True, "mouth_width": 1.1},
-        "shy": {"mouth_scale": 0.9, "eye_open": 0.6, "blush": True},
-        "surprised": {"mouth_scale": 1.3, "eye_open": 1.2, "mouth_width": 1.2},
-        "sleepy": {"mouth_scale": 0.8, "eye_open": 0.3, "blush": False},
+        "normal": {
+            "mouth_scale_y": 1.0, "mouth_scale_x": 1.0,
+            "eye_open": 1.0, "eye_scale_x": 1.0,
+            "eyebrow_angle": 0.0, "eyebrow_offset_y": 0.0,
+            "blush": False, "blush_intensity": 0.0,
+            "face_offset_y": 0.0, "face_offset_x": 0.0,
+        },
+        "happy": {
+            "mouth_scale_y": 1.15, "mouth_scale_x": 1.1,
+            "eye_open": 0.7, "eye_scale_x": 0.9,
+            "eyebrow_angle": -0.15, "eyebrow_offset_y": 3.0,
+            "blush": True, "blush_intensity": 0.6,
+            "face_offset_y": 2.0, "face_offset_x": 0.0,
+        },
+        "shy": {
+            "mouth_scale_y": 0.85, "mouth_scale_x": 0.9,
+            "eye_open": 0.5, "eye_scale_x": 0.8,
+            "eyebrow_angle": -0.2, "eyebrow_offset_y": 2.0,
+            "blush": True, "blush_intensity": 0.8,
+            "face_offset_y": -1.0, "face_offset_x": 0.0,
+        },
+        "surprised": {
+            "mouth_scale_y": 1.3, "mouth_scale_x": 1.15,
+            "eye_open": 1.2, "eye_scale_x": 1.1,
+            "eyebrow_angle": 0.2, "eyebrow_offset_y": 5.0,
+            "blush": False, "blush_intensity": 0.0,
+            "face_offset_y": 3.0, "face_offset_x": 0.0,
+        },
+        "sleepy": {
+            "mouth_scale_y": 0.7, "mouth_scale_x": 1.0,
+            "eye_open": 0.25, "eye_scale_x": 1.0,
+            "eyebrow_angle": 0.1, "eyebrow_offset_y": -2.0,
+            "blush": False, "blush_intensity": 0.0,
+            "face_offset_y": -2.0, "face_offset_x": 0.0,
+        },
+        "angry": {
+            "mouth_scale_y": 0.7, "mouth_scale_x": 0.85,
+            "eye_open": 0.9, "eye_scale_x": 1.1,
+            "eyebrow_angle": 0.3, "eyebrow_offset_y": -3.0,
+            "blush": True, "blush_intensity": 0.4,
+            "face_offset_y": -1.0, "face_offset_x": 0.0,
+        },
+        "sad": {
+            "mouth_scale_y": 0.9, "mouth_scale_x": 0.85,
+            "eye_open": 0.8, "eye_scale_x": 0.95,
+            "eyebrow_angle": -0.1, "eyebrow_offset_y": -2.0,
+            "blush": False, "blush_intensity": 0.0,
+            "face_offset_y": -3.0, "face_offset_x": 0.0,
+        },
     }
 
     def __init__(self, layers_dir: str, config: Optional[Dict] = None):
@@ -124,18 +185,23 @@ class DesktopPetAnimator:
         return self.layers
 
     def apply_part_mapping(self, part_mapping: Dict[str, str]) -> None:
-        """Apply Chinese part name mapping to reclassify layers.
-
+        """Apply part name mapping to reclassify layers.
+        
         Args:
-            part_mapping: dict of {layer_name: chinese_part_name}
+            part_mapping: dict of {layer_name: part_name}
+            Part names can be Chinese (from part_identifier) or English (from semantic layerer)
         """
         for layer in self.layers:
             name = layer["name"]
             if name in part_mapping:
-                chinese_name = part_mapping[name]
-                group = self.CHINESE_PART_TO_GROUP.get(chinese_name, "body_static")
+                part_name = part_mapping[name]
+                
+                group = self.CHINESE_PART_TO_GROUP.get(part_name)
+                if group is None:
+                    group = self.ENGLISH_PART_TO_GROUP.get(part_name, "body_static")
+                
                 layer["group"] = group
-                layer["part_name"] = chinese_name
+                layer["part_name"] = part_name
 
         # Rebuild classified groups
         self.classified = {}
@@ -191,7 +257,7 @@ class DesktopPetAnimator:
             "fps": self.config["fps"],
             "layer_groups": {g: [l["name"] for l in layers] for g, layers in self.classified.items()},
             "animations": self.config,
-            "expressions": list(self.EXPRESSIONS.keys()),
+            "expressions": self.EXPRESSIONS,
         }
         config_path = pkg_dir / "pet_config.json"
         with open(config_path, 'w', encoding='utf-8') as f:

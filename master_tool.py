@@ -58,6 +58,8 @@ Examples:
                         help="Run automatic rigging after layer separation")
     parser.add_argument("--pet", action="store_true",
                         help="Generate desktop pet package (full workflow)")
+    parser.add_argument("--layer-method", choices=["semantic", "kmeans"],
+                        default="semantic", help="Layer separation method")
 
     args = parser.parse_args()
 
@@ -76,8 +78,11 @@ Examples:
     if args.layer_only:
         if not args.input:
             parser.error("--layer-only requires --input <image_path>")
-        from live2d.layering.kmeans import layer_image_file
-        result = layer_image_file(args.input, args.output, k_clusters=args.k)
+        if args.layer_method == "semantic":
+            from live2d.layering.semantic import layer_image_file
+        else:
+            from live2d.layering.kmeans import layer_image_file
+        result = layer_image_file(args.input, args.output)
         print(f"\nLayer separation complete: {result['layer_count']} layers")
 
         if args.rig:
@@ -121,6 +126,7 @@ Examples:
             provider=provider,
             width=args.width,
             height=args.height,
+            layer_method=args.layer_method,
         )
         result = engine.run(
             prompt=args.prompt,
@@ -175,8 +181,11 @@ Examples:
         print(f"     Time: {result.elapsed_seconds:.1f}s")
 
         if not args.no_layer:
-            print("\nRunning v6 K-means layer separation...")
-            from live2d.layering.kmeans import layer_image_file
+            print(f"\nRunning {args.layer_method} layer separation...")
+            if args.layer_method == "semantic":
+                from live2d.layering.semantic import layer_image_file
+            else:
+                from live2d.layering.kmeans import layer_image_file
             layer_result = layer_image_file(result.image_path, k_clusters=args.k)
             print(f"[OK] {layer_result['layer_count']} layers in {layer_result['output_dir']}")
 
