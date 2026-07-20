@@ -70,9 +70,9 @@ class RiggingPipeline:
             indices = mesh["indices"]
             mesh_meta[name] = {
                 "vertex_count": int(len(vertices)),
-                "triangle_count": int(len(indices) // 3),
+                "triangle_count": int(len(indices)),
                 "vertices": [[float(v[0]), float(v[1])] for v in vertices],
-                "indices": [int(i) for i in indices],
+                "indices": [[int(v) for v in tri] for tri in indices],
             }
         guide_path.write_text(json.dumps(mesh_meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
