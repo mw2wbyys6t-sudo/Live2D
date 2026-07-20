@@ -37,6 +37,7 @@ type SDWebUIConfig struct {
 type PythonConfig struct {
 	PythonPath   string `json:"python_path"`
 	ScriptsDir   string `json:"scripts_dir"`
+	TimeoutSec   int    `json:"timeout_sec"` // P1-4: configurable Python script timeout
 }
 
 type OutputConfig struct {
@@ -57,8 +58,10 @@ type CacheConfig struct {
 }
 
 func DefaultConfig() *Config {
-	baseDir, _ := filepath.Abs(filepath.Join(".."))
-	
+	// Resolve project root relative to this file (api/config/config.go -> api/.. = project root)
+	baseDir, _ := filepath.Abs(filepath.Join("..", ".."))
+	scriptsDir := baseDir
+
 	return &Config{
 		Server: ServerConfig{
 			Host:                "0.0.0.0",
@@ -66,10 +69,10 @@ func DefaultConfig() *Config {
 			MaxRequestBodySize:  10 * 1024 * 1024, // 10MB
 			MaxHeaderBytes:      1 * 1024 * 1024,  // 1MB
 			ReadTimeout:         30 * time.Second,
-			WriteTimeout:        30 * time.Second,
+			WriteTimeout:        180 * time.Second, // P1-4: increased to 3min for image gen
 			ReadHeaderTimeout:   5 * time.Second,
 			IdleTimeout:         120 * time.Second,
-			AllowedOrigins:      []string{},
+			AllowedOrigins:      []string{"*"}, // P0-CORS: default permissive, configurable
 		},
 		SDWebUI: SDWebUIConfig{
 			BaseURL: "http://127.0.0.1:7860",
@@ -78,7 +81,8 @@ func DefaultConfig() *Config {
 		},
 		Python: PythonConfig{
 			PythonPath: "python3",
-			ScriptsDir: baseDir,
+			ScriptsDir: scriptsDir,
+			TimeoutSec: 120, // P1-4: default 2min, configurable
 		},
 		Output: OutputConfig{
 			BaseDir:     filepath.Join(baseDir, "output"),
@@ -92,26 +96,35 @@ func DefaultConfig() *Config {
 			Enabled:    1,
 			MaxEntries: 100,
 			MaxSizeMB:  100,
-			TTLSeconds: 3600, // 1小时
+			TTLSeconds: 3600,
 		},
 	}
 }
 
 func LoadConfig(path string) (*Config, error) {
 	cfg := DefaultConfig()
-	
+
 	if path == "" {
 		return cfg, nil
 	}
-	
+
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return cfg, nil
+		return cfg, nil // File not found is OK, use defaults
 	}
-	
+
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return cfg, err
 	}
-	
+
 	return cfg, nil
+}
+
+// GetPythonTimeout returns the Python timeout as time.Duration (P1-4)
+func (c *Config) GetPythonTimeout() time.Duration {
+	secs := c.Python.TimeoutSec
+	if secs <= 0 {
+		secs = 120 // default 2 minutes
+	}
+	return time.Duration(secs) * time.Second
 }
