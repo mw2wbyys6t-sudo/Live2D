@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge)](https://python.org)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge)](https://nextjs.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)]()
+[![License](https://img.shields.io/badge/License-CC%20BY%204.0-green?style=for-the-badge)](https://creativecommons.org/licenses/by/4.0/)
 [![Version](https://img.shields.io/badge/Version-10.0-ff69b4?style=for-the-badge)]()
 
 </div>
@@ -254,7 +254,28 @@ cd web && npm run build
 
 ## 📄 许可证
 
-MIT License — 可自由商用、修改、分发，保留版权声明即可。
+本项目采用 **[CC BY 4.0（知识共享 署名 4.0 国际）](https://creativecommons.org/licenses/by/4.0/deed.zh-hans)** 许可协议。
+
+### 你可以（自由创作）✅
+- **分享** — 在任何媒介以任何形式复制、发行本作品
+- **改编** — 修改、转换、二次创作、生成衍生作品（包括 Live2D 模型、角色形象、代码二次开发等）
+- **商用** — 允许将本作品及衍生作品用于商业目的
+
+### 你必须（保留产权）📌
+- **署名** — 必须保留原作者 **Live2D Master Agent Team** 的版权声明与署名
+- **标注许可** — 必须明确标注本作品采用的 CC BY 4.0 许可协议
+- **注明更改** — 若对作品进行了修改、二次创作，必须明确说明所做的更改
+
+### 产权声明 ©️
+- 本项目所有原始内容（代码、文档、模型、角色形象、视觉资产）的**著作权与产权归原作者 Live2D Master Agent Team 所有**
+- 任何形式的二次创作、分发、商用，均须在显著位置保留原版权声明
+- 衍生作品须继续以相同或兼容的署名许可协议发布
+
+> 简而言之：**保留我的署名与产权，欢迎你自由创作、改编、商用**。
+
+### 完整法律文本
+- 中文版：https://creativecommons.org/licenses/by/4.0/deed.zh-hans
+- 英文版：https://creativecommons.org/licenses/by/4.0/legalcode
 
 ---
 
