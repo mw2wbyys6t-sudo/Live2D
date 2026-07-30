@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge)](https://python.org)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge)](https://nextjs.org)
-[![License](https://img.shields.io/badge/License-CC%20BY--NC%204.0-orange?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC%202.0-orange?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/2.0/)
 [![Version](https://img.shields.io/badge/Version-10.0-ff69b4?style=for-the-badge)]()
 
 </div>
@@ -296,7 +296,7 @@ cd web && npm run build
 
 ## 🤝 如何贡献
 
-本项目采用 CC BY-NC 4.0 协议，**欢迎所有形式的非商业贡献**。
+本项目采用 **CC BY-NC 2.0 Generic** 协议，**欢迎所有形式的非商业贡献**（贡献即视为您同意以相同协议并入本项目；衍生贡献须保持 2.0 协议，不得升级至更宽松的 3.0/4.0）。
 
 ### 贡献方式
 1. **提交 Issue** — 反馈 Bug、功能建议、体验问题
@@ -352,25 +352,31 @@ cd web && npm run build
 
 ## 📄 许可证
 
-本项目采用 **[CC BY-NC 4.0（知识共享 署名-非商业性使用 4.0 国际）](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)** 许可协议。
+本项目采用 **[CC BY-NC 2.0 Generic（知识共享 署名-非商业性使用 2.0 通用版）](https://creativecommons.org/licenses/by-nc/2.0/deed.zh-hans)** 许可协议。
+相较于 4.0 版本，**2.0 版对再分发、修改注明、衍生发布的约束更严格**。
 
-### 许可义务（必须遵守）📌
+### 许可义务（必须遵守，2.0 法条要求）📌
 - **署名保留** — 必须保留原作者 **Live2D Master Agent Team** 的全部版权声明与署名，不得以任何方式删除、遮挡、篡改
-- **标注许可** — 在任何再分发、二次创作、衍生作品中，必须明确标注本作品采用的 CC BY-NC 4.0 许可协议，并提供协议链接
-- **注明更改** — 若对作品进行了修改、转换、二次创作，必须在显著位置明确说明所做的具体更改
+- **标注许可副本** — 在**每一份**再分发的作品或衍生作品中，**必须附带本许可协议的完整副本**或指向 https://creativecommons.org/licenses/by-nc/2.0/ 的**唯一且永久有效 URI**，不得仅口头提及
+- **注明更改（2.0 严格要求）** — 若对作品进行了修改、转换、二次创作，必须：① 明确说明**具体改了什么**（仅写"已修改"不够）；② 标注修改日期；③ 声明新作品与原作品的差异点；④ 在衍生作品的署名声明中注明"基于 Live2D Master Agent Team 的作品修改"
+- **衍生协议一致性（Share-Alike 原则，2.0 隐含更严格推导）** — 衍生作品**必须**继续采用「CC BY-NC 2.0」或经 CC 认可的**完全相同许可**，不得切换至更宽松的 3.0/4.0
 
-### 许可限制（禁止行为）🚫
-- **禁止商用** — 不得将本作品及任何衍生作品用于商业目的（包括但不限于付费下载、广告变现、售卖 Live2D 模型、付费 SaaS 服务、企业内部商业生产等）
-- **二次署名不可缺失** — 即使进行了二次创作或衍生开发，原作者署名仍须完整保留
+### 许可限制（禁止行为，2.0 法条禁止）🚫
+- **禁止商用** — 不得将本作品及任何衍生作品用于商业目的（包括但不限于付费下载、广告变现、售卖 Live2D 模型、付费 SaaS 服务、企业内部商业生产等）；2.0 版对"商业使用"的判定包括**间接获益与企业内部生产使用**
+- **二次署名不可缺失** — 即使进行了二次创作或衍生开发，原作者署名仍须**完整保留**且不得缩小或移至非显著位置
+- **禁止额外限制** — 不得对再分发或衍生作品施加任何**超出本协议的额外限制**（包括但不限于 DRM、额外付费解锁、禁止转发等条款）
+- **禁止技术手段规避** — 不得以技术措施限制或妨碍他人行使本协议授予的权利（包括复制、分发、修改）
 
 ### 产权声明 ©️
 - 本项目所有原始内容（包括但不限于源代码、文档、模型权重、生成算法、角色形象设计、视觉资产、前端交互）的**著作权与知识产权归原作者 Live2D Master Agent Team 所有**
-- 衍生作品须继续以相同或兼容的署名-非商业许可协议发布
-- 未经书面授权，任何单位或个人不得以本项目名义开展商业活动
+- 衍生作品须**继续采用 CC BY-NC 2.0 许可协议发布**（协议向下兼容 1.0，但禁止提升至 3.0/4.0 的更宽松版本）
+- 未经书面授权，任何单位或个人不得以本项目名义开展商业活动；如需商用许可请联系产权所有者获取 Dual License 书面授权
+
+> 2.0 版与 4.0 版的关键区别提示：**2.0 对修改注明的粒度要求更具体、衍生协议一致性要求更严格（不可升级至 3.0/4.0）、判定商用时范围更广。**
 
 ### 完整法律文本
-- 中文版：https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans
-- 英文版：https://creativecommons.org/licenses/by-nc/4.0/legalcode
+- 中文版（Deed 摘要）：https://creativecommons.org/licenses/by-nc/2.0/deed.zh-hans
+- 英文版（Legal Code 法条原文）：https://creativecommons.org/licenses/by-nc/2.0/legalcode
 
 ---
 
