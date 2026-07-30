@@ -265,7 +265,8 @@ cd web && npm run build
 | [用户指南](docs/USER_GUIDE.md) | 完整功能使用说明 |
 | [常见问题](docs/FAQ.md) | 遇到问题先看这里 |
 | [已知局限](docs/LIMITATIONS.md) | 功能边界说明 |
-| [架构设计](docs/ARCHITECTURE.md) | 技术架构详解 |
+| [架构设计](docs/ARCHITECTURE.md) | 技术架构详解（流程图/数据流/选型） |
+| 🏛️ **[架构决策中心](docs/architecture/index.md)** | **Staff Engineer 出品：6 条核心 ADR + 系统图 + 10 上下文映射 + 16 条架构不变量 + 12 项风险登记册** |
 | [部署指南](docs/DEPLOY.md) | 云端/本地部署教程 |
 | [开发规范](docs/CODE_STANDARD.md) | 代码贡献指南 |
 
