@@ -134,7 +134,7 @@
 
 | ID | 标题 | 状态 | 日期 | 关键决策 | 本地校验路径 |
 |----|------|------|------|----------|-------------|
-| [**ADR-001**](adrs/ADR-001-license-cc-by-nc-4.0.md) | 许可协议选型 CC BY-NC 4.0 | Accepted | 2026-07-30 | 署名（BY）+ 非商业（NC）双强制；保留 Dual License 商用通道；禁止自制 License | `README.md` § 许可证 / `LICENSE` |
+| [**ADR-001**](adrs/ADR-001-license-cc-by-nc-4.0.md) | 许可协议选型（初版 CC BY-NC 4.0 → 2026-07-30 修订：降级至 CC BY-NC 2.0 Generic） | Accepted (Rev.2) | 2026-07-30 (Rev.2) | 署名（BY）+ 非商业（NC）+ 2.0 更严格的修改注明与衍生一致性要求；保留 Dual License 商用通道 | `README.md` § 许可证 / `LICENSE` |
 | [**ADR-002**](adrs/ADR-002-three-stack-python-go-next.md) | 三栈架构（Python+Go+Next.js） | Accepted | 2026-07-30 | Python=算法、Go=接入、Next=前端；Go→Python exec.CommandContext 桥；Docker 单容器双入口 | `requirements.txt` `api/go.mod` `web/package.json` `docker-compose.yml` |
 | [**ADR-003**](adrs/ADR-003-18-layer-order-amodal.md) | 18 层分层顺序 + 5 层 Amodal 补全 | Accepted | 2026-07-30 | 头皮→后发→…→特效（固定 18 序）；AMODAL_PARTS={hair_back, hair_mid, clothes_top, clothes_inner, neck} | `composer.py::STANDARD_LAYER_ORDER`、`AMODAL_PARTS` |
 | [**ADR-004**](adrs/ADR-004-face-tracker-mediapipe.md) | 面部捕捉（MediaPipe+EMA+RMS） | Accepted | 2026-07-30 | MediaPipe 468+iris；双指数 EMA + deadband；麦克风 RMS → ParamMouthOpenY 兜底 | `drivers/face_tracker/`、`drivers/audio/capture.py` |
@@ -173,7 +173,7 @@
 | **FF-12** | **桌宠启动时间** | `python -m core.cli pet` 到窗口出现 | ≤ 2.5s（SSD）/ ≤ 4s（HDD）| 本地脚本计时 | 每发版 | 最小化导入子集 | ADR-006 |
 | **FF-13** | **三栈构建总时长** | GitHub Actions 三 job 总墙钟 | ≤ 20 分钟 | Actions UI | 每次 PR | 优化缓存 / 并行度 | ADR-002 |
 | **FF-14** | **端到端生成耗时（CPU）** | Prompt → model3.zip 全流程（i7-12700）| ≤ 10 分钟 | 每周定时任务 | 每周 | 评估是否移除某个 Amodal 层 | ADR-003 |
-| **FF-15** | **License 与署名完整性** | 产出物（桌宠安装包、导出模型包、Web 构建包）内是否含 ADR-001 要求的署名文件 + License 文件 | 100% 包含，且文本与 CC BY-NC 4.0 全文一致 | Release 打包前钩子（待补）| 每次发版 | 阻断发布 | ADR-001 |
+| **FF-15** | **License 与署名完整性** | 产出物（桌宠安装包、导出模型包、Web 构建包）内是否含 ADR-001 (Rev.2) 要求的署名文件 + License 文件 | 100% 包含，且文本与 **CC BY-NC 2.0 Generic** 原文一致，并附带协议 URI `https://creativecommons.org/licenses/by-nc/2.0/` | Release 打包前钩子（待补）| 每次发版 | 阻断发布 | ADR-001 |
 | **FF-16** | **Go→Python 命令注入安全** | `validatePath` 通过 / 失败比例 + shell meta 字符逃逸检测 | 0 失败（任何失败即高危） | `services/python_bridge_test.go`（待补）| 每次 PR | 阻断合并 + 人工审查 | ADR-002 |
 
 ---
@@ -183,7 +183,7 @@
 | ID | 风险描述 | 可能性 L/M/H | 影响 L/M/H | 等级 | 缓解措施（Mitigation） | 负责人 | 关联 ADR / FF |
 |----|----------|-------------|-----------|------|------------------------|--------|--------------|
 | **R-01** | 外部 LLM/图像 Provider 大面中断或涨价 | **H**（市场常态） | M | **高危** | ① ADR-005 5 级降级（OpenAI→Claude→Ollama→模板）；② 图像 3 Provider 并联（Pollinations 免 Key→Seedream→SenseNova）；③ 本地推理路线（v11 Roadmap ComfyUI 集成） | 网关负责人 + 图像管线负责人 | ADR-005/FF-7/FF-9；ADR-002 |
-| **R-02** | 商用盗用（违反 CC BY-NC 4.0）| M（开源通病） | **H**（产权被侵蚀） | **高危** | ① License 文本写在桌宠启动页 + Web 底部；② 导出 model3.zip 内嵌 LICENSE.txt + 作者署名元数据；③ 关键生成流程打轻微不影响视觉的隐写水印（角色卡 hash 注入图层 alpha LSB）；④ README 保留商用授权联系通道（Dual License） | 产权所有者 | ADR-001/FF-15 |
+| **R-02** | 商用盗用（违反 **CC BY-NC 2.0 Generic**，2.0 判定商用范围比 4.0 更广）| M（开源通病） | **H**（产权被侵蚀） | **高危** | ① License 文本写在桌宠启动页 + Web 底部；② 导出 model3.zip 内嵌 LICENSE.txt（2.0 法条要求**每一份副本都带**）+ 作者署名元数据 + 协议 URI；③ 关键生成流程打轻微不影响视觉的隐写水印（角色卡 hash 注入图层 alpha LSB）；④ README 保留商用授权联系通道（Dual License）；⑤ 衍生作品禁止升级到 3.0/4.0，防止用户借更宽松条款逃脱 2.0 严格约束 | 产权所有者 | ADR-001/FF-15 |
 | **R-03** | PyGame / MediaPipe / MediaPipe 模型依赖协议变更 | L（ASF 2.0 稳定） | M | 中危 | ① requirements.txt 钉版本；② `scripts/download_models.py` hash 校验；③ ADR-004/006 强调 BaseTracker 与 GUI 抽象，替换成本低 | 驱动负责人 | ADR-004/ADR-006 |
 | **R-04** | 18 层共享内核腐化（语义分层和 Live2D 绑定错位）| M（随代码量增长概率↑） | **H**（整管线崩盘） | **高危** | ① FF-2 强制 1:1 契约；② `composer.py::STANDARD_LAYER_ORDER` 冻结，任何变动须改 ADR-003；③ 每次改绑定管线必跑 `test_layer_order_contract.py` | 图像管线负责人 + 绑定负责人 | ADR-003/FF-2 |
 | **R-05** | Go→Python 子进程命令注入（路径/参数污染）| L | **H** | 高危 | `python_bridge.go::validatePath` 黑正则 + `exec.CommandContext`（不通过 shell，天然防 `; &&`）；CI 注入用例；FF-16 阻断 | Go 后端负责人 | ADR-002/FF-16 |
