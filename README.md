@@ -7,10 +7,40 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge)](https://python.org)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge)](https://nextjs.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)]()
+[![License](https://img.shields.io/badge/License-CC%20BY--NC%204.0-orange?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Version](https://img.shields.io/badge/Version-10.0-ff69b4?style=for-the-badge)]()
 
 </div>
+
+---
+
+## 💡 项目简介
+
+Live2D Master Agent 是一款**面向人人的 AI 虚拟主播生产工具**。哪怕你没有任何绘画、建模、编程基础，只要一句话描述，就能在 3 分钟内从 0 到 1 产出一套**合规可二创的 Live2D Cubism4 虚拟角色**，并开箱即用地运行在桌面桌宠、VTuber 推流、AI 对话、VTube Studio 等个人与学习场景。
+
+项目从 **AI 图像生成 → 语义分层 → PSD 质检 → Live2D 自动绑定 → 实时面部捕捉 → LLM 对话 → 桌宠/工作台运行**，打通了一整条工业化流水线。核心技术栈为 **Python 内核 + Go API + Next.js 工作台**，全栈开源、模块化、可扩展。
+
+## 🎬 效果预览
+
+| 功能 | 效果说明 |
+|------|----------|
+| 🎨 **AI 生成角色** | 一句话 Prompt → 4096×4096 透明日系赛璐璐立绘 |
+| ✂️ **自动分层** | SAM+ISNet 语义分割，一键拆出 18 层 PSD（头发/五官/衣物…） |
+| 🦴 **自动绑定** | 输出完整 Cubism4 模型包，直接导入 VTube Studio / Live2D Viewer |
+| 🎯 **面部捕捉** | MediaPipe 468 关键点驱动，75ms 低延迟，支持麦克风嘴型联动 |
+| 💬 **AI 对话** | LLM + TTS + ASR 三合一，情绪分析联动表情与动作 |
+| 🖥️ **桌宠运行** | 跨平台透明悬浮窗，Windows/macOS/Linux 通吃 |
+
+> ⏳ 视频演示与示例模型包即将上线，敬请期待。
+
+## 🎯 适用场景
+
+- **个人 VTuber** — 零成本快速出道，无需画师与建模师
+- **独立创作者** — 为漫画、小说、游戏角色生成可互动 Live2D 形象
+- **AI 陪伴/对话** — 结合 LLM 打造有声音、有表情的 AI 桌宠
+- **二次元社区** — 社团活动、粉丝二创、虚拟偶像企划
+- **教学演示** — 高校/培训机构的虚拟讲师、数字人课堂
+- **MCN/公会** — 批量生产虚拟主播形象，快速搭建虚拟艺人矩阵
 
 ---
 
@@ -235,7 +265,8 @@ cd web && npm run build
 | [用户指南](docs/USER_GUIDE.md) | 完整功能使用说明 |
 | [常见问题](docs/FAQ.md) | 遇到问题先看这里 |
 | [已知局限](docs/LIMITATIONS.md) | 功能边界说明 |
-| [架构设计](docs/ARCHITECTURE.md) | 技术架构详解 |
+| [架构设计](docs/ARCHITECTURE.md) | 技术架构详解（流程图/数据流/选型） |
+| 🏛️ **[架构决策中心](docs/architecture/index.md)** | **Staff Engineer 出品：6 条核心 ADR + 系统图 + 10 上下文映射 + 16 条架构不变量 + 12 项风险登记册** |
 | [部署指南](docs/DEPLOY.md) | 云端/本地部署教程 |
 | [开发规范](docs/CODE_STANDARD.md) | 代码贡献指南 |
 
@@ -252,9 +283,94 @@ cd web && npm run build
 
 ---
 
+## 🗺️ 版本 Roadmap
+
+| 阶段 | 版本 | 核心方向 | 状态 |
+|------|------|----------|------|
+| 现在 | **v10.0** | 全流程打通（AI生成→分层→Live2D→驱动→对话→工作台） | ✅ 已发布 |
+| 近期 | v10.5 | 自定义画风 / 多角色换装编辑器 / VTube Studio 插件直连 | 🚧 开发中 |
+| 中期 | v11.0 | ComfyUI 工作流集成 / SDXL 本地推理 / 中文 ASR 优化 | 📋 规划中 |
+| 远期 | v12.0 | 3D VTuber 支持（VRM 导出）/ 实时动作捕捉（全身）/ 多模态输入 | 🔮 构思中 |
+
+> 💡 欢迎在 **Issues** 里提需求，每一条 Star 和 Issue 都是我们迭代的方向。
+
+## 🤝 如何贡献
+
+本项目采用 CC BY-NC 4.0 协议，**欢迎所有形式的非商业贡献**。
+
+### 贡献方式
+1. **提交 Issue** — 反馈 Bug、功能建议、体验问题
+2. **Pull Request** — 修复 Bug、新增功能、优化文档、完善测试
+3. **分享作品** — 用本项目生成的角色、模型、二创（保留署名即可）
+4. **文档翻译** — 英文/日文文档翻译校对
+5. **教程创作** — 视频教程、图文教程、使用心得
+
+### 贡献流程
+1. Fork 本仓库 → 创建分支 `git checkout -b feat/your-feature`
+2. 完成开发 → 确保测试通过 `pytest tests/` 与 `npm run build`
+3. 提交 PR → 附上改动说明与测试截图
+4. Code Review 通过 → 合并进主分支
+
+详细规范见 [docs/CODE_STANDARD.md](docs/CODE_STANDARD.md)。
+
+## 💬 社区与反馈
+
+| 渠道 | 说明 |
+|------|------|
+| **GitHub Issues** | Bug 反馈、功能建议、技术讨论 |
+| **Discussions** | 使用心得、作品分享、需求投票 |
+| **Wiki** | 常见问题、进阶教程、FAQ |
+
+> 遇到任何使用障碍，先看 [docs/FAQ.md](docs/FAQ.md) 与 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)，大多数问题都有现成解答。
+
+## 🙏 致谢
+
+感谢以下开源项目与社区为本项目提供了重要技术基础设施：
+
+- **MediaPipe** — 面部捕捉底层能力
+- **Segment Anything (Meta)** — 通用语义分割模型
+- **anime-segmentation** — 二次元专用抠图
+- **pixi-live2d-display** — Web 端 Live2D 渲染
+- **Open-LLM-VTuber** — AI VTuber 工程实践参考
+- **VTube Studio** — Live2D VTuber 行业标杆
+- **Pollinations** — 免费 AI 图像生成服务
+
+以及每一位 Star、Issue、PR 贡献者 ❤️。
+
+---
+
+## ⭐ 支持我们
+
+如果这个项目对你有用，欢迎给我们一个 **Star** ⭐，这是我们持续迭代的最大动力。
+
+同时欢迎：
+- 将本项目推荐给身边的 VTuber / 画师 / 二次元创作者
+- 在社交媒体分享你生成的角色（记得 tag 我们）
+- 提交 Issue 告诉我们你想要的功能
+
+---
+
 ## 📄 许可证
 
-MIT License — 可自由商用、修改、分发，保留版权声明即可。
+本项目采用 **[CC BY-NC 4.0（知识共享 署名-非商业性使用 4.0 国际）](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)** 许可协议。
+
+### 许可义务（必须遵守）📌
+- **署名保留** — 必须保留原作者 **Live2D Master Agent Team** 的全部版权声明与署名，不得以任何方式删除、遮挡、篡改
+- **标注许可** — 在任何再分发、二次创作、衍生作品中，必须明确标注本作品采用的 CC BY-NC 4.0 许可协议，并提供协议链接
+- **注明更改** — 若对作品进行了修改、转换、二次创作，必须在显著位置明确说明所做的具体更改
+
+### 许可限制（禁止行为）🚫
+- **禁止商用** — 不得将本作品及任何衍生作品用于商业目的（包括但不限于付费下载、广告变现、售卖 Live2D 模型、付费 SaaS 服务、企业内部商业生产等）
+- **二次署名不可缺失** — 即使进行了二次创作或衍生开发，原作者署名仍须完整保留
+
+### 产权声明 ©️
+- 本项目所有原始内容（包括但不限于源代码、文档、模型权重、生成算法、角色形象设计、视觉资产、前端交互）的**著作权与知识产权归原作者 Live2D Master Agent Team 所有**
+- 衍生作品须继续以相同或兼容的署名-非商业许可协议发布
+- 未经书面授权，任何单位或个人不得以本项目名义开展商业活动
+
+### 完整法律文本
+- 中文版：https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans
+- 英文版：https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
 ---
 
