@@ -352,7 +352,7 @@ cd web && npm run build
 
 ## 📄 许可证
 
-本项目采用 **   Apache License[许可证](LICENSE)**
+本项目采用 **   Apache-2.0 License[许可证](LICENSE)**
 
 
 
