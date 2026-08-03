@@ -66,7 +66,13 @@ const ChatPage: NextPage = () => {
   }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    const el = scrollRef.current as (HTMLDivElement & { scrollTo?: (opts: ScrollToOptions) => void }) | null;
+    if (el && typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else if (el) {
+      // Fallback for environments without Element.scrollTo
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages, sending]);
 
   const speak = useCallback(

@@ -25,7 +25,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/Live2D/sw.js').catch(() => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
         // silently ignore SW registration failures
       });
     }

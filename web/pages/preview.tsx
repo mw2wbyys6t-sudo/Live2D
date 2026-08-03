@@ -62,7 +62,14 @@ const PreviewPage: NextPage = () => {
 
   // FPS loop
   useEffect(() => {
-    const id = setInterval(() => setFps(canvasRef.current?.getFps() ?? 0), 500);
+    const id = setInterval(() => {
+      const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+      if (handle && typeof handle.getFps === 'function') {
+        setFps(handle.getFps());
+      } else {
+        setFps(0);
+      }
+    }, 500);
     return () => clearInterval(id);
   }, []);
 
@@ -82,7 +89,10 @@ const PreviewPage: NextPage = () => {
         ParamEyeROpen: blink,
         ParamBodyAngleX: Math.sin(t * 0.4) * 2,
       };
-      canvasRef.current?.setParameters(p);
+      const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+      if (handle && typeof handle.setParameters === 'function') {
+        handle.setParameters(p);
+      }
       setParams((prev) => ({ ...prev, ...p }));
       animRef.current = requestAnimationFrame(tick);
     };
@@ -142,7 +152,10 @@ const PreviewPage: NextPage = () => {
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length / 255;
-        canvasRef.current?.setParameters({ ParamMouthOpenY: Math.min(1, avg * 2) });
+        const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+        if (handle && typeof handle.setParameters === 'function') {
+          handle.setParameters({ ParamMouthOpenY: Math.min(1, avg * 2) });
+        }
         setParams((prev) => ({ ...prev, ParamMouthOpenY: Math.min(1, avg * 2) }));
         requestAnimationFrame(readMouth);
       };
@@ -168,7 +181,10 @@ const PreviewPage: NextPage = () => {
         ParamBodyAngleX: Math.sin(t * 0.3) * 3,
         ParamBreath: Math.sin(t * 1.5) * 0.3 + 0.5,
       };
-      canvasRef.current?.setParameters(p);
+      const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+      if (handle && typeof handle.setParameters === 'function') {
+        handle.setParameters(p);
+      }
       setParams((prev) => ({ ...prev, ...p }));
       animRef.current = requestAnimationFrame(tick);
     };
@@ -184,7 +200,10 @@ const PreviewPage: NextPage = () => {
   }, []);
 
   const applyExpression = (emotion: Emotion) => {
-    canvasRef.current?.setExpression(emotion);
+    const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+    if (handle && typeof handle.setExpression === 'function') {
+      handle.setExpression(emotion);
+    }
     // also set some params for visual feedback
     const map: Record<Emotion, ParamMap> = {
       neutral: { ParamMouthForm: 0, ParamCheek: 0, ParamBrowLY: 0, ParamBrowRY: 0 },
@@ -196,7 +215,9 @@ const PreviewPage: NextPage = () => {
       thinking: { ParamBrowLAngle: 0.3, ParamMouthForm: -0.2, ParamEyeBallX: 0.4 },
       excited: { ParamMouthForm: 0.8, ParamEyeLOpen: 1, ParamBrowLY: 0.2 },
     };
-    canvasRef.current?.setParameters(map[emotion] || {});
+    if (handle && typeof handle.setParameters === 'function') {
+      handle.setParameters(map[emotion] || {});
+    }
   };
 
   const screenshot = () => {

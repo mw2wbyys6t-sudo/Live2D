@@ -46,6 +46,11 @@ const ExportPage: NextPage = () => {
   const [job, setJob] = useState<ExportJob | null>(null);
   const [history, setHistory] = useState<ExportJob[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const fmtTime = (iso: string) => mounted ? new Date(iso).toLocaleTimeString() : '00:00';
 
   useEffect(() => {
     apiClient
@@ -378,7 +383,7 @@ const ExportPage: NextPage = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500 mt-1">
-                      {h.formats.length} formats · {new Date(h.createdAt).toLocaleTimeString()}
+                      {h.formats.length} formats · {fmtTime(h.createdAt)}
                     </p>
                     {h.downloads && (
                       <div className="flex flex-wrap gap-1 mt-2">

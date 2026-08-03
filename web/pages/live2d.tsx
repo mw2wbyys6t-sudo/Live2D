@@ -143,30 +143,46 @@ const Live2DPage: NextPage = () => {
 
   const updateParam = useCallback((id: string, value: number) => {
     setValues((prev) => ({ ...prev, [id]: value }));
-    canvasRef.current?.setParameters({ [id]: value } as ParamMap);
+    const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+    if (handle && typeof handle.setParameters === 'function') {
+      handle.setParameters({ [id]: value } as ParamMap);
+    }
   }, []);
 
   const resetAll = () => {
     const out: Record<string, number> = {};
     for (const p of ALL_PARAMS) out[p.id] = p.default;
     setValues(out);
-    canvasRef.current?.setParameters(out as ParamMap);
+    const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+    if (handle && typeof handle.setParameters === 'function') {
+      handle.setParameters(out as ParamMap);
+    }
   };
 
   const applyExpression = (exp: Expression) => {
     setCurrentExpression(exp.name);
+    const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
     if (exp.parameters) {
-      canvasRef.current?.setParameters(exp.parameters as ParamMap);
+      if (handle && typeof handle.setParameters === 'function') {
+        handle.setParameters(exp.parameters as ParamMap);
+      }
       setValues((prev) => ({ ...prev, ...exp.parameters }));
     } else {
-      canvasRef.current?.setExpression(exp.name);
+      if (handle && typeof handle.setExpression === 'function') {
+        handle.setExpression(exp.name);
+      }
     }
   };
 
   // FPS tracking
   useEffect(() => {
     const id = setInterval(() => {
-      setFps(canvasRef.current?.getFps() ?? 0);
+      const handle = canvasRef.current as (ModelCanvasHandle & { [k: string]: unknown }) | null;
+      if (handle && typeof handle.getFps === 'function') {
+        setFps(handle.getFps());
+      } else {
+        setFps(0);
+      }
     }, 500);
     return () => clearInterval(id);
   }, []);

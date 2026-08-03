@@ -42,6 +42,15 @@ const CharacterDetailPage: NextPage = () => {
   const [form, setForm] = useState<Partial<Character>>({});
   const [dirty, setDirty] = useState(false);
 
+  // Defer locale-dependent date formatting to client-side to avoid SSR/CSR hydration mismatch
+  // NOTE: This must be declared before any early return to follow the Rules of Hooks.
+  const [mounted, setMounted] = useState(false);
+  const [createdText, setCreatedText] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!id || typeof id !== 'string') return;
     let cancelled = false;
@@ -74,6 +83,18 @@ const CharacterDetailPage: NextPage = () => {
 
   useEffect(() => {
     if (character) setForm(character);
+  }, [character]);
+
+  useEffect(() => {
+    if (!character) {
+      setCreatedText('');
+      return;
+    }
+    try {
+      setCreatedText(new Date(character.createdAt).toLocaleDateString());
+    } catch {
+      setCreatedText(character.createdAt);
+    }
   }, [character]);
 
   const update = useCallback(<K extends keyof Character>(key: K, value: Character[K]) => {
@@ -109,6 +130,17 @@ const CharacterDetailPage: NextPage = () => {
     }
   };
 
+  // Build display values even before character is loaded so hooks above are unconditional.
+  const palette: ColorPalette =
+    form.colorPalette || character?.colorPalette || DEFAULT_PALETTE;
+  const embedding = character?.embeddingStatus;
+  const safeCreatedAt = character?.createdAt;
+  const displayCreated = !safeCreatedAt
+    ? ''
+    : mounted
+    ? createdText
+    : new Date(safeCreatedAt).toLocaleDateString('en-US');
+
   if (loading) {
     return (
       <div className="py-24 flex justify-center">
@@ -129,9 +161,6 @@ const CharacterDetailPage: NextPage = () => {
     );
   }
 
-  const palette: ColorPalette = form.colorPalette || character.colorPalette || DEFAULT_PALETTE;
-  const embedding = character.embeddingStatus;
-
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -147,8 +176,7 @@ const CharacterDetailPage: NextPage = () => {
               {form.name || character.name}
             </h1>
             <p className="text-xs text-gray-500">
-              Created {new Date(character.createdAt).toLocaleDateString()} ·{' '}
-              {character.generationCount} generations
+              Created {displayCreated} · {character.generationCount} generations
             </p>
           </div>
         </div>

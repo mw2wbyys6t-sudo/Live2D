@@ -1,8 +1,13 @@
-const CACHE_NAME = 'live2d-qa-v1';
+const CACHE_NAME = 'live2d-qa-v2';
 const STATIC_ASSETS = [
-  '/Live2D/',
-  '/Live2D/index.html',
-  '/Live2D/404.html',
+  '/',
+  '/characters',
+  '/generate',
+  '/layers',
+  '/live2d',
+  '/preview',
+  '/chat',
+  '/export',
 ];
 
 self.addEventListener('install', (event) => {

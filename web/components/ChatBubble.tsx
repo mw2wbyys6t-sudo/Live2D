@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { User, Bot } from 'lucide-react';
 import type { ChatMessage, Emotion } from '../types';
 
@@ -18,9 +19,9 @@ const EMOTION_META: Record<Emotion, { label: string; color: string }> = {
   excited: { label: 'Excited', color: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30' },
 };
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale?: string): string {
   try {
-    return new Date(iso).toLocaleTimeString(undefined, {
+    return new Date(iso).toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -33,6 +34,14 @@ export default function ChatBubble({ message, characterName = 'Assistant', avata
   const isUser = message.role === 'user';
   const emotion = message.emotion || 'neutral';
   const emotionMeta = EMOTION_META[emotion];
+  // Defer locale-dependent time formatting to client-side to avoid SSR/CSR hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  const [timeText, setTimeText] = useState('');
+  useEffect(() => {
+    setMounted(true);
+    setTimeText(formatTime(message.timestamp, undefined));
+  }, [message.timestamp]);
+  const displayTime = mounted ? timeText : formatTime(message.timestamp, 'en-US');
 
   return (
     <div className={`flex gap-3 animate-fade-in-up ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -58,7 +67,7 @@ export default function ChatBubble({ message, characterName = 'Assistant', avata
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <span className="font-medium">{isUser ? 'You' : characterName}</span>
           <span>·</span>
-          <span>{formatTime(message.timestamp)}</span>
+          <span>{displayTime}</span>
         </div>
         <div
           className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${

@@ -366,7 +366,11 @@ export class APIClient {
       const res = await this.request<unknown>('/api/status', undefined, 5000);
       // Go API returns { success, data: { services, version, uptime } }
       // Map it to the frontend SystemStatus shape
-      const data = (res as { data?: Record<string, unknown> })?.data ?? res;
+      const wrapper = res as { data?: unknown };
+      const data: Record<string, unknown> =
+        (wrapper?.data as Record<string, unknown> | undefined) ??
+        (res as Record<string, unknown> | undefined) ??
+        {};
       const services = Array.isArray(data.services)
         ? (data.services as Array<{ name: string; available: boolean; version?: string }>)
         : [];

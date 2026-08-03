@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Calendar, Sparkles, Edit2, Trash2 } from 'lucide-react';
 import type { Character } from '../types';
 
@@ -7,9 +8,9 @@ interface CharacterCardProps {
   onDelete?: (id: string) => void;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale?: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -20,6 +21,15 @@ function formatDate(iso: string): string {
 }
 
 export default function CharacterCard({ character, onDelete }: CharacterCardProps) {
+  // Defer locale-dependent date formatting to client-side to avoid SSR/CSR hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  const [dateText, setDateText] = useState('');
+  useEffect(() => {
+    setMounted(true);
+    setDateText(formatDate(character.createdAt, undefined));
+  }, [character.createdAt]);
+  const displayDate = mounted ? dateText : formatDate(character.createdAt, 'en-US');
+
   return (
     <div className="group relative bg-[#1a1a23] border border-gray-800 rounded-xl overflow-hidden hover:border-pink-500/40 transition-all hover-lift">
       <Link href={`/characters/${character.id}`} className="block">
@@ -61,7 +71,7 @@ export default function CharacterCard({ character, onDelete }: CharacterCardProp
         <div className="flex items-center justify-between mt-3 text-[11px] text-gray-500">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {formatDate(character.createdAt)}
+            {displayDate}
           </span>
           <span className="flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
