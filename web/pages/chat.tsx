@@ -197,7 +197,7 @@ const ChatPage: NextPage = () => {
     ]);
   };
 
-  const currentCharacter = characters.find((c) => c.id === characterId);
+  const currentCharacter = Array.isArray(characters) ? characters.find((c) => c.id === characterId) : undefined;
 
   return (
     <div className="animate-fade-in">

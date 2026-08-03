@@ -134,7 +134,12 @@ export class APIClient {
   // ---------- characters ----------
 
   async getCharacters(): Promise<Character[]> {
-    return this.request<Character[]>('/api/characters');
+    const res = await this.request<unknown>('/api/characters');
+    // Go API returns { success: true, data: [...] } — extract the array
+    const data = (res as { data?: unknown })?.data;
+    if (Array.isArray(data)) return data as Character[];
+    if (Array.isArray(res)) return res as Character[];
+    return [];
   }
 
   async createCharacter(data: CharacterCreate): Promise<Character> {
@@ -362,7 +367,9 @@ export class APIClient {
       // Go API returns { success, data: { services, version, uptime } }
       // Map it to the frontend SystemStatus shape
       const data = (res as { data?: Record<string, unknown> })?.data ?? res;
-      const services = (data.services as Array<{ name: string; available: boolean; version?: string }>) ?? [];
+      const services = Array.isArray(data.services)
+        ? (data.services as Array<{ name: string; available: boolean; version?: string }>)
+        : [];
       return {
         apiConnected: true,
         latencyMs: 0,
