@@ -310,8 +310,6 @@ func (pb *PythonBridge) RunSeeThroughWorkflow(imagePath string) (*models.SeeThro
 
 // CreateCharacter 通过 Python 创建角色
 func (pb *PythonBridge) CreateCharacter(name string, params map[string]interface{}) (map[string]interface{}, error) {
-	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "core", "character", "manager.py")
-
 	// 使用内联 Python 脚本调用 CharacterManager
 	pyCode := fmt.Sprintf(`
 import sys, json

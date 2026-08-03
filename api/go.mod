@@ -1,6 +1,6 @@
 module live2d-api
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/gin-contrib/gzip v1.2.6
