@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge)](https://python.org)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge)](https://nextjs.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache--2.0-green?style=for-the-badge)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-10.0-ff69b4?style=for-the-badge)]()
 
 </div>
@@ -296,7 +296,7 @@ cd web && npm run build
 
 ## 🤝 如何贡献
 
-本项目采用 **MIT 协议**（v9.0 原版许可，已于 2026-07-30 恢复），**欢迎所有形式的贡献（包括商业用途衍生）**；提交 PR 即视为您同意将代码以 MIT 协议并入本项目，无任何额外限制。
+本项目采用 **Apache-2.0 License**（v9.0 原版许可，已于 2026-07-30 恢复），**欢迎所有形式的贡献（包括商业用途衍生）**；提交 PR 即视为您同意将代码以 Apache-2.0 协议并入本项目，无任何额外限制。
 
 ### 贡献方式
 1. **提交 Issue** — 反馈 Bug、功能建议、体验问题
@@ -352,7 +352,7 @@ cd web && npm run build
 
 ## 📄 许可证
 
-本项目采用 **   Apache-2.0 License[许可证](LICENSE)**
+本项目采用 **Apache-2.0 License**，详见 [LICENSE](LICENSE) 文件。
 
 
 
