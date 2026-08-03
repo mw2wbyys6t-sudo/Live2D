@@ -235,9 +235,12 @@ def install_api(has_go: bool):
     print(f"{C.CYAN}📦 Downloading Go dependencies...{C.RESET}")
     try:
         subprocess.run(["go", "mod", "tidy"], cwd=str(api_dir), check=True)
-        print(f"{C.CYAN}🔨 Building API server...{C.RESET}")
-        subprocess.run(["go", "build", "-o", "live2d-api.exe" if platform.system() == "Windows" else "live2d-api", "."],
-                      cwd=str(api_dir), check=True)
+        print(f"{C.CYAN}🔨 Building API server (low-memory mode)...{C.RESET}")
+        # Use GOMAXPROCS=1 to reduce memory usage in constrained environments
+        build_env = os.environ.copy()
+        build_env['GOMAXPROCS'] = '1'
+        subprocess.run(["go", "build", "-p", "1", "-o", "live2d-api.exe" if platform.system() == "Windows" else "live2d-api", "."],
+                      cwd=str(api_dir), check=True, env=build_env)
         print(f"{C.GREEN}✓ API server built{C.RESET}")
         return True
     except subprocess.CalledProcessError as e:
@@ -294,7 +297,10 @@ def create_directories():
         "logs",
     ]
     for d in dirs:
-        (PROJECT_ROOT / d).mkdir(parents=True, exist_ok=True)
+        path = PROJECT_ROOT / d
+        if path.exists() and not path.is_dir():
+            path.unlink()
+        path.mkdir(parents=True, exist_ok=True)
     print(f"{C.GREEN}✓ Directories created{C.RESET}")
 
 
@@ -339,8 +345,8 @@ def verify_installation():
         try:
             __import__(module)
             print(f"  {C.GREEN}✓ {name}{C.RESET}")
-        except ImportError:
-            print(f"  {C.YELLOW}○ {name} (optional, not installed){C.RESET}")
+        except (ImportError, OSError) as e:
+            print(f"  {C.YELLOW}⚠ {name} (optional, {e.__class__.__name__}){C.RESET}")
 
     # Test core module
     try:
