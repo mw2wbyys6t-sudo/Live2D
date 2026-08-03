@@ -12,11 +12,13 @@ export type WSEvent =
 
 type Listener = (...args: unknown[]) => void;
 
+// Use same-origin WebSocket so it works behind reverse proxies and preview URLs.
+// The Next.js dev server proxies /ws to the Go backend's /ws endpoint.
 const DEFAULT_URL =
   typeof window !== 'undefined'
     ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${
-        window.location.hostname
-      }:8080/ws`
+        window.location.host
+      }/ws`
     : 'ws://localhost:8080/ws';
 
 export interface WSManagerOptions {

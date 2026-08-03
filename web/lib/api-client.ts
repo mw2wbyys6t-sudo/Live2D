@@ -10,11 +10,13 @@ import type {
   SystemStatus,
 } from '../types';
 
+// Use empty string (relative paths) so requests go through Next.js rewrites
+// which proxies /api/* to the Go backend. This avoids CORS issues and works
+// in any deployment environment (localhost, Docker, preview URLs, etc.).
 const DEFAULT_BASE_URL =
   typeof window !== 'undefined'
-    ? (window as unknown as { __LIVE2D_API_URL__?: string }).__LIVE2D_API_URL__ ||
-      'http://localhost:8080'
-    : 'http://localhost:8080';
+    ? (window as unknown as { __LIVE2D_API_URL__?: string }).__LIVE2D_API_URL__ || ''
+    : (process.env.NEXT_PUBLIC_API_URL || '');
 
 export class APIError extends Error {
   constructor(
@@ -356,7 +358,23 @@ export class APIClient {
 
   async getStatus(): Promise<SystemStatus | null> {
     try {
-      return await this.request<SystemStatus>('/api/status', undefined, 5000);
+      const res = await this.request<unknown>('/api/status', undefined, 5000);
+      // Go API returns { success, data: { services, version, uptime } }
+      // Map it to the frontend SystemStatus shape
+      const data = (res as { data?: Record<string, unknown> })?.data ?? res;
+      const services = (data.services as Array<{ name: string; available: boolean; version?: string }>) ?? [];
+      return {
+        apiConnected: true,
+        latencyMs: 0,
+        gpuAvailable: false,
+        version: (data.version as string) ?? 'unknown',
+        modelsLoaded: services.map((s) => s.name),
+        providers: services.map((s) => ({
+          id: s.name as never,
+          name: s.name,
+          available: s.available,
+        })),
+      } as SystemStatus;
     } catch {
       return null;
     }

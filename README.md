@@ -59,9 +59,18 @@ Live2D Master Agent 是一款**面向人人的 AI 虚拟主播生产工具**。�
 
 ---
 
-## 🚀 三分钟上手
+## 🚀 快速上手
 
-### 一键安装（推荐）
+### 环境要求
+
+| 依赖 | 最低版本 | 检查命令 |
+|------|---------|---------|
+| Python | 3.9+ | `python3 --version` |
+| Node.js | 18+ | `node --version` |
+| npm | 9+ | `npm --version` |
+| Go | 1.21+ | `go version` |
+
+### 方式一：一键安装（推荐小白）
 
 ```bash
 # Windows: 双击 install.bat
@@ -80,29 +89,95 @@ python install.py
 5. 创建 .env 配置文件
 6. 验证安装
 
-### 快速生成
+### 方式二：手动安装（开发者推荐）
+
+#### 第 1 步：安装 Python 依赖
 
 ```bash
+cd Live2D-Master-Agent
+pip install -r requirements.txt
+```
+
+#### 第 2 步：安装前端依赖
+
+```bash
+cd web
+npm install
+```
+
+#### 第 3 步：编译 Go API
+
+```bash
+cd api
+go mod tidy
+go build -o live2d-api .
+```
+
+#### 第 4 步：创建配置文件
+
+```bash
+cp .env.example .env
+```
+
+> 默认使用免费的 Pollinations 图像生成 + Edge TTS 语音，无需填写任何 API Key 即可体验。
+
+#### 第 5 步：启动服务（需要两个终端）
+
+**终端 1 — 启动 Go API 后端：**
+
+```bash
+cd api
+export PYTHONPATH=$(pwd)/..
+export LIVE2D_PROJECT_ROOT=$(pwd)/..
+./live2d-api
+# API 运行在 http://localhost:8080
+```
+
+**终端 2 — 启动 Next.js 前端工作台：**
+
+```bash
+cd web
+npm run dev
+# 前端运行在 http://localhost:3000
+```
+
+打开浏览器访问 **http://localhost:3000** 即可使用！
+
+> 前端通过 Next.js rewrites 代理所有 `/api/*` 请求到 Go 后端，无需担心跨域问题。
+
+### 方式三：Docker 一键部署
+
+```bash
+docker compose up -d
+# Web: http://localhost:3000  API: http://localhost:8080
+```
+
+### 方式四：命令行快速体验（无需启动 Web）
+
+```bash
+# 交互式菜单
+python -m core.cli
+
 # 一句话生成角色（免费 Pollinations，无需 API Key）
 python -m core.cli generate "蓝发猫耳少女，白色背景，日系赛璐璐风格" --deploy-desktop
 
 # 运行桌宠
 python -m core.cli pet
 
-# 启动 Web 工作台
-cd web && npm run dev
-# 打开 http://localhost:3000
-
-# 启动 API 服务器
-cd api && ./live2d-api
-# API 在 http://localhost:8080
+# 与角色对话（需要配置 LLM API Key）
+python -m core.cli chat
 ```
 
-### Docker 部署
+### 验证安装成功
 
 ```bash
-docker compose up -d
-# Web: http://localhost:3000  API: http://localhost:8080
+# 检查 Go API 是否正常
+curl http://localhost:8080/api/health
+# 应返回: {"success":true,"message":"Live2D API 服务正常运行"}
+
+# 检查前端是否能代理到后端
+curl http://localhost:3000/api/health
+# 应返回同样的结果
 ```
 
 ---

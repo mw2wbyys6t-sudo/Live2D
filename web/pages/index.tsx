@@ -145,15 +145,15 @@ const Dashboard: NextPage = () => {
         />
         <StatusCard
           label="Models"
-          value={status ? `${status.modelsLoaded.length} loaded` : '—'}
-          subtext={status?.modelsLoaded.slice(0, 2).join(', ') || undefined}
-          ok={!!status?.modelsLoaded.length}
+          value={status ? `${status.modelsLoaded?.length ?? 0} loaded` : '—'}
+          subtext={status?.modelsLoaded?.slice(0, 2).join(', ') || undefined}
+          ok={!!status?.modelsLoaded?.length}
           icon={Cpu}
         />
         <StatusCard
           label="Providers"
-          value={status ? `${status.providers.filter((p) => p.available).length}/${status.providers.length} online` : '—'}
-          ok={!!status?.providers.some((p) => p.available)}
+          value={status ? `${status.providers?.filter((p) => p.available).length ?? 0}/${status.providers?.length ?? 0} online` : '—'}
+          ok={!!status?.providers?.some((p) => p.available)}
           icon={Zap}
         />
       </section>
