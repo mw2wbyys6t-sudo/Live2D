@@ -165,9 +165,9 @@ func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*mode
 		return nil, fmt.Errorf("工作流执行超时（限制%d秒）", int(timeout.Seconds()))
 	}
 
-	// 从 stdout 中提取 JSON（日志可能混在前面，找最后一个 { 开始的 JSON 对象）
+	// 从 stdout 中提取 JSON（用括号配对定位最外层 JSON 对象的边界）
 	outputStr := string(output)
-	jsonStart := strings.LastIndex(outputStr, "{")
+	jsonStart, jsonEnd := findTopLevelJSON(outputStr)
 	if jsonStart == -1 {
 		fmt.Fprintf(os.Stderr, "[ERROR] 工作流未返回 JSON，输出: %s\n", outputStr)
 		if runErr != nil {
@@ -175,7 +175,7 @@ func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*mode
 		}
 		return nil, fmt.Errorf("工作流未返回有效结果")
 	}
-	jsonStr := outputStr[jsonStart:]
+	jsonStr := outputStr[jsonStart:jsonEnd]
 
 	// 解析 JSON 结果
 	var pyResult pythonWorkflowResult
@@ -438,4 +438,44 @@ func (g *ImageGenerator) GetAvailableModels() []map[string]interface{} {
 			"quality":  "ultra",
 		},
 	}
+}
+
+// findTopLevelJSON 在 stdout 中找到最外层 JSON 对象的起止位置。
+// 解决日志中混入嵌套 JSON（如 {"id":"..."}）时 LastIndex 抓到错位置的 bug。
+// 返回 (start, end) 包含 end；找不到返回 (-1, -1)。
+func findTopLevelJSON(s string) (int, int) {
+	start := strings.Index(s, "{")
+	if start == -1 {
+		return -1, -1
+	}
+	depth := 0
+	inStr := false
+	escape := false
+	for i := start; i < len(s); i++ {
+		ch := s[i]
+		if escape {
+			escape = false
+			continue
+		}
+		if ch == '\\' && inStr {
+			escape = true
+			continue
+		}
+		if ch == '"' {
+			inStr = !inStr
+			continue
+		}
+		if inStr {
+			continue
+		}
+		if ch == '{' {
+			depth++
+		} else if ch == '}' {
+			depth--
+			if depth == 0 {
+				return start, i + 1
+			}
+		}
+	}
+	return -1, -1
 }
