@@ -296,9 +296,12 @@ class WorkflowEngine:
             # === Step 4: Layer separation ===
             if self.use_semantic_segmentation:
                 self._set_state("layering", "Semantic segmentation (with K-means fallback)", 60)
-                layer_result = self.semantic_layerer.layer(optimized_img)
-                if layer_result.get("method") != "semantic":
-                    log.info("Semantic segmentation unavailable, using K-means")
+                layers_output = str(self.output_dir / f"layers_{timestamp}")
+                layer_result = self.semantic_layerer.layer(optimized_img, output_dir=layers_output)
+                if not layer_result.get("success") or layer_result.get("method") == "semantic_hsv_fallback":
+                    log.info("Semantic segmentation unavailable or fell back to HSV; using K-means instead")
+                    layers_output_k = str(self.output_dir / f"layers_{timestamp}")
+                    layer_result = self.kmeans_layerer.layer(optimized_img, output_dir=layers_output_k)
             else:
                 self._set_state("layering", f"K-means layering (k={self.k_clusters})", 60)
                 layers_output = str(self.output_dir / f"layers_{timestamp}")
@@ -315,21 +318,32 @@ class WorkflowEngine:
                 "output_dir": layers_output,
                 "layer_count": layer_result["layer_count"],
                 "preview": layer_result.get("preview_path"),
+                "composite_preview": layer_result.get("composite_preview"),
                 "method": layer_result.get("method", "kmeans"),
             }
             log.success(f"Layering complete: {layer_result['layer_count']} layers "
                         f"({layer_result.get('method', 'kmeans')})")
 
-            # === Step 4b: Automatic rigging ===
-            if generate_52_config:
-                self._set_state("rigging", "Automatic rigging", 70)
+            # === Step 4b: Automatic rigging + Live2D model3 export ===
+            # RiggingPipeline internally runs Live2DBuilder.build() which calls
+            # Model3Exporter.export(), producing a complete model3.json bundle.
+            # The separate Step 6b live2d_export in earlier versions redundantly
+            # called Model3Exporter a second time with wrong args (raw layers
+            # instead of builder_result), producing an empty model. Removed in v10.1.
+            should_rig = generate_52_config or self.export_live2d
+            rig_result: Optional[Dict[str, Any]] = None
+            if should_rig:
+                self._set_state("rigging", "Automatic rigging & Live2D export", 70)
                 from collections import OrderedDict
                 from live2d_builder.pipeline import RiggingPipeline
                 layers_for_rig = OrderedDict()
                 for info in layer_result["layers"]:
                     path = info["path"]
                     name = info.get("name") or Path(path).stem
-                    layers_for_rig[name] = Image.open(path)
+                    try:
+                        layers_for_rig[name] = Image.open(path).convert("RGBA")
+                    except Exception as exc:
+                        log.warning(f"Skipping unreadable layer '{name}': {exc}")
                 rig_output = str(self.output_dir / f"rigged_{timestamp}")
                 rig_result = RiggingPipeline().run(
                     layers_for_rig,
@@ -339,10 +353,17 @@ class WorkflowEngine:
                 )
                 result["steps"]["rigging"] = {
                     "output_dir": rig_output,
-                    "model3_json": rig_result["model3_json"],
-                    "texture": rig_result["texture"],
+                    "model3_json": rig_result.get("model3_json"),
+                    "textures": rig_result.get("textures", []),
+                    "texture": (rig_result.get("textures") or [""])[0] if rig_result.get("textures") else "",
+                    "physics": rig_result.get("physics"),
+                    "expressions": rig_result.get("expressions", []),
+                    "validation": rig_result.get("validation", {}).get("valid", False),
+                    "compatibility": {
+                        k: v.get("compatible") for k, v in rig_result.get("compatibility", {}).items()
+                    },
                 }
-                log.success(f"Rigging complete: {rig_result['model3_json']}")
+                log.success(f"Rigging complete: {rig_result.get('model3_json', 'N/A')}")
 
             # === Step 5: PSD export ===
             self._set_state("psd_export", "Creating PSD file", 75)
@@ -371,36 +392,13 @@ class WorkflowEngine:
                 }
                 log.info(f"52-layer config: {mapping['mapped_layers']}/52 mapped")
 
-            # === Step 6b: Live2D model3 export ===
-            if self.export_live2d:
-                self._set_state("live2d_export", "Exporting Live2D model3 scaffold", 92)
-                try:
-                    from live2d_builder.exporter.model3_exporter import Model3Exporter
-                    exporter = Model3Exporter()
-                    # Reuse rigged layers; build from OrderedDict of PIL images
-                    from collections import OrderedDict
-                    export_layers = OrderedDict()
-                    for info in layer_result["layers"]:
-                        p = info["path"]
-                        n = info.get("name") or Path(p).stem
-                        export_layers[n] = Image.open(p)
-                    live2d_dir = str(self.output_dir / f"live2d_{timestamp}")
-                    export_result = exporter.export(
-                        export_layers,
-                        output_dir=live2d_dir,
-                        character_name=(self._character_card.name if self._character_card
-                                        else "generated_character"),
-                    )
-                    result["steps"]["live2d_export"] = export_result
-                    log.success(f"Live2D model exported to {live2d_dir}")
-                except Exception as e:
-                    log.warning(f"Live2D export failed (non-fatal): {e}")
-                    result["steps"]["live2d_export"] = {"success": False, "error": str(e)}
+            # Step 6b (redundant live2d_export) removed in v10.1:
+            # RiggingPipeline already exports a complete, valid model3 bundle.
 
             # === Step 7: Desktop pet (optional) ===
             if deploy_desktop:
                 self._set_state("pet_deploy", "Creating desktop pet package", 95)
-                pet_result = self._create_pet(layers_output)
+                pet_result = self._create_pet(rig_output if rig_result else layers_output)
                 result["steps"]["pet"] = pet_result
 
             # === Step 8: Save/update character card ===

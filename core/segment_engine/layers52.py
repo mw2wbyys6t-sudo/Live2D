@@ -262,8 +262,12 @@ class Layer52Generator:
             )
             mappings.append(mapping)
 
-        # Assign detected layers to standard positions using keyword matching
+        # Assign detected layers to standard positions using keyword matching.
+        # Supports both Chinese K-means labels ("头发", "脸") and English
+        # semantic segmentation / LayerComposer names ("hair_back", "bangs",
+        # "eye_right", "clothes_outer", …).
         part_keywords = {
+            # --- Chinese (K-means path) ---
             "头发": ["hair_back", "hair_front"],
             "头发_后": ["hair_back"],
             "刘海": ["hair_front"],
@@ -271,33 +275,208 @@ class Layer52Generator:
             "脸": ["face"],
             "眼睛": ["eyes"],
             "眉毛": ["eyebrows"],
+            "睫毛": ["eyelashes"],
             "嘴巴": ["mouth"],
+            "嘴唇": ["mouth"],
             "衣服": ["clothes"],
             "腮红": ["face"],
             "鼻子": ["nose"],
+            "耳朵": ["ears"],
+            "高光": ["eyes"],
+            "脖子": ["body"],
+            # --- English (semantic / LayerComposer path) ---
+            "background": ["bg"],
+            "scalp": ["hair_back"],
+            "hair_back": ["hair_back"],
+            "hair_mid": ["hair_back"],
+            "hair_front": ["hair_front"],
+            "sidehair": ["hair_front"],
+            "hair_stray": ["hair_front"],
+            "bangs": ["hair_front"],
+            "ahoge": ["hair_front"],
+            "neck": ["body"],
+            "body": ["body"],
+            "skin": ["body", "face"],
+            "chest": ["body"],
+            "clothes_top": ["clothes"],
+            "clothes_inner": ["clothes"],
+            "clothes_outer": ["clothes"],
+            "accessories": ["clothes"],
+            "face": ["face"],
+            "blush": ["face"],
+            "ear": ["ears"],
+            "nose": ["nose"],
+            "mouth": ["mouth"],
+            "lip": ["mouth"],
+            "tooth": ["mouth"],
+            "teeth": ["mouth"],
+            "tongue": ["mouth"],
+            "eye": ["eyes"],
+            "iris": ["eyes"],
+            "pupil": ["eyes"],
+            "highlight": ["eyes"],
+            "sclera": ["eyes"],
+            "eyelash": ["eyelashes"],
+            "lash": ["eyelashes"],
+            "brow": ["eyebrows"],
+            "eyebrow": ["eyebrows"],
         }
+
+        # Fine-grained direct part_name → standard_id mappings (higher priority
+        # than keyword → group heuristic). Semantic / LayerComposer names map
+        # directly; K-means generic labels fall through to group heuristic.
+        direct_map: Dict[str, List[int]] = {
+            # English LayerComposer / semantic labels → standard IDs
+            "background": [0],
+            "scalp": [1],
+            "hair_back": [1, 2, 3, 4],
+            "hair_mid": [2],
+            "hair_front": [51],
+            "bangs": [49],
+            "sidehair_right": [47],
+            "sidehair_left": [48],
+            "sidehair": [47, 48],
+            "ahoge": [50],
+            "hair_stray": [50, 51],
+            "hair": [1, 49, 47, 48],
+            "neck": [5],
+            "body": [6, 7],
+            "chest": [6],
+            "waist": [7],
+            "skin": [23, 5, 6, 7],
+            "clothes_inner": [20],
+            "clothes_outer": [21],
+            "clothes_top": [21],
+            "clothes": [21, 20],
+            "accessories": [22],
+            "face": [23],
+            "blush": [24],
+            "ear_left": [25],
+            "ear_right": [26],
+            "ear": [25, 26],
+            "nose": [27],
+            "mouth": [28, 31, 32],
+            "mouth_cavity": [28],
+            "tongue": [29],
+            "teeth": [30],
+            "lower_lip": [31],
+            "upper_lip": [32],
+            "lip": [31, 32],
+            "eye_white_right": [33],
+            "eye_white_left": [34],
+            "sclera_right": [33],
+            "sclera_left": [34],
+            "iris_right": [35],
+            "iris_left": [36],
+            "pupil_right": [37],
+            "pupil_left": [38],
+            "eye_highlight_right": [39],
+            "eye_highlight_left": [40],
+            "highlight_right": [39],
+            "highlight_left": [40],
+            "eye_right": [33, 35, 37, 39, 41, 43],
+            "eye_left": [34, 36, 38, 40, 42, 44],
+            "eye": [33, 34, 35, 36, 37, 38, 39, 40],
+            "eyelash_upper_right": [41],
+            "eyelash_upper_left": [42],
+            "eyelash_lower_right": [43],
+            "eyelash_lower_left": [44],
+            "lash_upper_right": [41],
+            "lash_upper_left": [42],
+            "lash_lower_right": [43],
+            "lash_lower_left": [44],
+            "eyelash": [41, 42],
+            "lash": [41, 42],
+            "eyebrow_right": [45],
+            "eyebrow_left": [46],
+            "brow_right": [45],
+            "brow_left": [46],
+            "brow": [45, 46],
+            "eyebrow": [45, 46],
+            # Chinese K-means labels → standard IDs
+            "头发_后": [1],
+            "头发_中": [2],
+            "头发": [1, 49, 47, 48],
+            "刘海": [49],
+            "呆毛": [50],
+            "皮肤": [23, 5, 6, 7],
+            "脸": [23],
+            "腮红": [24],
+            "鼻子": [27],
+            "嘴巴": [28, 31, 32],
+            "嘴唇": [31, 32],
+            "眼睛": [33, 34, 35, 36, 37, 38, 39, 40],
+            "眼白": [33, 34],
+            "瞳孔": [37, 38],
+            "高光": [39, 40],
+            "睫毛": [41, 42],
+            "眉毛": [45, 46],
+            "耳朵": [25, 26],
+            "脖子": [5],
+            "脖子_身体": [5, 6],
+            "衣服": [21, 20],
+            "衣服_内层": [20],
+            "衣服_外层": [21],
+            "配饰": [22],
+            "背景": [0],
+        }
+
+        def _match(pn: str) -> Tuple[List[int], List[str]]:
+            """Return (preferred std IDs, fallback groups) for a part_name."""
+            pn_lower = pn.lower().strip()
+            # 1. exact direct map
+            if pn_lower in direct_map:
+                return direct_map[pn_lower], []
+            # 2. substring direct map (longest match wins)
+            best_ids: List[int] = []
+            best_len = 0
+            for key, ids in direct_map.items():
+                if len(key) > best_len and key in pn_lower:
+                    best_ids = ids
+                    best_len = len(key)
+            if best_ids:
+                return best_ids, []
+            # 3. keyword → group fallback
+            groups: List[str] = []
+            for keyword, grps in part_keywords.items():
+                if keyword in pn:
+                    groups.extend(grps)
+            if not groups:
+                groups = ["clothes", "body"]
+            return [], groups
 
         for layer in layers_info:
             part_name = layer.get("part_name", "未分类")
             source = layer.get("path", "")
+            preferred_ids, fallback_groups = _match(part_name)
 
-            # Find matching standard layer groups
-            target_groups = []
-            for keyword, groups in part_keywords.items():
-                if keyword in part_name:
-                    target_groups.extend(groups)
-
-            if not target_groups:
-                target_groups = ["clothes", "body"]
-
-            # Assign to first unmapped layer in target groups
-            for m in mappings:
-                if not m.mapped and m.group in target_groups and m.standard_id not in used_standard_ids:
-                    m.mapped = True
-                    m.source_file = source
-                    m.notes = f"Auto-mapped from part: {part_name}"
-                    used_standard_ids.add(m.standard_id)
+            assigned = False
+            # Try preferred standard IDs first (in listed order)
+            for sid in preferred_ids:
+                if sid in used_standard_ids:
+                    continue
+                for m in mappings:
+                    if m.standard_id == sid and not m.mapped:
+                        m.mapped = True
+                        m.source_file = source
+                        m.notes = f"Auto-mapped from part: {part_name}"
+                        used_standard_ids.add(sid)
+                        assigned = True
+                        break
+                if assigned:
                     break
+
+            # Fall back to first unmapped layer in target groups
+            if not assigned:
+                for m in mappings:
+                    if (not m.mapped
+                            and m.standard_id not in used_standard_ids
+                            and m.group in fallback_groups):
+                        m.mapped = True
+                        m.source_file = source
+                        m.notes = f"Auto-mapped (group fallback) from part: {part_name}"
+                        used_standard_ids.add(m.standard_id)
+                        break
 
         # Build summary
         required_layers = [m for m in mappings if any(

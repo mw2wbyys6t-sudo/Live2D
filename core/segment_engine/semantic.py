@@ -16,6 +16,7 @@ The 18 standard parts (see :attr:`SemanticSegmenter.STANDARD_PARTS`):
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -120,6 +121,7 @@ class SemanticSegmenter:
 
         # Try the configured model first.
         masks: List[Dict] = []
+        self._last_was_fallback = False
         try:
             if self.model_type == "isnet":
                 masks = self._segment_isnet(image)
@@ -134,6 +136,7 @@ class SemanticSegmenter:
 
         if not masks:
             log.info("No learned masks produced; using HSV color fallback")
+            self._last_was_fallback = True
             return self._fallback_color_segment(image)
 
         try:
@@ -158,6 +161,184 @@ class SemanticSegmenter:
         if not clean:
             return self._fallback_color_segment(image)
         return clean
+
+    def layer(
+        self,
+        image: Image.Image,
+        output_dir: Optional[str] = None,
+        label_layers: bool = True,
+    ) -> Dict:
+        """Segment ``image`` into Live2D parts and export RGBA layer PNGs.
+
+        This is the adapter method used by :class:`core.workflow.WorkflowEngine`
+        to make the semantic segmenter interchangeable with
+        :class:`core.segment_engine.kmeans.KMeansLayerer`. It calls
+        :meth:`segment` to obtain boolean masks, then uses
+        :class:`core.segment_engine.composer.LayerComposer` to perform
+        amodal completion, RGBA extraction, and PNG export, and finally
+        returns a dict whose shape matches ``KMeansLayerer.layer()``.
+
+        Args:
+            image: Source PIL Image (any mode; converted to RGBA).
+            output_dir: Directory to write layer PNGs + preview + guide.
+                Falls back to a timestamped ``layers_<ts>`` directory.
+            label_layers: Accepted for API parity; currently unused.
+
+        Returns:
+            Dict with keys: ``success``, ``method``, ``layers`` (list of
+            dicts with ``index``/``name``/``path``/``pixel_count``/``size``),
+            ``output_dir``, ``preview_path``, ``composite_preview``,
+            ``layer_count``, ``k_clusters``, ``segmentation_mask``.
+        """
+        if image.mode != "RGBA":
+            image = image.convert("RGBA")
+
+        if output_dir:
+            out = Path(output_dir)
+        else:
+            out = Path.cwd() / "output" / f"layers_{int(time.time())}"
+        out.mkdir(parents=True, exist_ok=True)
+
+        # 1. Run segmentation -> boolean masks per part
+        t0 = time.time()
+        masks = self.segment(image)
+        is_fallback = getattr(self, "_last_was_fallback", False)
+        method = "semantic_hsv_fallback" if is_fallback else "semantic"
+
+        if not masks:
+            log.warning("Semantic segmentation produced no masks; returning empty result")
+            return {
+                "success": False,
+                "method": method,
+                "layers": [],
+                "output_dir": str(out),
+                "preview_path": None,
+                "composite_preview": None,
+                "layer_count": 0,
+                "k_clusters": 0,
+                "segmentation_mask": None,
+            }
+
+        # 2. Use LayerComposer to do amodal completion + ordered PNG export
+        try:
+            from core.segment_engine.composer import LayerComposer
+            composer = LayerComposer(device=self.device)
+            composed = composer.compose(masks, image, str(out))
+            ordered = composer.reorder_layers(composed)
+        except Exception as exc:
+            log.warning(f"LayerComposer failed ({exc}); falling back to direct mask export")
+            ordered = self._direct_mask_export(masks, image, out)
+
+        # 3. Convert to KMeans-compatible layer list
+        exported_layers: List[Dict] = []
+        for idx, (part_name, info) in enumerate(ordered.items()):
+            exported_layers.append({
+                "index": idx,
+                "name": part_name,
+                "part_name": part_name,
+                "part_name_en": part_name,
+                "path": info["path"],
+                "size": image.size,
+                "pixel_count": info.get("pixel_count", 0),
+                "label": idx,
+                "color": info.get("mean_color", (128, 128, 128)),
+                "mean_color": info.get("mean_color", (128, 128, 128)),
+                "bbox": info.get("bbox", (0, 0, 0, 0)),
+                "amodal_completed": bool(info.get("completed", False)),
+            })
+
+        # 4. Save preview (original optimized image) and composite preview
+        preview_path = out / "preview.png"
+        image.save(preview_path)
+
+        composite_preview_path = out / "composite_preview.png"
+        self._write_composite_preview(exported_layers, image.size, composite_preview_path)
+
+        # 5. Write layer JSON guide via composer
+        guide_path = out / "layer_guide.json"
+        try:
+            composer_path_cls = None
+            from core.segment_engine.composer import LayerComposer as _LC
+            composer_path_cls = _LC
+            if composer_path_cls is not None and "composed" in dir():
+                composer.generate_layer_json(composed if composed else ordered, str(guide_path))
+        except Exception:
+            pass
+
+        elapsed = time.time() - t0
+        log.success(
+            f"Semantic layering complete: {len(exported_layers)} layers "
+            f"(method={method}) in {elapsed:.2f}s -> {out}"
+        )
+
+        return {
+            "success": True,
+            "method": method,
+            "layers": exported_layers,
+            "output_dir": str(out),
+            "preview_path": str(preview_path),
+            "composite_preview": str(composite_preview_path),
+            "layer_count": len(exported_layers),
+            "k_clusters": 0,
+            "segmentation_mask": None,
+            "guide_path": str(guide_path) if guide_path.exists() else None,
+        }
+
+    def _direct_mask_export(
+        self,
+        masks: Dict[str, np.ndarray],
+        image: Image.Image,
+        out: Path,
+    ) -> Dict[str, Dict]:
+        """Fallback: directly burn each boolean mask into a transparent PNG.
+
+        Used when LayerComposer / amodal completion raises (e.g. missing
+        optional deps). Returns the same dict shape as
+        :meth:`LayerComposer.compose`.
+        """
+        from collections import OrderedDict
+        img_arr = np.array(image.convert("RGBA"))
+        h, w = img_arr.shape[:2]
+        ordered_names = [n for n in self.STANDARD_PARTS if n in masks] + \
+                        sorted(n for n in masks if n not in self.STANDARD_PARTS)
+        result: "OrderedDict[str, Dict]" = OrderedDict()
+        for idx, name in enumerate(ordered_names):
+            mask = np.asarray(masks[name], dtype=bool)
+            layer_arr = np.zeros_like(img_arr)
+            layer_arr[mask] = img_arr[mask]
+            path = out / f"{name}.png"
+            Image.fromarray(layer_arr, "RGBA").save(path)
+            pixels = layer_arr[..., 3] > 0
+            ys, xs = np.where(pixels)
+            bbox = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())) if len(xs) else (0, 0, 0, 0)
+            mean_color = tuple(int(c) for c in layer_arr[pixels][:, :3].mean(axis=0)) if pixels.any() else (0, 0, 0)
+            result[name] = {
+                "name": name,
+                "path": str(path),
+                "bbox": bbox,
+                "size": (int(bbox[2] - bbox[0] + 1), int(bbox[3] - bbox[1] + 1)),
+                "pixel_count": int(pixels.sum()),
+                "mean_color": mean_color,
+                "occluded_by": [],
+                "completed": False,
+            }
+        return result
+
+    @staticmethod
+    def _write_composite_preview(
+        layers: List[Dict],
+        size: tuple,
+        path: Path,
+    ) -> None:
+        """Alpha-composite all exported layers onto a transparent canvas."""
+        composite = Image.new("RGBA", size, (0, 0, 0, 0))
+        for info in layers:
+            try:
+                layer_img = Image.open(info["path"]).convert("RGBA")
+                composite = Image.alpha_composite(composite, layer_img)
+            except Exception:
+                continue
+        composite.save(path)
 
     # --------------------------------------------------------------- backends
 
@@ -193,7 +374,14 @@ class SemanticSegmenter:
             except Exception as exc:
                 log.warning(f"rembg ISNet session failed: {exc}")
 
-        log.warning("No ISNet backend available")
+        log.warning(
+            "No ISNet backend available. High-quality semantic segmentation "
+            "will be disabled; falling back to HSV color segmentation "
+            "(quality ≈ K-means). To enable ISNet, install rembg with "
+            "`pip install rembg[cpu]` (the isnet-general-use model will be "
+            "downloaded automatically on first use), or install the dedicated "
+            "anime-segmentation package for anime-optimized masks."
+        )
         self._model = None
 
     def _onnx_provider(self) -> str:

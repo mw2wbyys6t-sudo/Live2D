@@ -127,6 +127,14 @@ class PartIdentifier:
             color = tuple(layer.get("color", (128, 128, 128)))
             area_ratio = layer.get("pixel_count", 0) / total_pixels
 
+            # If the layer already carries a semantic part_name from upstream
+            # (e.g. SemanticSegmenter / LayerComposer), trust it and skip the
+            # color-heuristic guess. We still compute centroid/mean_color
+            # because downstream code (52-layer mapping, rigging) may use them.
+            existing_pn = layer.get("part_name")
+            existing_pn_en = layer.get("part_name_en")
+            pre_identified = bool(existing_pn) and existing_pn not in ("未分类", "unknown", "", None)
+
             centroid_y, centroid_x = self._compute_centroid(
                 layer, image, image_height, image_width, area_ratio, color
             )
@@ -134,6 +142,18 @@ class PartIdentifier:
             layer["centroid_x_ratio"] = float(centroid_x)
             # Use the refined mean color if centroid computation produced one
             mean_color = layer.get("mean_color", color)
+
+            if pre_identified:
+                # Ensure part_name_en is populated
+                if not existing_pn_en:
+                    # Look up English name from color_ranges via matching Chinese key
+                    for cn, crit in self.color_ranges.items():
+                        if cn == existing_pn:
+                            layer["part_name_en"] = crit.get("en", existing_pn)
+                            break
+                    else:
+                        layer["part_name_en"] = existing_pn
+                continue
 
             part_cn = self.identify_part(mean_color, centroid_y, area_ratio)
             part_en = self.color_ranges.get(part_cn, self.color_ranges["未分类"])["en"]
