@@ -242,7 +242,8 @@ class WorkflowEngine:
                 safe_prompt = sanitize_prompt(effective_prompt)
                 timestamp = int(time.time())
                 gen_output = str(self.output_dir / f"character_{timestamp}.png")
-                self._track_temp(gen_output)
+                # NOTE: gen_output is a final deliverable (the raw generated
+                # character image) — do NOT track it as temp; user may want it.
 
                 gen_result = self.router.generate(
                     prompt=safe_prompt,
@@ -298,9 +299,15 @@ class WorkflowEngine:
                 self._set_state("layering", "Semantic segmentation (with K-means fallback)", 60)
                 layers_output = str(self.output_dir / f"layers_{timestamp}")
                 layer_result = self.semantic_layerer.layer(optimized_img, output_dir=layers_output)
+                # v10.1: fall back to KMeans when semantic is unavailable OR when
+                # it degraded to HSV color fallback (quality ≈ KMeans, but KMeans
+                # produces more coherent clusters for rigging). Use a _kmeans suffixed
+                # directory so the semantic output remains available for diagnosis
+                # without mixing with KMeans layers.
                 if not layer_result.get("success") or layer_result.get("method") == "semantic_hsv_fallback":
-                    log.info("Semantic segmentation unavailable or fell back to HSV; using K-means instead")
-                    layers_output_k = str(self.output_dir / f"layers_{timestamp}")
+                    reason = "unavailable" if not layer_result.get("success") else "HSV fallback"
+                    log.info(f"Semantic segmentation {reason}; falling back to K-means")
+                    layers_output_k = str(self.output_dir / f"layers_{timestamp}_kmeans")
                     layer_result = self.kmeans_layerer.layer(optimized_img, output_dir=layers_output_k)
             else:
                 self._set_state("layering", f"K-means layering (k={self.k_clusters})", 60)
