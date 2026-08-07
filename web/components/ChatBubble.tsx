@@ -19,9 +19,12 @@ const EMOTION_META: Record<Emotion, { label: string; color: string }> = {
   excited: { label: 'Excited', color: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30' },
 };
 
-function formatTime(iso: string, locale?: string): string {
+function formatTime(iso: string | undefined | null, locale?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
   try {
-    return new Date(iso).toLocaleTimeString(locale, {
+    return d.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
     });

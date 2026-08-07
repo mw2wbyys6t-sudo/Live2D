@@ -225,7 +225,7 @@ func (h *WSHub) HandleUpgrade(w http.ResponseWriter, r *http.Request) {
 	bufrw.Flush()
 
 	// 生成客户端 ID
-	clientID := fmt.Sprintf("ws_%d_%d", time.Now().UnixNano(), conn.RemoteAddr().Network())
+	clientID := fmt.Sprintf("ws_%d_%s", time.Now().UnixNano(), conn.RemoteAddr().Network())
 	hashID := sha1.Sum([]byte(clientID + time.Now().String()))
 	cid := fmt.Sprintf("%x", hashID)
 

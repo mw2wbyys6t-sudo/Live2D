@@ -8,15 +8,18 @@ interface CharacterCardProps {
   onDelete?: (id: string) => void;
 }
 
-function formatDate(iso: string, locale?: string): string {
+function formatDate(iso: string | undefined | null, locale?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
   try {
-    return new Date(iso).toLocaleDateString(locale, {
+    return d.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
   } catch {
-    return iso;
+    return d.toISOString().slice(0, 10);
   }
 }
 

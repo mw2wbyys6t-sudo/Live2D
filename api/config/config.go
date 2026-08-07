@@ -113,8 +113,36 @@ type MediaPipeConfig struct {
 }
 
 func DefaultConfig() *Config {
-	// Resolve project root relative to this file (api/config/config.go -> api/.. = project root)
-	baseDir, _ := filepath.Abs(filepath.Join("..", ".."))
+	// Resolve project root. When this file lives at api/config/config.go the
+	// `..` `..` trick works, but if the server is launched from a different
+	// cwd (e.g. /workspace itself) `filepath.Abs` collapses to "/" and
+	// every script resolution breaks. Fall back to the actual cwd, then
+	// verify the expected layout markers exist.
+	baseDir := ""
+	if abs, err := filepath.Abs(filepath.Join("..", "..")); err == nil {
+		baseDir = abs
+	}
+	if baseDir == "" || baseDir == "/" {
+		if wd, err := os.Getwd(); err == nil {
+			baseDir = wd
+		}
+	}
+	// If the cwd is not the project root (e.g. someone launched the binary
+	// from inside /tmp), try to find the project root by looking for the
+	// core/ and live2d_builder/ markers.
+	if baseDir != "" {
+		if _, err := os.Stat(filepath.Join(baseDir, "core", "workflow.py")); err != nil {
+			for _, candidate := range []string{"/workspace", "/app", "/repo", "/project"} {
+				if _, err := os.Stat(filepath.Join(candidate, "core", "workflow.py")); err == nil {
+					baseDir = candidate
+					break
+				}
+			}
+		}
+	}
+	if baseDir == "" {
+		baseDir = "/workspace"
+	}
 	scriptsDir := baseDir
 
 	return &Config{

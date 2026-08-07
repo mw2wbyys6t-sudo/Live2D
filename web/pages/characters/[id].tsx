@@ -90,10 +90,15 @@ const CharacterDetailPage: NextPage = () => {
       setCreatedText('');
       return;
     }
+    const d = new Date(character.createdAt);
+    if (isNaN(d.getTime())) {
+      setCreatedText('—');
+      return;
+    }
     try {
-      setCreatedText(new Date(character.createdAt).toLocaleDateString());
+      setCreatedText(d.toLocaleDateString());
     } catch {
-      setCreatedText(character.createdAt);
+      setCreatedText(d.toISOString().slice(0, 10));
     }
   }, [character]);
 
@@ -135,8 +140,8 @@ const CharacterDetailPage: NextPage = () => {
     form.colorPalette || character?.colorPalette || DEFAULT_PALETTE;
   const embedding = character?.embeddingStatus;
   const safeCreatedAt = character?.createdAt;
-  const displayCreated = !safeCreatedAt
-    ? ''
+  const displayCreated = !safeCreatedAt || isNaN(new Date(safeCreatedAt).getTime())
+    ? '—'
     : mounted
     ? createdText
     : new Date(safeCreatedAt).toLocaleDateString('en-US');

@@ -79,6 +79,12 @@ func (s *CharacterService) CreateCharacter(req models.CharacterRequest) (*models
 
 	// 如果提供了参考图，调用 Python 提取 embedding
 	if req.RefImage != "" {
+		// Always record the reference path on the card so /api/characters/{id}
+		// exposes it even if the Python bridge (CLIP embedding) is unavailable.
+		card.References.Front = req.RefImage
+		if err := s.save(card); err != nil {
+			return nil, err
+		}
 		pb := NewPythonBridge(s.cfg)
 		_ = pb.AddReferenceImage(card.CharacterID, req.RefImage, "front")
 		// 重新加载以获取 embedding

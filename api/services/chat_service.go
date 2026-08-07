@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -182,7 +183,7 @@ func (s *ChatService) parseOllamaStream(body io.Reader, onChunk func(ChatStreamC
 		}
 		if chunk.Error != "" {
 			onChunk(ChatStreamChunk{Type: "error", Error: chunk.Error})
-			return fmt.Errorf(chunk.Error)
+			return errors.New(chunk.Error)
 		}
 		if chunk.Message.Content != "" {
 			onChunk(ChatStreamChunk{Type: "token", Content: chunk.Message.Content})
@@ -247,7 +248,7 @@ func (s *ChatService) parseOpenAIStream(body io.Reader, onChunk func(ChatStreamC
 		}
 		if chunk.Error != nil {
 			onChunk(ChatStreamChunk{Type: "error", Error: chunk.Error.Message})
-			return fmt.Errorf(chunk.Error.Message)
+			return errors.New(chunk.Error.Message)
 		}
 		if len(chunk.Choices) > 0 {
 			content := chunk.Choices[0].Delta.Content

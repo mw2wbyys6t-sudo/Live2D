@@ -50,7 +50,12 @@ const ExportPage: NextPage = () => {
   useEffect(() => {
     setMounted(true);
   }, []);
-  const fmtTime = (iso: string) => mounted ? new Date(iso).toLocaleTimeString() : '00:00';
+  const fmtTime = (iso: string | undefined | null) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return mounted ? d.toLocaleTimeString() : '00:00';
+  };
 
   useEffect(() => {
     apiClient
@@ -94,15 +99,21 @@ const ExportPage: NextPage = () => {
 
     for (const format of Array.from(formats)) {
       try {
-        const blob = await apiClient.exportModel(selectedId, format).catch(() => null);
+        const result = await apiClient.exportModel(selectedId, format).catch(() => null);
         const opt = FORMATS.find((f) => f.id === format)!;
         const filename = `${(selected?.name || 'character').replace(/\s+/g, '_')}_${format}${opt.ext}`;
-        if (blob) {
-          // real download
-          const url = URL.createObjectURL(blob);
-          downloads.push({ format, filename, size: blob.size, url });
+        if (result && result.success) {
+          // real download: model3_json/texture/model_path are returned as text/URL paths
+          const payload = result.model3_json || result.texture || result.model_path || '';
+          const size = typeof payload === 'string' ? payload.length : 0;
+          const url = result.model_path
+            ? result.model_path
+            : payload
+            ? `data:text/plain;charset=utf-8,${encodeURIComponent(payload)}`
+            : `#export-${format}`;
+          downloads.push({ format, filename, size, url });
         } else {
-          // placeholder for demo
+          // placeholder for demo / failed export
           downloads.push({
             format,
             filename,
