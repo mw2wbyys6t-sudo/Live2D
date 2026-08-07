@@ -1,0 +1,192 @@
+{
+  "Version": 3,
+  "Meta": {
+    "PhysicsSettingCount": 2,
+    "TotalInputCount": 3,
+    "TotalOutputCount": 3,
+    "VertexCount": 4,
+    "Fps": 60,
+    "EffectiveForces": {
+      "Gravity": {
+        "X": 0,
+        "Y": -1
+      },
+      "Wind": {
+        "X": 0,
+        "Y": 0
+      }
+    },
+    "PhysicsDictionary": [
+      {
+        "Id": "BodyBounce",
+        "Name": "身体弹跳 (Body Bounce)"
+      },
+      {
+        "Id": "Breathing",
+        "Name": "呼吸 (Breathing)"
+      }
+    ]
+  },
+  "PhysicsSettings": [
+    {
+      "Id": "BodyBounce",
+      "Name": "身体弹跳 (Body Bounce)",
+      "Input": [
+        {
+          "Source": {
+            "Target": "Parameter",
+            "Id": "ParamBodyAngleY"
+          },
+          "Weight": 10.0,
+          "Type": "X",
+          "Reflect": false
+        },
+        {
+          "Source": {
+            "Target": "Parameter",
+            "Id": "ParamAngleY"
+          },
+          "Weight": 5.0,
+          "Type": "X",
+          "Reflect": false
+        }
+      ],
+      "Output": [
+        {
+          "Destination": {
+            "Target": "Parameter",
+            "Id": "ParamBodySway"
+          },
+          "VertexIndex": 1,
+          "Scale": 1.0,
+          "Weight": 100,
+          "Type": "X",
+          "Reflect": false
+        },
+        {
+          "Destination": {
+            "Target": "Parameter",
+            "Id": "ParamBreath"
+          },
+          "VertexIndex": 1,
+          "Scale": 0.5,
+          "Weight": 30,
+          "Type": "X",
+          "Reflect": false
+        }
+      ],
+      "Vertices": [
+        {
+          "Position": {
+            "X": 0.0,
+            "Y": 0
+          },
+          "Mobility": 1.0,
+          "Delay": 0.0,
+          "Acceleration": 1.0,
+          "Radius": 50
+        },
+        {
+          "Position": {
+            "X": 0.5,
+            "Y": 0
+          },
+          "Mobility": 1.0,
+          "Delay": 0.0,
+          "Acceleration": 1.0,
+          "Radius": 50
+        }
+      ],
+      "Normalization": {
+        "Position": {
+          "Minimum": -1,
+          "Default": 0,
+          "Maximum": 1
+        },
+        "Angle": {
+          "Minimum": -10.0,
+          "Default": 0,
+          "Maximum": 10.0
+        }
+      },
+      "Pendulum": {
+        "Length": 0.2,
+        "Damping": 0.7,
+        "Stiffness": 0.5,
+        "Mass": 1.5,
+        "Gravity": 0.0,
+        "Fps": 60
+      }
+    },
+    {
+      "Id": "Breathing",
+      "Name": "呼吸 (Breathing)",
+      "Input": [
+        {
+          "Source": {
+            "Target": "Parameter",
+            "Id": "ParamBreath"
+          },
+          "Weight": 1.0,
+          "Type": "X",
+          "Reflect": false
+        }
+      ],
+      "Output": [
+        {
+          "Destination": {
+            "Target": "Parameter",
+            "Id": "ParamBodyAngleY"
+          },
+          "VertexIndex": 1,
+          "Scale": 0.3,
+          "Weight": 50,
+          "Type": "X",
+          "Reflect": false
+        }
+      ],
+      "Vertices": [
+        {
+          "Position": {
+            "X": 0.0,
+            "Y": 0
+          },
+          "Mobility": 1.0,
+          "Delay": 0.0,
+          "Acceleration": 1.0,
+          "Radius": 50
+        },
+        {
+          "Position": {
+            "X": 0.5,
+            "Y": 0
+          },
+          "Mobility": 1.0,
+          "Delay": 0.0,
+          "Acceleration": 1.0,
+          "Radius": 50
+        }
+      ],
+      "Normalization": {
+        "Position": {
+          "Minimum": -1,
+          "Default": 0,
+          "Maximum": 1
+        },
+        "Angle": {
+          "Minimum": -10.0,
+          "Default": 0,
+          "Maximum": 10.0
+        }
+      },
+      "Pendulum": {
+        "Length": 2.0,
+        "Damping": 0.99,
+        "Stiffness": 0.05,
+        "Mass": 2.0,
+        "Gravity": 0.0,
+        "Fps": 60
+      }
+    }
+  ]
+}

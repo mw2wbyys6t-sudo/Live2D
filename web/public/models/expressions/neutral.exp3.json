@@ -1,0 +1,47 @@
+{
+  "Type": "Live2D Expression",
+  "FadeInTime": 0.5,
+  "FadeOutTime": 0.5,
+  "Parameters": [
+    {
+      "Id": "ParamEyeLOpen",
+      "Value": 1.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamEyeROpen",
+      "Value": 1.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamMouthForm",
+      "Value": 0.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamMouthOpenY",
+      "Value": 0.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamBrowLY",
+      "Value": 0.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamBrowRY",
+      "Value": 0.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamCheek",
+      "Value": 0.0,
+      "Blend": "Add"
+    },
+    {
+      "Id": "ParamTears",
+      "Value": 0.0,
+      "Blend": "Add"
+    }
+  ]
+}

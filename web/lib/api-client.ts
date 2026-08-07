@@ -149,9 +149,9 @@ export class APIClient {
   async getCharacters(): Promise<Character[]> {
     const res = await this.request<unknown>('/api/characters');
     const data = extractData<Character[] | { characters?: Character[] }>(res);
-    if (Array.isArray(data)) return data;
-    if (data?.characters && Array.isArray(data.characters)) return data.characters;
-    return [];
+    const arr = Array.isArray(data) ? data : (data?.characters && Array.isArray(data.characters) ? data.characters : []);
+    // Map Go snake_case (character_id/created_at) to frontend camelCase (id/createdAt)
+    return arr.map((c: any) => this.normalizeCharacter(c));
   }
 
   async createCharacter(data: CharacterCreate): Promise<Character> {
@@ -186,12 +186,49 @@ export class APIClient {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    return extractData<Character>(res);
+    return this.normalizeCharacter(extractData<any>(res));
   }
 
   async getCharacter(id: string): Promise<Character> {
     const res = await this.request<unknown>(`/api/characters/${encodeURIComponent(id)}`);
-    return extractData<Character>(res);
+    return this.normalizeCharacter(extractData<any>(res));
+  }
+
+  /**
+   * Normalize a raw character object returned by the Go API into the
+   * frontend Character shape (camelCase + sensible defaults).
+   */
+  private normalizeCharacter(raw: any): Character {
+    if (!raw || typeof raw !== 'object') {
+      return {
+        id: '',
+        name: '',
+        generationCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    const id = raw.id || raw.character_id || raw.characterId || '';
+    const name = raw.name || '';
+    const createdAt = raw.createdAt || raw.created_at || new Date().toISOString();
+    const updatedAt = raw.updatedAt || raw.updated_at || createdAt;
+    // Try backend-provided thumbnails, then fall back to a local convention:
+    //   /generated/{characterId}.png — populated when a real workflow image
+    //   was generated for this character.
+    const apiThumb = raw.thumbnailUrl || raw.thumbnail_url || raw.image_url || raw.imageUrl || '';
+    const localThumb = id ? `/generated/${id}.png` : '';
+    const thumbnailUrl = apiThumb || localThumb;
+    const description = raw.description || raw.persona?.personality || raw.persona?.backstory || '';
+    return {
+      ...raw,
+      id,
+      name,
+      description,
+      createdAt,
+      updatedAt,
+      thumbnailUrl,
+      generationCount: raw.generationCount ?? raw.generation_count ?? 0,
+    } as Character;
   }
 
   async updateCharacter(
