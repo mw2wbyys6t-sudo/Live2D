@@ -79,7 +79,14 @@ def interactive_menu():
             input("\nPress Enter to continue...")
 
 
-def _generate(prompt: str):
+def _generate(
+    prompt: str,
+    output_dir: str = "./output",
+    provider: str = "auto",
+    deploy_desktop: bool = False,
+    use_semantic: bool = True,
+    k_clusters: int = 12,
+):
     """Run the full generation pipeline."""
     from core.workflow import WorkflowEngine
 
@@ -87,24 +94,30 @@ def _generate(prompt: str):
     print("-" * 50)
 
     engine = WorkflowEngine(
-        output_dir="./output",
-        k_clusters=12,
-        provider="auto",
+        output_dir=output_dir,
+        k_clusters=k_clusters,
+        provider=None if provider == "auto" else provider,
+        use_semantic_segmentation=use_semantic,
+        export_live2d=True,
     )
     result = engine.run(
         prompt=prompt,
-        deploy_desktop=True,
-        use_semantic=True,
+        deploy_desktop=deploy_desktop,
     )
 
     if result["success"]:
         print(f"\n✅ Done! Output: {result.get('output_dir', 'output/')}")
+        if "character_image" in result:
+            print(f"   Image: {result['character_image']}")
         if "layers_dir" in result:
             print(f"   Layers: {result['layers_dir']}")
         if "steps" in result and "rigging" in result["steps"]:
             print(f"   Model: {result['steps']['rigging'].get('model3_json', 'N/A')}")
+        if "steps" in result and "psd" in result["steps"]:
+            print(f"   PSD: {result['steps']['psd'].get('psd_path', 'N/A')}")
     else:
         print(f"\n❌ Failed: {result.get('error', 'Unknown error')}")
+    return result
 
 
 def _layer_image(image_path: str):
@@ -254,9 +267,13 @@ def main():
     gen = sub.add_parser("generate", help="Generate a character")
     gen.add_argument("prompt", help="Character description")
     gen.add_argument("--output", "-o", default="./output")
-    gen.add_argument("--provider", default="auto")
+    gen.add_argument("--provider", default="auto",
+                     choices=["pollinations", "sensenova", "seedream", "auto"])
     gen.add_argument("--deploy-desktop", action="store_true")
     gen.add_argument("--no-semantic", action="store_true")
+    gen.add_argument("--k", type=int, default=12, help="K-means clusters (default: 12)")
+    gen.add_argument("--negative-prompt", "-n", default=None, help="Negative prompt")
+    gen.add_argument("--seed", type=int, default=None, help="Random seed")
 
     # pet
     sub.add_parser("pet", help="Run desktop pet")
@@ -275,7 +292,14 @@ def main():
 
     if args.command == "generate":
         print_banner()
-        _generate(args.prompt)
+        _generate(
+            prompt=args.prompt,
+            output_dir=args.output,
+            provider=args.provider,
+            deploy_desktop=args.deploy_desktop,
+            use_semantic=not args.no_semantic,
+            k_clusters=args.k,
+        )
     elif args.command == "pet":
         _run_pet()
     elif args.command == "chat":

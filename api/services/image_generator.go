@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -73,34 +74,55 @@ func (g *ImageGenerator) GenerateWithCharacter(req models.GenerateRequest) (*mod
 	return g.generateWithLocalGenerator(legacyReq)
 }
 
-// generateWithWorkflow 使用 core/workflow.py 新工作流
+// pythonWorkflowResult 对应 Python WorkflowEngine.run() 返回的 JSON 结构
+type pythonWorkflowResult struct {
+	Success        bool                   `json:"success"`
+	Version        string                 `json:"version"`
+	CharacterImage string                 `json:"character_image"`
+	LayersDir      string                 `json:"layers_dir"`
+	OutputDir      string                 `json:"output_dir"`
+	CharacterID    string                 `json:"character_id,omitempty"`
+	Error          string                 `json:"error,omitempty"`
+	ErrorState     string                 `json:"error_state,omitempty"`
+	Steps          map[string]interface{} `json:"steps,omitempty"`
+}
+
+// generateWithWorkflow 使用 core/workflow.py 新工作流（v10.1: 使用 --json 模式）
 func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*models.GenerateImageResponse, error) {
 	scriptPath := filepath.Join(g.cfg.Python.ScriptsDir, "core", "workflow.py")
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("工作流脚本不存在: %s", scriptPath)
 	}
 
-	// 构建参数
+	// 确定输出目录
+	outputDir := filepath.Join(g.cfg.Python.ScriptsDir, "output")
+	if req.CharacterID != "" {
+		outputDir = filepath.Join(g.cfg.Python.ScriptsDir, "output", "characters", req.CharacterID)
+	}
+	os.MkdirAll(outputDir, 0755)
+
+	// 构建参数（使用 --json 模式，可靠解析结果）
 	args := []string{
 		scriptPath,
+		"--json",
+		"--output", outputDir,
 		"--width", fmt.Sprintf("%d", req.Width),
 		"--height", fmt.Sprintf("%d", req.Height),
 		"--seed", fmt.Sprintf("%d", req.Seed),
+		"--live2d-export", // 默认导出 Live2D
 	}
 
 	if req.CharacterID != "" {
 		args = append(args, "--character-id", req.CharacterID)
 	}
-	if req.UseSemantic {
-		args = append(args, "--semantic")
-	} else {
+	if !req.UseSemantic {
 		args = append(args, "--no-semantic")
-	}
-	if req.ExportLive2D {
-		args = append(args, "--live2d-export")
 	}
 	if req.DeployDesktop {
 		args = append(args, "--deploy-desktop")
+	}
+	if req.NegativePrompt != "" {
+		args = append(args, "--negative-prompt", req.NegativePrompt)
 	}
 
 	// 添加提示词
@@ -113,7 +135,7 @@ func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*mode
 		if strings.HasPrefix(prompt, "-") {
 			prompt = " " + prompt
 		}
-		args = append(args, "--", prompt)
+		args = append(args, prompt)
 	}
 
 	cmd := exec.Command(g.cfg.Python.PythonPath, args...)
@@ -123,14 +145,14 @@ func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*mode
 		"PYTHONPATH="+g.cfg.Python.ScriptsDir,
 	)
 
-	// 工作流超时更长
-	timeout := g.cfg.GetPythonTimeout() * 3
+	// 工作流超时更长（生图+分割+绑定比较耗时）
+	timeout := g.cfg.GetPythonTimeout() * 5
 	done := make(chan struct{})
 	var output []byte
-	var err error
+	var runErr error
 
 	go func() {
-		output, err = cmd.CombinedOutput()
+		output, runErr = cmd.CombinedOutput()
 		close(done)
 	}()
 
@@ -143,29 +165,85 @@ func (g *ImageGenerator) generateWithWorkflow(req models.GenerateRequest) (*mode
 		return nil, fmt.Errorf("工作流执行超时（限制%d秒）", int(timeout.Seconds()))
 	}
 
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] 工作流执行失败: %v\n输出: %s\n", err, string(output))
-		return nil, fmt.Errorf("工作流执行失败")
+	// 从 stdout 中提取 JSON（日志可能混在前面，找最后一个 { 开始的 JSON 对象）
+	outputStr := string(output)
+	jsonStart := strings.LastIndex(outputStr, "{")
+	if jsonStart == -1 {
+		fmt.Fprintf(os.Stderr, "[ERROR] 工作流未返回 JSON，输出: %s\n", outputStr)
+		if runErr != nil {
+			return nil, fmt.Errorf("工作流执行失败: %v", runErr)
+		}
+		return nil, fmt.Errorf("工作流未返回有效结果")
+	}
+	jsonStr := outputStr[jsonStart:]
+
+	// 解析 JSON 结果
+	var pyResult pythonWorkflowResult
+	if err := json.Unmarshal([]byte(jsonStr), &pyResult); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] JSON解析失败: %v\n输出片段: %s\n", err, jsonStr[:min(500, len(jsonStr))])
+		if runErr != nil {
+			return nil, fmt.Errorf("工作流执行失败: %v", runErr)
+		}
+		return nil, fmt.Errorf("解析工作流结果失败: %v", err)
 	}
 
-	// 解析输出
-	outputPath := g.parseOutputPath(string(output))
-	if outputPath == "" {
-		return nil, fmt.Errorf("无法从输出中解析图片路径")
-	}
-	if !filepath.IsAbs(outputPath) {
-		outputPath = filepath.Join(g.cfg.Python.ScriptsDir, outputPath)
+	if !pyResult.Success {
+		errMsg := pyResult.Error
+		if errMsg == "" {
+			errMsg = "unknown error"
+		}
+		return nil, fmt.Errorf("工作流失败: %s (state: %s)", errMsg, pyResult.ErrorState)
 	}
 
-	return &models.GenerateImageResponse{
-		ImagePath: outputPath,
-		ImageURL:  "/output/" + filepath.Base(outputPath),
-		Seed:      req.Seed,
-		Width:     req.Width,
-		Height:    req.Height,
-		Source:    "workflow_v10",
-		CreatedAt: time.Now(),
-	}, nil
+	// 构建响应
+	imagePath := pyResult.CharacterImage
+	if imagePath == "" {
+		// 尝试从 steps.generate.path 获取
+		if genStep, ok := pyResult.Steps["generate"].(map[string]interface{}); ok {
+			if p, ok := genStep["path"].(string); ok {
+				imagePath = p
+			}
+		}
+	}
+	if !filepath.IsAbs(imagePath) {
+		imagePath = filepath.Join(g.cfg.Python.ScriptsDir, imagePath)
+	}
+
+	resp := &models.GenerateImageResponse{
+		Success:     true,
+		ImagePath:   imagePath,
+		ImageURL:    "/output/" + filepath.Base(imagePath),
+		Seed:        req.Seed,
+		Width:       req.Width,
+		Height:      req.Height,
+		Source:      "workflow_v10.1",
+		CreatedAt:   time.Now(),
+		LayersDir:   pyResult.LayersDir,
+		OutputDir:   pyResult.OutputDir,
+		CharacterID: pyResult.CharacterID,
+		Steps:       pyResult.Steps,
+	}
+
+	// 提取 PSD 路径和 model3.json 路径
+	if psdStep, ok := pyResult.Steps["psd"].(map[string]interface{}); ok {
+		if p, ok := psdStep["psd_path"].(string); ok {
+			resp.PSDPath = p
+		}
+	}
+	if rigStep, ok := pyResult.Steps["rigging"].(map[string]interface{}); ok {
+		if p, ok := rigStep["model3_json"].(string); ok {
+			resp.Model3JSON = p
+		}
+	}
+
+	return resp, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // generateWithLocalGenerator 使用自研本地生成器生成图片

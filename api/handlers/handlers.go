@@ -56,7 +56,7 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 		Success: true,
 		Message: "Live2D API 服务正常运行",
 		Data: map[string]interface{}{
-			"version": "v10.0-go",
+			"version": "v10.1-go",
 			"uptime":  time.Since(h.startTime).String(),
 		},
 	})
@@ -112,7 +112,7 @@ func (h *Handler) GetSystemStatus(c *gin.Context) {
 		Success: true,
 		Data: models.SystemStatus{
 			Services: services,
-			Version:  "v10.0-go",
+			Version:  "v10.1-go",
 			Uptime:   time.Since(h.startTime).String(),
 		},
 	})
@@ -358,7 +358,7 @@ func (h *Handler) GetAPIInfo(c *gin.Context) {
 		Success: true,
 		Data: map[string]interface{}{
 			"name":        "Live2D Master Agent API",
-			"version":     "v10.0-go",
+			"version":     "v10.1-go",
 			"description": "AI角色生成、一致性维护、LLM聊天、Live2D导出 API",
 			"features": []string{
 				"角色一致性系统",

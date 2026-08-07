@@ -103,178 +103,143 @@ func sanitizeOutput(output string) string {
 	return result
 }
 
-// GenerateImageViaPython generates image via Python script with configurable timeout
+// GenerateImageViaPython generates image via Python workflow (v10.1: delegates to WorkflowEngine via --json)
+// Deprecated: Use ImageGenerator.GenerateWithCharacter() instead, which properly returns structured results.
 func (pb *PythonBridge) GenerateImageViaPython(prompt string, width, height, seed int) (string, error) {
-	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "master_tool.py")
+	// v10.1: Use core/workflow.py --json mode
+	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "core", "workflow.py")
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("工作流脚本不存在: %s", scriptPath)
+	}
+
+	outputDir := filepath.Join(pb.cfg.Python.ScriptsDir, "output")
+	os.MkdirAll(outputDir, 0755)
 
 	args := []string{
+		"--json",
+		"--output", outputDir,
 		"--width", fmt.Sprintf("%d", width),
 		"--height", fmt.Sprintf("%d", height),
-		"--no-layer",
-	}
-	if seed > 0 {
-		args = append(args, "--seed", fmt.Sprintf("%d", seed))
+		"--seed", fmt.Sprintf("%d", seed),
+		"--no-semantic",
 	}
 	if prompt != "" {
 		if strings.HasPrefix(prompt, "-") {
 			prompt = " " + prompt
 		}
-		args = append(args, "--", prompt)
+		args = append(args, prompt)
 	}
 
-	timeout := pb.cfg.GetPythonTimeout()
+	timeout := pb.cfg.GetPythonTimeout() * 3
 	output, err := pb.executePythonScript(scriptPath, args, timeout)
 	if err != nil {
 		return "", err
 	}
 
 	outputStr := string(output)
-	lines := strings.Split(outputStr, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ".png") {
-			parts := strings.Fields(line)
-			for _, part := range parts {
-				cleaned := strings.Trim(part, "[]:(),'\"`")
-				if strings.HasSuffix(cleaned, ".png") {
-					if filepath.IsAbs(cleaned) {
-						if _, err := os.Stat(cleaned); err == nil {
-							return cleaned, nil
-						}
-					}
-					absPath := filepath.Join(pb.cfg.Python.ScriptsDir, cleaned)
-					if _, err := os.Stat(absPath); err == nil {
-						return absPath, nil
-					}
-				}
+	jsonStart := strings.LastIndex(outputStr, "{")
+	if jsonStart == -1 {
+		return "", fmt.Errorf("工作流未返回有效结果")
+	}
+	var result struct {
+		Success        bool                   `json:"success"`
+		CharacterImage string                 `json:"character_image"`
+		Error          string                 `json:"error,omitempty"`
+		Steps          map[string]interface{} `json:"steps,omitempty"`
+	}
+	if err := json.Unmarshal([]byte(outputStr[jsonStart:]), &result); err != nil {
+		return "", fmt.Errorf("解析结果失败: %v", err)
+	}
+	if !result.Success {
+		return "", fmt.Errorf("生成失败: %s", result.Error)
+	}
+	imagePath := result.CharacterImage
+	if imagePath == "" {
+		if genStep, ok := result.Steps["generate"].(map[string]interface{}); ok {
+			if p, ok := genStep["path"].(string); ok {
+				imagePath = p
 			}
 		}
 	}
-	return "", fmt.Errorf("无法从输出中解析图片路径")
+	if !filepath.IsAbs(imagePath) {
+		imagePath = filepath.Join(pb.cfg.Python.ScriptsDir, imagePath)
+	}
+	return imagePath, nil
 }
 
-// GenerateWithWorkflow 使用新的 workflow.py CLI 生成图片（v10.0）
-func (pb *PythonBridge) GenerateWithWorkflow(req models.GenerateRequest) (map[string]interface{}, error) {
-	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "core", "workflow.py")
-
-	// 验证脚本存在
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		// 回退到主目录下的 workflow
-		scriptPath = filepath.Join(pb.cfg.Python.ScriptsDir, "live2d_workflow.py")
-		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-			return nil, fmt.Errorf("工作流脚本不存在")
-		}
-	}
-
-	args := []string{}
-
-	if req.Width > 0 {
-		args = append(args, "--width", fmt.Sprintf("%d", req.Width))
-	}
-	if req.Height > 0 {
-		args = append(args, "--height", fmt.Sprintf("%d", req.Height))
-	}
-	if req.Seed > 0 {
-		args = append(args, "--seed", fmt.Sprintf("%d", req.Seed))
-	}
-
-	// v10.0 新参数
-	if req.CharacterID != "" {
-		args = append(args, "--character-id", req.CharacterID)
-	}
-	if req.UseSemantic {
-		args = append(args, "--semantic")
-	} else {
-		args = append(args, "--no-semantic")
-	}
-	if req.ExportLive2D {
-		args = append(args, "--live2d-export")
-	}
-	if req.DeployDesktop {
-		args = append(args, "--deploy-desktop")
-	}
-
-	// 添加提示词
-	prompt := req.Prompt
-	if req.NegativePrompt != "" {
-		// negative prompt 目前通过 prompt 后缀处理
-	}
-	if prompt != "" {
-		if strings.HasPrefix(prompt, "-") {
-			prompt = " " + prompt
-		}
-		args = append(args, "--", prompt)
-	}
-
-	timeout := pb.cfg.GetPythonTimeout() * 3 // 工作流需要更长时间
-	output, err := pb.executePythonScript(scriptPath, args, timeout)
-	if err != nil {
-		return nil, err
-	}
-
-	// 尝试从输出中解析 JSON 结果
-	result := map[string]interface{}{
-		"raw_output": string(output),
-	}
-
-	// 查找生成的图片路径
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ".png") {
-			parts := strings.Fields(line)
-			for _, part := range parts {
-				cleaned := strings.Trim(part, "[]:(),'\"`")
-				if strings.HasSuffix(cleaned, ".png") {
-					if filepath.IsAbs(cleaned) {
-						result["image_path"] = cleaned
-					} else {
-						result["image_path"] = filepath.Join(pb.cfg.Python.ScriptsDir, cleaned)
-					}
-				}
-			}
-		}
-	}
-
-	return result, nil
-}
-
-// CreatePSDPlan creates PSD layer plan
+// CreatePSDPlan creates PSD layer plan using the core segment engine
+// v10.1: Uses the same KMeans/semantic pipeline as workflow, returns PSD path
 func (pb *PythonBridge) CreatePSDPlan(imagePath string) (*models.PSDLayerResponse, error) {
 	if err := validatePath(imagePath); err != nil {
 		return nil, fmt.Errorf("路径验证失败: %v", err)
 	}
-
-	scriptPath := filepath.Join(pb.cfg.Python.ScriptsDir, "live2d_layer_v6.py")
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		scriptPath = filepath.Join(pb.cfg.Python.ScriptsDir, "live2d_layer_pro.py")
-	}
-
-	timeout := pb.cfg.GetPythonTimeout()
-	output, err := pb.executePythonScript(scriptPath, []string{imagePath}, timeout)
-	if err != nil {
-		return nil, fmt.Errorf("PSD分层脚本执行失败: %v\n输出: %s", err, sanitizeOutput(string(output)))
+	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("图片不存在: %s", imagePath)
 	}
 
 	outputDir := filepath.Join(pb.cfg.Output.BaseDir, fmt.Sprintf("psd_plan_%d", time.Now().Unix()))
 	os.MkdirAll(outputDir, 0755)
 
-	layers := []string{
-		"Background - 背景", "Hair_Back - 头发_后", "Neck - 脖子",
-		"Chest - 胸腔", "Waist_Hips - 腰臀",
-		"Thigh_L - 大腿_左", "Thigh_R - 大腿_右",
-		"Face_Base - 脸_基础", "Face_Blush - 脸_腮红",
-		"EyeWhite_L - 眼白_左", "EyeWhite_R - 眼白_右",
-		"Iris_L - 虹膜_左", "Iris_R - 虹膜_右",
-		"Pupil_L - 瞳孔_左", "Pupil_R - 瞳孔_右",
-		"Mouth_Cavity - 口腔", "Mouth_LowerLip - 下唇", "Mouth_UpperLip - 上唇",
-		"Lash_Upper_L - 睫毛_上_左", "Lash_Upper_R - 睫毛_上_右",
-		"Eyebrow_L - 眉毛_左", "Eyebrow_R - 眉毛_右",
-		"Bangs - 刘海", "SideHair_L - 侧发_左", "SideHair_R - 侧发_右",
-		"Clothes_Outer - 衣服_外层",
+	// Run KMeans layerer + PSD creator inline via Python
+	pyCode := fmt.Sprintf(`
+import sys, json
+sys.path.insert(0, %q)
+from PIL import Image
+from pathlib import Path
+from core.segment_engine.kmeans import KMeansLayerer
+from core.psd.creator import PSDCreator
+
+img_path = %q
+out_dir = %q
+img = Image.open(img_path).convert("RGBA")
+
+layerer = KMeansLayerer(k_clusters=12)
+layer_result = layerer.layer(img, output_dir=out_dir)
+
+psd_path = str(Path(out_dir) / "character.psd")
+psd_creator = PSDCreator()
+psd_result = psd_creator.create_psd(out_dir, psd_path)
+
+print(json.dumps({
+    "output_dir": out_dir,
+    "layer_count": layer_result["layer_count"],
+    "psd_path": psd_result.get("psd_path", psd_path),
+    "layers": [l["name"] for l in layer_result["layers"]],
+}, ensure_ascii=False))
+`, pb.cfg.Python.ScriptsDir, imagePath, outputDir)
+
+	result, err := pb.runInlinePython(pyCode)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract data from result
+	var planDir, psdPath string
+	var layerCount int
+	var layers []string
+	if resData, ok := result["result"].(map[string]interface{}); ok {
+		if v, ok := resData["output_dir"].(string); ok {
+			planDir = v
+		}
+		if v, ok := resData["psd_path"].(string); ok {
+			psdPath = v
+		}
+		if v, ok := resData["layer_count"].(float64); ok {
+			layerCount = int(v)
+		}
+		if layerList, ok := resData["layers"].([]interface{}); ok {
+			for _, l := range layerList {
+				if s, ok := l.(string); ok {
+					layers = append(layers, s)
+				}
+			}
+		}
 	}
 
 	return &models.PSDLayerResponse{
-		PlanDir:    outputDir,
-		LayerCount: len(layers),
+		PlanDir:    planDir,
+		PSDPath:    psdPath,
+		LayerCount: layerCount,
 		Layers:     layers,
 		CreatedAt:  time.Now(),
 	}, nil
@@ -520,19 +485,17 @@ func (pb *PythonBridge) CheckSeeThroughInstalled() bool {
 	return err == nil
 }
 
-// GetPythonScripts lists available Python scripts
+// GetPythonScripts lists available Python scripts (v10.1)
 func (pb *PythonBridge) GetPythonScripts() []map[string]string {
 	scripts := []map[string]string{}
 	scriptFiles := []struct {
 		Name string
 		Desc string
 	}{
-		{"master_tool.py", "主工具 - 图片生成+分层 v10.0"},
-		{"core/workflow.py", "完整工作流引擎 v10.0（含角色一致性）"},
-		{"live2d_layer_v6.py", "K-means 分层工具 v6"},
-		{"live2d_desktop_pet.py", "桌面桌宠创建工具"},
-		{"config_api.py", "API 配置工具"},
-		{"install_comfyui_advanced.py", "ComfyUI + See-through 安装器"},
+		{"core/workflow.py", "完整工作流引擎 v10.1（图像生成→QA→分割→绑定→PSD→Live2D导出）"},
+		{"core/cli.py", "交互式命令行工具 v10.1"},
+		{"install.py", "项目安装脚本（依赖+模型）"},
+		{"install.sh", "Linux/macOS 一键安装脚本"},
 	}
 	for _, sf := range scriptFiles {
 		path := filepath.Join(pb.cfg.Python.ScriptsDir, sf.Name)

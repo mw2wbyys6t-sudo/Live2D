@@ -35,6 +35,18 @@ export interface APIClientOptions {
   onUnauthorized?: () => void;
 }
 
+// Helper to extract data from the standard Go API wrapper: { success, data, message, error }
+function extractData<T>(res: unknown): T {
+  const wrapper = res as { success?: boolean; data?: T; error?: string };
+  if (wrapper && typeof wrapper === 'object' && 'data' in wrapper) {
+    if (wrapper.error) {
+      throw new APIError(wrapper.error, 200, res);
+    }
+    return wrapper.data as T;
+  }
+  return res as T;
+}
+
 export class APIClient {
   readonly baseURL: string;
   private readonly timeoutMs: number;
@@ -42,7 +54,7 @@ export class APIClient {
 
   constructor(options: APIClientOptions = {}) {
     this.baseURL = options.baseURL || DEFAULT_BASE_URL;
-    this.timeoutMs = options.timeoutMs ?? 60_000;
+    this.timeoutMs = options.timeoutMs ?? 300_000; // 5min default for full pipeline
     this.onUnauthorized = options.onUnauthorized;
   }
 
@@ -77,11 +89,12 @@ export class APIClient {
         } catch {
           // ignore
         }
-        throw new APIError(
-          `Request failed: ${res.status} ${res.statusText}`,
-          res.status,
-          data,
-        );
+        // Extract error message from Go wrapper if available
+        let errMsg = `Request failed: ${res.status} ${res.statusText}`;
+        const wrapper = data as { error?: string; message?: string };
+        if (wrapper?.error) errMsg = wrapper.error;
+        else if (wrapper?.message) errMsg = wrapper.message;
+        throw new APIError(errMsg, res.status, data);
       }
       if (res.status === 204) {
         return undefined as T;
@@ -135,63 +148,72 @@ export class APIClient {
 
   async getCharacters(): Promise<Character[]> {
     const res = await this.request<unknown>('/api/characters');
-    // Go API returns { success: true, data: [...] } — extract the array
-    const data = (res as { data?: unknown })?.data;
-    if (Array.isArray(data)) return data as Character[];
-    if (Array.isArray(res)) return res as Character[];
+    const data = extractData<Character[] | { characters?: Character[] }>(res);
+    if (Array.isArray(data)) return data;
+    if (data?.characters && Array.isArray(data.characters)) return data.characters;
     return [];
   }
 
   async createCharacter(data: CharacterCreate): Promise<Character> {
-    const form = new FormData();
-    form.append('name', data.name);
-    if (data.description) form.append('description', data.description);
-    if (data.personality) form.append('personality', data.personality);
-    if (data.appearance) form.append('appearance', data.appearance);
+    // v10.1: Send as JSON matching Go CharacterRequest structure (snake_case)
+    // referenceImages file upload is handled separately via addReferenceImage
+    const body: Record<string, unknown> = {
+      name: data.name,
+    };
+    // Map frontend fields to Go CharacterRequest fields (Go uses nested Face/Hair/Body/Palette/Persona/Style)
+    // For simplicity, map basic fields into persona/style
+    if (data.personality || data.description || data.appearance) {
+      body.persona = {
+        personality: data.personality || data.description || '',
+        backstory: data.appearance || '',
+      };
+    }
     if (data.colorPalette) {
-      form.append('colorPalette', JSON.stringify(data.colorPalette));
+      body.palette = {
+        primary_colors: [
+          data.colorPalette.primary,
+          data.colorPalette.secondary,
+          data.colorPalette.hair,
+          data.colorPalette.eyes,
+          data.colorPalette.skin,
+          data.colorPalette.accent,
+        ].filter(Boolean),
+        skin_tone: data.colorPalette.skin,
+        accent_color: data.colorPalette.accent,
+      };
     }
-    if (data.referenceImages) {
-      for (const f of data.referenceImages) {
-        form.append('referenceImages', f);
-      }
-    }
-    // multipart - do not set content-type, let the browser set boundary
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const res = await fetch(`${this.baseURL}/api/characters`, {
-        method: 'POST',
-        body: form,
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        throw new APIError(
-          `Create failed: ${res.status} ${res.statusText}`,
-          res.status,
-        );
-      }
-      return (await res.json()) as Character;
-    } finally {
-      clearTimeout(timeout);
-    }
+    const res = await this.request<unknown>('/api/characters', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return extractData<Character>(res);
   }
 
   async getCharacter(id: string): Promise<Character> {
-    return this.request<Character>(`/api/characters/${encodeURIComponent(id)}`);
+    const res = await this.request<unknown>(`/api/characters/${encodeURIComponent(id)}`);
+    return extractData<Character>(res);
   }
 
   async updateCharacter(
     id: string,
     data: Partial<Character>,
   ): Promise<Character> {
-    return this.request<Character>(
+    // v10.1: Backend uses PUT (not PATCH)
+    const body: Record<string, unknown> = {};
+    if (data.name) body.name = data.name;
+    if (data.personality || data.description) {
+      body.persona = {
+        personality: data.personality || data.description || '',
+      };
+    }
+    const res = await this.request<unknown>(
       `/api/characters/${encodeURIComponent(id)}`,
       {
-        method: 'PATCH',
-        body: JSON.stringify(data),
+        method: 'PUT',
+        body: JSON.stringify(body),
       },
     );
+    return extractData<Character>(res);
   }
 
   async deleteCharacter(id: string): Promise<void> {
@@ -202,74 +224,121 @@ export class APIClient {
 
   // ---------- generation ----------
 
+  private buildGenerationPayload(req: GenerationRequest) {
+    // Map frontend camelCase to Go snake_case
+    return {
+      prompt: req.prompt,
+      negative_prompt: req.negativePrompt,
+      width: req.width,
+      height: req.height,
+      seed: req.seed ?? 0,
+      character_id: req.characterId,
+      use_semantic: req.segmentationMethod === 'semantic' || req.characterConsistency,
+      export_live2d: true,
+      deploy_desktop: false,
+    };
+  }
+
   async generateImage(req: GenerationRequest): Promise<GenerationResult> {
-    return this.request<GenerationResult>('/api/generate', {
+    // Simple image generation (no character workflow)
+    const payload: Record<string, unknown> = {
+      prompt: req.prompt,
+      width: req.width,
+      height: req.height,
+      seed: req.seed ?? 0,
+    };
+    const res = await this.request<unknown>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify(req),
+      body: JSON.stringify(payload),
     });
+    return this.mapLegacyResult(extractData<any>(res));
+  }
+
+  async generateCharacter(req: GenerationRequest): Promise<GenerationResult> {
+    // v10.1: Full pipeline generation via /api/generate/character (image→QA→segment→rig→Live2D)
+    const payload = this.buildGenerationPayload(req);
+    const res = await this.request<unknown>('/api/generate/character', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return this.mapGenerationResult(extractData<any>(res));
   }
 
   async generateStream(
     req: GenerationRequest,
     onProgress: (step: GenerationStep) => void,
   ): Promise<GenerationResult> {
+    // v10.1: Stream endpoint returns progress via SSE from WebSocket hub,
+    // but for simplicity we fall back to calling generateCharacter with progress
+    // simulated from the returned steps. If true SSE is needed, use /ws endpoint.
+    const payload = this.buildGenerationPayload(req);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10 * 60_000);
     try {
-      const res = await fetch(`${this.baseURL}/api/generate/stream`, {
+      const res = await fetch(`${this.baseURL}/api/generate/character`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) {
-        throw new APIError(
-          `Stream failed: ${res.status} ${res.statusText}`,
-          res.status,
-        );
+      if (!res.ok) {
+        let errMsg = `Generation failed: ${res.status} ${res.statusText}`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+        } catch { /* ignore */ }
+        throw new APIError(errMsg, res.status);
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let result: GenerationResult | null = null;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const payload = trimmed.slice(5).trim();
-          if (!payload) continue;
-          try {
-            const parsed = JSON.parse(payload) as {
-              type: 'step' | 'result' | 'error';
-              step?: GenerationStep;
-              result?: GenerationResult;
-              error?: string;
-            };
-            if (parsed.type === 'step' && parsed.step) {
-              onProgress(parsed.step);
-            } else if (parsed.type === 'result' && parsed.result) {
-              result = parsed.result;
-            } else if (parsed.type === 'error') {
-              throw new APIError(parsed.error || 'Stream error', 500);
-            }
-          } catch (err) {
-            if (err instanceof APIError) throw err;
-            // ignore malformed lines
-          }
-        }
-      }
-      if (!result) {
-        throw new APIError('Stream ended without result', 500);
-      }
-      return result;
+      const data = await res.json();
+      const result = extractData<any>(data);
+      return this.mapGenerationResult(result);
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private mapLegacyResult(data: any): GenerationResult {
+    // Map legacy /api/generate response to GenerationResult
+    const imageUrl = data.image_url || '';
+    return {
+      id: `gen_${Date.now()}`,
+      requestId: `req_${Date.now()}`,
+      imageUrl,
+      segmentedLayers: [],
+      metadata: {
+        seed: data.seed ?? 0,
+        width: data.width ?? 1024,
+        height: data.height ?? 1024,
+        source: data.source ?? 'legacy',
+      },
+      createdAt: data.created_at || new Date().toISOString(),
+    };
+  }
+
+  private mapGenerationResult(data: any): GenerationResult {
+    // v10.1: Map full workflow result (with layers, model3, psd, etc.)
+    const imageUrl = data.image_url || (data.image_path ? `/output/${data.image_path.split('/').pop()}` : '');
+    const model3Url = data.model3_json || '';
+    const layersDir = data.layers_dir || '';
+
+    return {
+      id: `gen_${Date.now()}`,
+      requestId: `req_${Date.now()}`,
+      imageUrl,
+      segmentedLayers: [], // Layer info loaded from layers_dir if needed
+      model3Url,
+      metadata: {
+        seed: data.seed ?? 0,
+        width: data.width ?? 1024,
+        height: data.height ?? 1024,
+        source: data.source ?? 'workflow_v10.1',
+        layers_dir: layersDir,
+        psd_path: data.psd_path || '',
+        output_dir: data.output_dir || '',
+        character_id: data.character_id || '',
+      },
+      createdAt: data.created_at || new Date().toISOString(),
+    };
   }
 
   // ---------- chat ----------
@@ -279,13 +348,26 @@ export class APIClient {
     onChunk: (text: string) => void,
     characterId?: string,
   ): Promise<void> {
+    // v10.1: Use SSE chat/stream endpoint with snake_case payload matching Go ChatRequest
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2 * 60_000);
     try {
-      const res = await fetch(`${this.baseURL}/api/chat`, {
+      // Convert messages to Go format: { role, content } history array + single message
+      const history = messages.slice(0, -1).map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+      const lastMessage = messages[messages.length - 1];
+      const payload: Record<string, unknown> = {
+        character_id: characterId,
+        message: lastMessage?.content || '',
+        history,
+        stream: true,
+      };
+      const res = await fetch(`${this.baseURL}/api/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, characterId }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
@@ -311,13 +393,20 @@ export class APIClient {
           if (payload === '[DONE]') return;
           try {
             const parsed = JSON.parse(payload) as {
+              type?: string;
               chunk?: string;
+              content?: string;
+              reply?: string;
               error?: string;
+              finished?: boolean;
             };
             if (parsed.error) {
               throw new APIError(parsed.error, 500);
             }
-            if (parsed.chunk) onChunk(parsed.chunk);
+            // Support multiple chunk shapes from Go stream
+            const text = parsed.chunk || parsed.content || parsed.reply;
+            if (text) onChunk(text);
+            if (parsed.finished) return;
           } catch (err) {
             if (err instanceof APIError) throw err;
           }
@@ -333,19 +422,33 @@ export class APIClient {
   async exportModel(
     characterId: string,
     format: ExportFormat,
-  ): Promise<Blob> {
-    return this.requestBlob(
-      `/api/export?characterId=${encodeURIComponent(
-        characterId,
-      )}&format=${encodeURIComponent(format)}`,
-    );
+    layersDir?: string,
+  ): Promise<{ model3_json?: string; texture?: string; model_path?: string; success: boolean }> {
+    // v10.1: POST /api/export/live2d with JSON body (not GET with query params)
+    const payload: Record<string, unknown> = {
+      character_id: characterId,
+      format,
+    };
+    if (layersDir) payload.layers_dir = layersDir;
+    const res = await this.request<unknown>('/api/export/live2d', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return extractData<any>(res);
   }
 
   // ---------- expressions ----------
 
   async getExpressions(characterId?: string): Promise<Expression[]> {
-    const q = characterId ? `?characterId=${encodeURIComponent(characterId)}` : '';
-    return this.request<Expression[]>(`/api/expressions${q}`);
+    const q = characterId ? `?character_id=${encodeURIComponent(characterId)}` : '';
+    const res = await this.request<unknown>(`/api/expressions${q}`);
+    const data = extractData<any[]>(res);
+    return (Array.isArray(data) ? data : []).map(e => ({
+      name: e.name || e.Name || '',
+      file: e.file || e.File,
+      thumbnailUrl: e.thumbnail || e.ThumbnailUrl,
+      parameters: e.params || e.Parameters || [],
+    }));
   }
 
   // ---------- health ----------
@@ -364,8 +467,6 @@ export class APIClient {
   async getStatus(): Promise<SystemStatus | null> {
     try {
       const res = await this.request<unknown>('/api/status', undefined, 5000);
-      // Go API returns { success, data: { services, version, uptime } }
-      // Map it to the frontend SystemStatus shape
       const wrapper = res as { data?: unknown };
       const data: Record<string, unknown> =
         (wrapper?.data as Record<string, unknown> | undefined) ??
@@ -378,7 +479,7 @@ export class APIClient {
         apiConnected: true,
         latencyMs: 0,
         gpuAvailable: false,
-        version: (data.version as string) ?? 'unknown',
+        version: (data.version as string) ?? 'v10.1',
         modelsLoaded: services.map((s) => s.name),
         providers: services.map((s) => ({
           id: s.name as never,

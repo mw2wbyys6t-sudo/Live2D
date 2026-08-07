@@ -547,6 +547,7 @@ def run_workflow(
 
 
 if __name__ == "__main__":
+    import json as _json
     import argparse
     parser = argparse.ArgumentParser(description=f"Live2D Master Agent v{__version__}")
     parser.add_argument("prompt", nargs="?", default="", help="Character description")
@@ -567,6 +568,10 @@ if __name__ == "__main__":
                         help="Disable semantic segmentation, use K-means")
     parser.add_argument("--live2d-export", action="store_true",
                         help="Export Live2D model3 scaffold after rigging")
+    # v10.1 new options for API integration
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+    parser.add_argument("--negative-prompt", "-n", default=None, help="Negative prompt")
+    parser.add_argument("--json", action="store_true", help="Output result as JSON to stdout")
     args = parser.parse_args()
 
     if not args.prompt and not args.input:
@@ -587,5 +592,9 @@ if __name__ == "__main__":
         prompt=args.prompt,
         input_image=args.input,
         deploy_desktop=args.deploy_desktop,
+        negative_prompt=args.negative_prompt,
+        seed=args.seed,
     )
+    if args.json:
+        print(_json.dumps(result, ensure_ascii=False, indent=2))
     sys.exit(0 if result["success"] else 1)

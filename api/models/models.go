@@ -24,14 +24,24 @@ type GenerateImageRequest struct {
 
 // 图片生成响应
 type GenerateImageResponse struct {
-	ImagePath string            `json:"image_path"`
-	ImageURL  string            `json:"image_url"`
-	Seed      int               `json:"seed"`
-	Width     int               `json:"width"`
-	Height    int               `json:"height"`
-	Source    string            `json:"source"`
-	Features  map[string]string `json:"features,omitempty"`
-	CreatedAt time.Time         `json:"created_at"`
+	ImagePath    string            `json:"image_path"`
+	ImageURL     string            `json:"image_url"`
+	Seed         int               `json:"seed"`
+	Width        int               `json:"width"`
+	Height       int               `json:"height"`
+	Source       string            `json:"source"`
+	Features     map[string]string `json:"features,omitempty"`
+	CreatedAt    time.Time         `json:"created_at"`
+	// v10.1: 完整工作流产物
+	LayersDir    string            `json:"layers_dir,omitempty"`
+	PSDPath      string            `json:"psd_path,omitempty"`
+	Model3JSON   string            `json:"model3_json,omitempty"`
+	OutputDir    string            `json:"output_dir,omitempty"`
+	CharacterID  string            `json:"character_id,omitempty"`
+	Success      bool              `json:"success"`
+	Error        string            `json:"error,omitempty"`
+	// 各步骤产物路径
+	Steps        map[string]interface{} `json:"steps,omitempty"`
 }
 
 // PSD分层请求
